@@ -17,8 +17,7 @@ class PromptChatPanel extends ConsumerStatefulWidget {
 class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
-  DesignTokenPreset? _selectedToken;
-  bool _expandedAssistant = false;
+  final Set<int> _expandedAssistant = <int>{};
 
   @override
   void dispose() {
@@ -42,9 +41,11 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
     _inputController.clear();
-    await ref.read(canvasProvider.notifier).submitPrompt(
+    await ref
+        .read(canvasProvider.notifier)
+        .submitPrompt(
           text,
-          designToken: _selectedToken,
+          designToken: ref.read(canvasProvider).selectedToken,
         );
   }
 
@@ -90,10 +91,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                   : () => ref.read(canvasProvider.notifier).clearCanvas(),
               child: const Text(
                 'Reset',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
             ),
         ],
@@ -108,23 +106,31 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.auto_awesome_outlined,
-                size: 32, color: AppColors.textDisabled),
+            Icon(
+              Icons.terminal_outlined,
+              size: 28,
+              color: AppColors.textDisabled,
+            ),
             SizedBox(height: 12),
             Text(
-              'Deskripsikan UI yang ingin dibuat',
+              'Ngobrol atau minta UI',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontFamily: AppFonts.uiFamily,
+                fontFamilyFallback: AppFonts.uiFallback,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
             ),
             SizedBox(height: 6),
             Text(
-              'Contoh: "Buat landing page SaaS dengan hero, pricing 3 tier, dan footer gelap."',
+              'Tanya apa saja untuk saran desain, atau minta langsung: '
+              '"Buat landing page SaaS dengan hero dan pricing 3 tier."',
               textAlign: TextAlign.center,
               style: TextStyle(
+                fontFamily: AppFonts.uiFamily,
+                fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 11,
                 height: 1.6,
                 color: AppColors.textDisabled,
@@ -143,11 +149,11 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
       itemCount: state.messages.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) =>
-          _buildMessageBubble(state.messages[index]),
+          _buildMessageBubble(state.messages[index], index),
     );
   }
 
-  Widget _buildMessageBubble(CanvasMessage message) {
+  Widget _buildMessageBubble(CanvasMessage message, int index) {
     switch (message.role) {
       case ChatRole.user:
         return Align(
@@ -155,24 +161,33 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
           child: Container(
             constraints: const BoxConstraints(maxWidth: 300),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.accentPrimary,
-              borderRadius: BorderRadius.circular(6),
+            decoration: const BoxDecoration(
+              color: AppColors.selectionBg,
+              borderRadius: AppRadius.sm,
             ),
             child: Text(
               message.text,
-              style: const TextStyle(fontSize: 12, color: Colors.white),
+              style: const TextStyle(
+                fontFamily: AppFonts.uiFamily,
+                fontFamilyFallback: AppFonts.uiFallback,
+                fontSize: 12,
+                height: 1.5,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         );
       case ChatRole.assistant:
+        if (message.kind == ChatMessageKind.chat) {
+          return _buildChatBubble(message.text);
+        }
         return Align(
           alignment: Alignment.centerLeft,
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.bgSurface,
               border: Border.all(color: AppColors.borderSubtle),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppRadius.sm,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,46 +196,59 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline,
-                          size: 13, color: AppColors.statusSuccess),
+                      const Icon(
+                        Icons.brush_outlined,
+                        size: 13,
+                        color: AppColors.accentAi,
+                      ),
                       const SizedBox(width: 6),
                       const Text(
-                        'UI di-generate ke canvas',
+                        'Generated UI',
                         style: TextStyle(
+                          fontFamily: AppFonts.uiFamily,
+                          fontFamilyFallback: AppFonts.uiFallback,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.statusSuccess,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const Spacer(),
                       GestureDetector(
-                        onTap: () => setState(
-                            () => _expandedAssistant = !_expandedAssistant),
+                        onTap: () => setState(() {
+                          if (!_expandedAssistant.add(index)) {
+                            _expandedAssistant.remove(index);
+                          }
+                        }),
                         child: Text(
-                          _expandedAssistant ? 'Tutup' : 'Lihat kode',
+                          _expandedAssistant.contains(index)
+                              ? 'Sembunyikan'
+                              : 'Lihat kode',
                           style: const TextStyle(
+                            fontFamily: AppFonts.uiFamily,
+                            fontFamilyFallback: AppFonts.uiFallback,
                             fontSize: 10,
-                            color: AppColors.accentPrimary,
+                            color: AppColors.link,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (_expandedAssistant)
+                if (_expandedAssistant.contains(index))
                   Container(
                     constraints: const BoxConstraints(maxHeight: 160),
                     margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: AppColors.bgBase,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadius.sm,
                     ),
                     child: SingleChildScrollView(
                       child: SelectableText(
                         message.text,
                         style: const TextStyle(
-                          fontFamily: 'JetBrainsMono',
+                          fontFamily: AppFonts.monoFamily,
+                          fontFamilyFallback: AppFonts.monoFallback,
                           fontSize: 10,
                           height: 1.5,
                           color: AppColors.textSecondary,
@@ -239,14 +267,17 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
             decoration: BoxDecoration(
               color: AppColors.bgSurface,
               border: Border.all(color: AppColors.statusError),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppRadius.sm,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.error_outline,
-                    size: 14, color: AppColors.statusError),
+                const Icon(
+                  Icons.error_outline,
+                  size: 14,
+                  color: AppColors.statusError,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -263,6 +294,32 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
           ),
         );
     }
+  }
+
+  /// Bubble untuk jawaban percakapan biasa (mode chat).
+  Widget _buildChatBubble(String text) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 340),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          border: Border.all(color: AppColors.borderSubtle),
+          borderRadius: AppRadius.sm,
+        ),
+        child: SelectableText(
+          text.isEmpty ? '(kosong)' : text,
+          style: const TextStyle(
+            fontFamily: AppFonts.uiFamily,
+            fontFamilyFallback: AppFonts.uiFallback,
+            fontSize: 12,
+            height: 1.55,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildInputArea(CanvasState state) {
@@ -282,11 +339,14 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
               separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final preset = designTokenPresets[index];
-                final selected = _selectedToken?.id == preset.id;
+                final selectedId = ref.watch(
+                  canvasProvider.select((s) => s.selectedToken?.id),
+                );
+                final selected = selectedId == preset.id;
                 return GestureDetector(
-                  onTap: () => setState(() {
-                    _selectedToken = selected ? null : preset;
-                  }),
+                  onTap: () => ref
+                      .read(canvasProvider.notifier)
+                      .setSelectedToken(selected ? null : preset),
                   child: Container(
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -299,13 +359,14 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                             ? AppColors.accentPrimary
                             : AppColors.borderSubtle,
                       ),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadius.sm,
                     ),
                     child: Text(
                       preset.label,
                       style: TextStyle(
-                        fontFamily: 'JetBrainsMono',
-                        fontSize: 10,
+                        fontFamily: AppFonts.uiFamily,
+                        fontFamilyFallback: AppFonts.uiFallback,
+                        fontSize: 11,
                         color: selected
                             ? Colors.white
                             : AppColors.textSecondary,
@@ -323,30 +384,34 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.bgBase,
-                    border: Border.all(color: AppColors.borderSubtle),
-                    borderRadius: BorderRadius.circular(6),
+                    color: AppColors.inputBg,
+                    border: Border.all(color: AppColors.borderStrong),
+                    borderRadius: AppRadius.sm,
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: TextField(
                     controller: _inputController,
                     enabled: !state.isGenerating,
                     maxLines: 4,
                     minLines: 1,
                     style: const TextStyle(
-                      fontFamily: 'JetBrainsMono',
+                      fontFamily: AppFonts.uiFamily,
+                      fontFamilyFallback: AppFonts.uiFallback,
                       fontSize: 12,
                       color: AppColors.textPrimary,
                     ),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      hintText: 'Deskripsikan UI atau revisi...',
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      hintText: 'Deskripsikan UI atau minta revisi...',
                       hintStyle: TextStyle(
-                        fontFamily: 'JetBrainsMono',
-                        fontSize: 11,
+                        fontFamily: AppFonts.uiFamily,
+                        fontFamilyFallback: AppFonts.uiFallback,
+                        fontSize: 12,
                         color: AppColors.textDisabled,
                       ),
-                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(vertical: 10),
                     ),
                     textInputAction: TextInputAction.newline,
                   ),
@@ -354,26 +419,27 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
               ),
               const SizedBox(width: 8),
               SizedBox(
-                width: 44,
-                height: 44,
+                width: 32,
+                height: 32,
                 child: ElevatedButton(
                   onPressed: state.isGenerating ? null : _send,
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentPrimary,
                     padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppRadius.sm,
                     ),
                   ),
                   child: state.isGenerating
                       ? const SizedBox(
-                          height: 16,
-                          width: 16,
+                          height: 14,
+                          width: 14,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: Colors.white,
                           ),
                         )
-                      : const Icon(Icons.arrow_upward, size: 18),
+                      : const Icon(Icons.arrow_upward, size: 16),
                 ),
               ),
             ],

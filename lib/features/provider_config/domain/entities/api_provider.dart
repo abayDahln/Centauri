@@ -41,16 +41,16 @@ class ApiProvider {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'baseUrl': baseUrl,
-        'model': model,
-      };
+    'id': id,
+    'name': name,
+    'baseUrl': baseUrl,
+    'model': model,
+  };
 
   factory ApiProvider.fromJson(Map<String, dynamic> json) => ApiProvider(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        baseUrl: json['baseUrl'] as String,
-        model: json['model'] as String,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    baseUrl: json['baseUrl'] as String,
+    model: json['model'] as String,
+  );
 }

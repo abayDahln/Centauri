@@ -14,7 +14,7 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
         backgroundColor: AppColors.bgBase,
         insetPadding: const EdgeInsets.all(48),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.md,
           side: const BorderSide(color: AppColors.borderSubtle),
         ),
         child: SizedBox(
@@ -32,12 +32,10 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
     isScrollControlled: true,
     backgroundColor: AppColors.bgBase,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      side: BorderSide(color: AppColors.borderSubtle),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(3)),
+      side: BorderSide(color: AppColors.borderStrong),
     ),
-    builder: (_) => SizedBox(
-      height: 640,
-      child: CodeExportView(htmlSource: htmlSource),
-    ),
+    builder: (_) =>
+        SizedBox(height: 640, child: CodeExportView(htmlSource: htmlSource)),
   );
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/config/theme.dart';
 import '../../../core/utils/app_constants.dart';
+import '../../canvas_preview/presentation/widgets/skeleton.dart';
 import '../data/datasources/ai_api_service.dart';
 import '../domain/entities/api_provider.dart';
 import 'providers/provider_config_provider.dart';
@@ -68,7 +69,9 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final provider = _providerFromForm();
-    await ref.read(providerConfigProvider.notifier).saveProvider(
+    await ref
+        .read(providerConfigProvider.notifier)
+        .saveProvider(
           id: _editingProviderId,
           name: provider.name,
           baseUrl: provider.baseUrl,
@@ -79,10 +82,7 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
     if (!mounted) return;
     final result = ref.read(providerConfigProvider);
     if (result.hasError) {
-      _showSnackBar(
-        'Gagal menyimpan: ${result.error}',
-        isError: true,
-      );
+      _showSnackBar('Gagal menyimpan: ${result.error}', isError: true);
       return;
     }
 
@@ -117,7 +117,7 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.bgSurface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.md,
           side: const BorderSide(color: AppColors.borderSubtle),
         ),
         title: const Text(
@@ -135,13 +135,17 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal',
-                style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Hapus',
-                style: TextStyle(color: AppColors.statusError)),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: AppColors.statusError),
+            ),
           ),
         ],
       ),
@@ -163,7 +167,9 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
               Icon(
                 isError ? Icons.error_outline : Icons.check_circle_outline,
                 size: 16,
-                color: isError ? AppColors.statusError : AppColors.statusSuccess,
+                color: isError
+                    ? AppColors.statusError
+                    : AppColors.statusSuccess,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -191,9 +197,7 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
     final activeProviderId = asyncState.value?.activeProvider?.id;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Custom API Provider'),
-      ),
+      appBar: AppBar(title: const Text('Custom API Provider')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Center(
@@ -237,7 +241,7 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
       decoration: BoxDecoration(
         color: AppColors.bgSurface,
         border: Border.all(color: AppColors.borderSubtle, width: 1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.md,
       ),
       child: Form(
         key: _formKey,
@@ -285,7 +289,12 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _baseUrlController,
-              style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 13),
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(
+                fontFamily: AppFonts.monoFamily,
+                fontFamilyFallback: AppFonts.monoFallback,
+                fontSize: 13,
+              ),
               decoration: const InputDecoration(
                 hintText: 'https://api.openai.com/v1',
               ),
@@ -299,6 +308,8 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
                 return null;
               },
             ),
+            const SizedBox(height: 6),
+            _buildResolvedEndpointPreview(),
             const SizedBox(height: 8),
             _buildPresetChips(),
             const SizedBox(height: 20),
@@ -307,7 +318,11 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
             TextFormField(
               controller: _apiKeyController,
               obscureText: true,
-              style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 13),
+              style: const TextStyle(
+                fontFamily: AppFonts.monoFamily,
+                fontFamilyFallback: AppFonts.monoFallback,
+                fontSize: 13,
+              ),
               decoration: InputDecoration(
                 hintText: _editingProviderId == null ? 'sk-...' : '••••••••',
                 helperText: _editingProviderId == null
@@ -324,7 +339,11 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _modelController,
-              style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 13),
+              style: const TextStyle(
+                fontFamily: AppFonts.monoFamily,
+                fontFamilyFallback: AppFonts.monoFallback,
+                fontSize: 13,
+              ),
               decoration: const InputDecoration(hintText: 'gpt-4o'),
               validator: (value) => (value == null || value.trim().isEmpty)
                   ? 'Nama model wajib diisi.'
@@ -345,8 +364,10 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
                               color: AppColors.accentPrimary,
                             ),
                           )
-                        : const Text('Test Connection',
-                            style: TextStyle(fontSize: 13)),
+                        : const Text(
+                            'Test Connection',
+                            style: TextStyle(fontSize: 13),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -384,17 +405,18 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
               _baseUrlController.text = entry.value;
             });
           },
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadius.sm,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               border: Border.all(color: AppColors.borderSubtle),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadius.sm,
             ),
             child: Text(
               entry.key,
               style: const TextStyle(
-                fontFamily: 'JetBrainsMono',
+                fontFamily: AppFonts.monoFamily,
+                fontFamilyFallback: AppFonts.monoFallback,
                 fontSize: 11,
                 color: AppColors.textSecondary,
               ),
@@ -402,6 +424,40 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  /// Menampilkan URL endpoint final yang akan dipanggil. Membantu pengguna
+  /// menyadari Base URL yang salah sebelum menekan Test/Save.
+  Widget _buildResolvedEndpointPreview() {
+    final base = _baseUrlController.text.trim();
+    if (base.isEmpty) return const SizedBox.shrink();
+
+    final endpoint = AiApiService.resolveEndpoint(
+      base,
+      AppConstants.chatCompletionsPath,
+    );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.arrow_forward, size: 12, color: AppColors.textDisabled),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            endpoint,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: AppFonts.monoFamily,
+              fontFamilyFallback: AppFonts.monoFallback,
+              fontSize: 10,
+              height: 1.4,
+              color: AppColors.textDisabled,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -435,16 +491,12 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
         const SizedBox(height: 12),
         if (asyncState.isLoading && providers.isEmpty)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.accentPrimary,
-                ),
-              ),
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              children: [
+                SkeletonListRow(),
+                SkeletonListRow(),
+              ],
             ),
           )
         else if (asyncState.hasError && providers.isEmpty)
@@ -452,12 +504,15 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               border: Border.all(color: AppColors.statusError),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppRadius.md,
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline,
-                    size: 16, color: AppColors.statusError),
+                const Icon(
+                  Icons.error_outline,
+                  size: 16,
+                  color: AppColors.statusError,
+                ),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -469,10 +524,11 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () =>
-                      ref.refresh(providerConfigProvider.future),
-                  child: const Text('Coba lagi',
-                      style: TextStyle(fontSize: 12)),
+                  onPressed: () => ref.refresh(providerConfigProvider.future),
+                  child: const Text(
+                    'Coba lagi',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -483,7 +539,7 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
             padding: const EdgeInsets.symmetric(vertical: 32),
             decoration: BoxDecoration(
               border: Border.all(color: AppColors.borderSubtle),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppRadius.md,
             ),
             child: const Column(
               children: [
@@ -497,10 +553,7 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
                 SizedBox(height: 4),
                 Text(
                   'Tambahkan provider di atas untuk mulai menggunakan Centauri.',
-                  style: TextStyle(
-                    color: AppColors.textDisabled,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: AppColors.textDisabled, fontSize: 11),
                 ),
               ],
             ),
@@ -527,7 +580,7 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
         border: Border.all(
           color: isActive ? AppColors.accentPrimary : AppColors.borderSubtle,
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.md,
       ),
       child: Row(
         children: [
@@ -549,15 +602,20 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppColors.accentPrimary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
+                          color: AppColors.accentPrimary.withValues(
+                            alpha: 0.15,
+                          ),
+                          borderRadius: AppRadius.sm,
                         ),
                         child: const Text(
                           'AKTIF',
                           style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
+                            fontFamily: AppFonts.monoFamily,
+                            fontFamilyFallback: AppFonts.monoFallback,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: AppColors.accentPrimary,
@@ -573,7 +631,8 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: AppFonts.monoFamily,
+                    fontFamilyFallback: AppFonts.monoFallback,
                     fontSize: 11,
                     color: AppColors.textSecondary,
                   ),

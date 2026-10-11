@@ -9,8 +9,8 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
   ApiProviderRepositoryImpl({
     LocalStorageService? localStorage,
     SecureStorageService? secureStorage,
-  })  : _localStorage = localStorage ?? LocalStorageService(),
-        _secureStorage = secureStorage ?? SecureStorageService();
+  }) : _localStorage = localStorage ?? LocalStorageService(),
+       _secureStorage = secureStorage ?? SecureStorageService();
 
   final LocalStorageService _localStorage;
   final SecureStorageService _secureStorage;
@@ -19,9 +19,10 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
   Future<List<ApiProvider>> getProviders() async {
     final jsonList = _localStorage.readAllProvidersJson();
     return jsonList
-        .map((json) => ApiProvider.fromJson(
-              jsonDecode(json) as Map<String, dynamic>,
-            ))
+        .map(
+          (json) =>
+              ApiProvider.fromJson(jsonDecode(json) as Map<String, dynamic>),
+        )
         .toList();
   }
 

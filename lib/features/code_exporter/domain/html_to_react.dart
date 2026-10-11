@@ -65,9 +65,7 @@ $jsx
     for (final tag in _voidElements) {
       out = out.replaceAllMapped(
         RegExp('<$tag\\b([^>]*?)(/?)>', caseSensitive: false),
-        (m) => m.group(2) == '/'
-            ? m.group(0)!
-            : '<$tag${m.group(1)} />',
+        (m) => m.group(2) == '/' ? m.group(0)! : '<$tag${m.group(1)} />',
       );
     }
 
@@ -81,25 +79,27 @@ $jsx
         .where((d) => d.contains(':'))
         .toList();
 
-    return declarations.map((declaration) {
-      final separator = declaration.indexOf(':');
-      final key = _camelCase(declaration.substring(0, separator).trim());
-      final rawValue = declaration.substring(separator + 1).trim();
+    return declarations
+        .map((declaration) {
+          final separator = declaration.indexOf(':');
+          final key = _camelCase(declaration.substring(0, separator).trim());
+          final rawValue = declaration.substring(separator + 1).trim();
 
-      if (key == 'custom-properties') return '';
+          if (key == 'custom-properties') return '';
 
-      final numeric = rawValue.endsWith('px')
-          ? double.tryParse(rawValue.substring(0, rawValue.length - 2))
-          : null;
-      if (numeric != null) {
-        final isWhole = numeric == numeric.roundToDouble();
-        return '$key: ${isWhole ? numeric.round() : numeric}';
-      }
-      if (key == 'opacity' || key == 'zIndex' || key == 'fontWeight') {
-        if (double.tryParse(rawValue) != null) return '$key: $rawValue';
-      }
-      return "$key: '${rawValue.replaceAll("'", r"\'")}'";
-    }).join(', ');
+          final numeric = rawValue.endsWith('px')
+              ? double.tryParse(rawValue.substring(0, rawValue.length - 2))
+              : null;
+          if (numeric != null) {
+            final isWhole = numeric == numeric.roundToDouble();
+            return '$key: ${isWhole ? numeric.round() : numeric}';
+          }
+          if (key == 'opacity' || key == 'zIndex' || key == 'fontWeight') {
+            if (double.tryParse(rawValue) != null) return '$key: $rawValue';
+          }
+          return "$key: '${rawValue.replaceAll("'", r"\'")}'";
+        })
+        .join(', ');
   }
 
   String _camelCase(String kebab) {

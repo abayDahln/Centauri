@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('extractHtmlFromResponse', () {
     test('extracts content from ```html fenced block', () {
-      const raw = 'Here you go:\n'
+      const raw =
+          'Here you go:\n'
           '```html\n'
           '<!DOCTYPE html>\n<html><body><h1>Hi</h1></body></html>\n'
           '```\n'
@@ -33,7 +34,8 @@ void main() {
     });
 
     test('strips prose around a full HTML document', () {
-      const raw = 'Sure! Creating your page now.\n\n'
+      const raw =
+          'Sure! Creating your page now.\n\n'
           '<html><head></head><body><main>Content</main></body></html>\n\n'
           'Done.';
 

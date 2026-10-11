@@ -6,7 +6,8 @@ import '../utils/app_constants.dart';
 /// Hanya API Key yang masuk sini; metadata provider disimpan di Hive.
 class SecureStorageService {
   SecureStorageService._internal();
-  static final SecureStorageService _instance = SecureStorageService._internal();
+  static final SecureStorageService _instance =
+      SecureStorageService._internal();
   factory SecureStorageService() => _instance;
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(

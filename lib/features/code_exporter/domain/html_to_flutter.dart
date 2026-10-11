@@ -272,7 +272,7 @@ $children
 
     final fields = <String>[];
     if (padding != null) fields.add('padding: $padding');
-      if (color != null) {
+    if (color != null) {
       final decorationParts = <String>['color: $color'];
       if (radius != null) decorationParts.add('borderRadius: $radius');
       fields.add('decoration: BoxDecoration(${decorationParts.join(', ')})');
@@ -288,7 +288,8 @@ $children
           '${_indent(indent)}),';
     }
 
-    final childrenColumn = 'Column(\n'
+    final childrenColumn =
+        'Column(\n'
         '${_indent(indent + 2)}crossAxisAlignment: CrossAxisAlignment.start,\n'
         '${_indent(indent + 2)}children: [\n'
         '$children\n'
@@ -342,7 +343,9 @@ $children
     int indent,
     List<String> positionalArgs,
   ) {
-    final args = positionalArgs.map((a) => '${_indent(indent + 2)}$a,\n').join();
+    final args = positionalArgs
+        .map((a) => '${_indent(indent + 2)}$a,\n')
+        .join();
     return '${_indent(indent)}$constructor(\n'
         '$args'
         '${_indent(indent)}),';
@@ -368,7 +371,10 @@ $children
 
   String? _edgeInsets(String? padding) {
     if (padding == null) return null;
-    final parts = padding.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = padding
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     final values = parts.map((p) => _parsePx(p)?.round()).toList();
     if (values.isEmpty || values.any((v) => v == null)) return null;
     final v = values.cast<int>();

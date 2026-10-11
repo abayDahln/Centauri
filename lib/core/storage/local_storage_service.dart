@@ -23,7 +23,8 @@ class LocalStorageService {
 
   Future<void> deleteProviderJson(String id) => _providersBox.delete(id);
 
-  String? get activeProviderId => _metaBox.get(AppConstants.activeProviderIdKey);
+  String? get activeProviderId =>
+      _metaBox.get(AppConstants.activeProviderIdKey);
 
   Future<void> setActiveProviderId(String id) =>
       _metaBox.put(AppConstants.activeProviderIdKey, id);

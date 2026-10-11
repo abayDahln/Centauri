@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -10,11 +11,17 @@ import 'canvas_webview_service.dart';
 /// `webview_flutter`.
 class MobileCanvasWebviewService implements CanvasWebviewService {
   late final WebViewController _controller;
+  final StreamController<CanvasSelectEvent> _selectionEvents =
+      StreamController<CanvasSelectEvent>.broadcast();
 
   bool _ready = false;
   String? _pendingHtml;
   double? _pendingViewportWidth;
+  double _pendingZoom = 1;
   bool _disposed = false;
+
+  @override
+  Stream<CanvasSelectEvent> get selectionEvents => _selectionEvents.stream;
 
   @override
   Future<void> init() async {
@@ -23,7 +30,12 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
       ..setBackgroundColor(const Color(0xFF0F0F11))
       ..addJavaScriptChannel(
         'centauriBridge',
-        onMessageReceived: (_) {},
+        onMessageReceived: (message) {
+          final event = CanvasSelectEvent.tryParse(message.message);
+          if (event != null && !_selectionEvents.isClosed) {
+            _selectionEvents.add(event);
+          }
+        },
       );
 
     await _controller.loadHtmlString(canvasShellHtml);
@@ -32,6 +44,9 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
     // Push state yang mungkin sudah berubah sebelum init selesai.
     if (_pendingViewportWidth != null) {
       await setViewportWidth(_pendingViewportWidth);
+    }
+    if (_pendingZoom != 1) {
+      await setZoom(_pendingZoom);
     }
     if (_pendingHtml != null) {
       final html = _pendingHtml;
@@ -48,17 +63,36 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
       await _controller.runJavaScript('window.clearCanvas()');
       return;
     }
-    await _controller.runJavaScript(
-      'window.renderCanvas(${jsonEncode(html)})',
-    );
+    await _controller.runJavaScript('window.renderCanvas(${jsonEncode(html)})');
   }
 
   @override
   Future<void> setViewportWidth(double? widthPx) async {
     _pendingViewportWidth = widthPx;
     if (!_ready || _disposed) return;
+    await _controller.runJavaScript('window.setViewport(${widthPx ?? 'null'})');
+  }
+
+  @override
+  Future<void> setZoom(double factor) async {
+    _pendingZoom = factor;
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript('window.setZoom($factor)');
+  }
+
+  @override
+  Future<void> selectNode(String? id) async {
+    if (!_ready || _disposed) return;
     await _controller.runJavaScript(
-      'window.setViewport(${widthPx ?? 'null'})',
+      'window.centauriSelect(${id == null ? 'null' : jsonEncode(id)})',
+    );
+  }
+
+  @override
+  Future<void> hoverNode(String? id) async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript(
+      'window.centauriHover(${id == null ? 'null' : jsonEncode(id)})',
     );
   }
 
@@ -68,5 +102,6 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   @override
   Future<void> dispose() async {
     _disposed = true;
+    await _selectionEvents.close();
   }
 }

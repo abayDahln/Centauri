@@ -11,16 +11,32 @@ import 'canvas_webview_service.dart';
 /// (WebView2 runtime).
 class WindowsCanvasWebviewService implements CanvasWebviewService {
   final WebviewController _controller = WebviewController();
+  final StreamController<CanvasSelectEvent> _selectionEvents =
+      StreamController<CanvasSelectEvent>.broadcast();
+
+  StreamSubscription<dynamic>? _messageSubscription;
 
   bool _ready = false;
   bool _disposed = false;
   String? _pendingHtml;
   double? _pendingViewportWidth;
+  double _pendingZoom = 1;
+
+  @override
+  Stream<CanvasSelectEvent> get selectionEvents => _selectionEvents.stream;
 
   @override
   Future<void> init() async {
     await _controller.initialize();
     await _controller.setBackgroundColor(const Color(0xFF0F0F11));
+
+    _messageSubscription = _controller.webMessage.listen((message) {
+      final event = CanvasSelectEvent.tryParse(message);
+      if (event != null && !_selectionEvents.isClosed) {
+        _selectionEvents.add(event);
+      }
+    });
+
     await _controller.loadStringContent(canvasShellHtml);
 
     // Pastikan DOM shell sudah siap sebelum executeScript.
@@ -29,6 +45,9 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
 
     if (_pendingViewportWidth != null) {
       await setViewportWidth(_pendingViewportWidth);
+    }
+    if (_pendingZoom != 1) {
+      await setZoom(_pendingZoom);
     }
     if (_pendingHtml != null) {
       final html = _pendingHtml;
@@ -48,8 +67,7 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
     });
 
     // Fallback timeout bila event tidak pernah datang.
-    await completer.future
-        .timeout(const Duration(seconds: 5), onTimeout: () {});
+    await completer.future.timeout(const Duration(seconds: 5), onTimeout: () {});
     await subscription.cancel();
   }
 
@@ -61,17 +79,36 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
       await _controller.executeScript('window.clearCanvas()');
       return;
     }
-    await _controller.executeScript(
-      'window.renderCanvas(${jsonEncode(html)})',
-    );
+    await _controller.executeScript('window.renderCanvas(${jsonEncode(html)})');
   }
 
   @override
   Future<void> setViewportWidth(double? widthPx) async {
     _pendingViewportWidth = widthPx;
     if (!_ready || _disposed) return;
+    await _controller.executeScript('window.setViewport(${widthPx ?? 'null'})');
+  }
+
+  @override
+  Future<void> setZoom(double factor) async {
+    _pendingZoom = factor;
+    if (!_ready || _disposed) return;
+    await _controller.executeScript('window.setZoom($factor)');
+  }
+
+  @override
+  Future<void> selectNode(String? id) async {
+    if (!_ready || _disposed) return;
     await _controller.executeScript(
-      'window.setViewport(${widthPx ?? 'null'})',
+      'window.centauriSelect(${id == null ? 'null' : jsonEncode(id)})',
+    );
+  }
+
+  @override
+  Future<void> hoverNode(String? id) async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript(
+      'window.centauriHover(${id == null ? 'null' : jsonEncode(id)})',
     );
   }
 
@@ -81,6 +118,8 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   @override
   Future<void> dispose() async {
     _disposed = true;
+    await _messageSubscription?.cancel();
+    await _selectionEvents.close();
     await _controller.dispose();
   }
 }

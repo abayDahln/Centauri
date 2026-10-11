@@ -11,10 +11,7 @@ String transformToHtml(String htmlSource) {
 }
 
 /// Facade transformasi kode: satu entry point untuk semua format (FR-05).
-String transformCode({
-  required String htmlSource,
-  required CodeFormat format,
-}) {
+String transformCode({required String htmlSource, required CodeFormat format}) {
   switch (format) {
     case CodeFormat.html:
       return transformToHtml(htmlSource);

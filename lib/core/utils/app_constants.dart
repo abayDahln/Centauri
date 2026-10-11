@@ -14,7 +14,18 @@ class AppConstants {
 
   // Network defaults.
   static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 60);
+
+  /// Batas tunggu antar-chunk saat generate. Dio memperlakukan ini sebagai
+  /// timeout inaktivitas (jarak antar event data), bukan total durasi, saat
+  /// memakai [ResponseType.stream]. Nilai longgar karena model lokal bisa
+  /// lambat pada token pertama.
+  static const Duration receiveTimeout = Duration(minutes: 5);
+
+  /// Batas aman total untuk satu kali generate (streaming).
+  static const Duration generationTimeout = Duration(minutes: 10);
+
+  /// Timeout khusus validasi kredensial (GET /models) agar feedback cepat.
+  static const Duration testConnectionTimeout = Duration(seconds: 20);
 
   // Endpoint OpenAI-compatible untuk validasi kredensial.
   static const String testConnectionPath = '/models';

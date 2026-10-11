@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/config/theme.dart';
 import '../providers/provider_config_provider.dart';
 
-/// Kartu status provider aktif di sidebar desktop (FR-01).
+/// Status provider aktif di sidebar Explorer (gaya list item VS Code).
 class ProviderStatusCard extends ConsumerWidget {
   const ProviderStatusCard({super.key});
 
@@ -14,78 +14,92 @@ class ProviderStatusCard extends ConsumerWidget {
     final asyncState = ref.watch(providerConfigProvider);
     final active = asyncState.value?.activeProvider;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        border: Border.all(color: AppColors.borderSubtle),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: active == null
-                      ? AppColors.textDisabled
-                      : AppColors.statusSuccess,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                active == null ? 'BELUM AKTIF' : 'PROVIDER AKTIF',
-                style: const TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 9,
-                  letterSpacing: 0.8,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            active?.name ?? 'Konfigurasi API diperlukan',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+          _SideBarListItem(
+            leading: Icon(
+              Icons.cloud_outlined,
+              size: 14,
+              color: active == null
+                  ? AppColors.textDisabled
+                  : AppColors.statusSuccess,
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            active?.model ?? 'BYOK - Bring Your Own Key',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'JetBrainsMono',
-              fontSize: 10,
-              color: AppColors.textDisabled,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => context.push('/provider-config'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-              ),
-              child: Text(
-                active == null ? 'Atur Provider' : 'Ganti Provider',
-                style: const TextStyle(fontSize: 11),
-              ),
-            ),
+            title: active?.name ?? 'No active provider',
+            subtitle: active?.model ?? 'Configure a BYOK provider',
+            trailing: const Icon(Icons.settings_outlined, size: 14),
+            onTap: () => context.push('/provider-config'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SideBarListItem extends StatefulWidget {
+  const _SideBarListItem({
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  final Widget leading;
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  State<_SideBarListItem> createState() => _SideBarListItemState();
+}
+
+class _SideBarListItemState extends State<_SideBarListItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          color: _hovered ? AppColors.hoverBg : Colors.transparent,
+          child: Row(
+            children: [
+              widget.leading,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.uiSmall,
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      widget.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.monoSmall,
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.trailing != null) widget.trailing!,
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -12,8 +12,8 @@ String extractHtmlFromResponse(String rawResponse) {
   if (text.isEmpty) return _errorDocument('Respons AI kosong.');
 
   // 1. Ambil isi fenced code block (```html ... ``` atau ``` ... ```).
-  final fenceMatch =
-      RegExp(r'```(?:html|xml|HTML)?\s*([\s\S]*?)```').firstMatch(text);
+  final fenceMatch = RegExp(r'```(?:html|xml|HTML)?\s*([\s\S]*?)```')
+      .firstMatch(text);
   if (fenceMatch != null) {
     text = fenceMatch.group(1)!.trim();
   }
@@ -44,7 +44,8 @@ String extractHtmlFromResponse(String rawResponse) {
 
   // 4. Validasi akhir.
   final finalLower = text.toLowerCase();
-  final looksLikeHtml = finalLower.contains('<html') ||
+  final looksLikeHtml =
+      finalLower.contains('<html') ||
       finalLower.contains('<!doctype') ||
       (finalLower.contains('<div') && finalLower.contains('<'));
 

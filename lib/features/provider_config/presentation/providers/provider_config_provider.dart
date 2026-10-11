@@ -18,10 +18,7 @@ final apiProviderRepositoryProvider = Provider<ApiProviderRepository>((ref) {
 final aiApiServiceProvider = Provider<AiApiService>((ref) => AiApiService());
 
 class ProviderConfigState {
-  const ProviderConfigState({
-    this.providers = const [],
-    this.activeProvider,
-  });
+  const ProviderConfigState({this.providers = const [], this.activeProvider});
 
   final List<ApiProvider> providers;
   final ApiProvider? activeProvider;
@@ -39,8 +36,8 @@ class ProviderConfigState {
 
 final providerConfigProvider =
     AsyncNotifierProvider<ProviderConfigNotifier, ProviderConfigState>(
-  ProviderConfigNotifier.new,
-);
+      ProviderConfigNotifier.new,
+    );
 
 class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
   @override
@@ -69,13 +66,15 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
       final repository = ref.read(apiProviderRepositoryProvider);
 
       if (id == null) {
-        await repository.saveProvider(ApiProvider(
-          id: const Uuid().v4(),
-          name: name.trim(),
-          baseUrl: baseUrl.trim(),
-          model: model.trim(),
-          apiKey: apiKey,
-        ));
+        await repository.saveProvider(
+          ApiProvider(
+            id: const Uuid().v4(),
+            name: name.trim(),
+            baseUrl: baseUrl.trim(),
+            model: model.trim(),
+            apiKey: apiKey,
+          ),
+        );
       } else {
         final current = state.value;
         final existing = current?.providers
@@ -84,12 +83,14 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
         if (existing == null) {
           throw StateError('Provider tidak ditemukan.');
         }
-        await repository.saveProvider(existing.copyWith(
-          name: name.trim(),
-          baseUrl: baseUrl.trim(),
-          model: model.trim(),
-          apiKey: apiKey,
-        ));
+        await repository.saveProvider(
+          existing.copyWith(
+            name: name.trim(),
+            baseUrl: baseUrl.trim(),
+            model: model.trim(),
+            apiKey: apiKey,
+          ),
+        );
       }
 
       return _loadState();

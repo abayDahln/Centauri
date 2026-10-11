@@ -26,12 +26,14 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 **Desain & Visualisasi**
 
 - Live Interactive Canvas: render real-time HTML self-contained (CSS dan JS inline) di WebView internal.
+- Figma-style Layers Tree: struktur DOM hasil generate sebagai tree dengan hover/klik yang tersinkron dua arah ke elemen di canvas (termasuk navigasi keyboard).
 - Design Token Presets: tetapkan color palette, border radius, dan font family sebelum generasi.
-- Responsive Viewport Preview: pratinjau mode Mobile (375px), Tablet (768px), dan Desktop (100%).
+- Responsive Viewport Preview: pratinjau mode Mobile (375px), Tablet (768px), dan Desktop (100%), plus kontrol zoom.
 
 **Iterasi & Ekspor**
 
 - Iterative Refinement Chat: revisi UI secara bertahap melalui percakapan.
+- Design / Dev Mode: beralih antara canvas penuh dan split view dengan code panel read-only (nomor baris + syntax highlight) ala VS Code.
 - Code Exporter: ekspor satu file HTML lengkap - seluruh CSS di `<style>` dan JS vanilla di `<script>`, tanpa CDN/framework, bisa langsung dijalankan offline. Tersedia konversi opsional ke React (JSX) dan Flutter Widget dengan syntax highlighting.
 
 ## Tech Stack
@@ -43,6 +45,7 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 | Networking | Dio (Custom Interceptors) |
 | Local Storage | Hive (Database), `flutter_secure_storage` (API Keys) |
 | Web Rendering | `webview_flutter` (Android), `webview_windows` (Desktop) |
+| UI Theme | VS Code Dark Modern (Segoe UI / Consolas) |
 | Architecture | Feature-First Clean Architecture |
 
 ## Arsitektur & Alur Kerja

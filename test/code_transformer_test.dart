@@ -40,11 +40,17 @@ void main() {
 
     test('converts inline style to JSX object syntax', () {
       expect(result, contains("style={{color: '#FAFAFA'}}"));
-      expect(result, contains("style={{backgroundColor: '#18181B', padding: 16}}"));
+      expect(
+        result,
+        contains("style={{backgroundColor: '#18181B', padding: 16}}"),
+      );
     });
 
     test('self-closes void elements', () {
-      expect(result, contains('<img src="https://example.com/chart.png" alt="chart" />'));
+      expect(
+        result,
+        contains('<img src="https://example.com/chart.png" alt="chart" />'),
+      );
       expect(result, contains('<br />'));
     });
   });
@@ -56,7 +62,10 @@ void main() {
     );
 
     test('generates a StatelessWidget with Scaffold', () {
-      expect(result, contains('class GeneratedUIScreen extends StatelessWidget'));
+      expect(
+        result,
+        contains('class GeneratedUIScreen extends StatelessWidget'),
+      );
       expect(result, contains('return Scaffold('));
     });
 
@@ -81,7 +90,8 @@ void main() {
     });
 
     test('skips script/style head tags', () {
-      final withTags = '<html><head><style>body{}</style></head>'
+      final withTags =
+          '<html><head><style>body{}</style></head>'
           '<body><div><h2>Judul</h2></div></body></html>';
       final transformed = transformCode(
         htmlSource: withTags,
@@ -108,7 +118,8 @@ void main() {
 
   group('transformCode - robustness', () {
     test('handles markdown-fenced AI output', () {
-      final raw = 'Sure, here you go:\n'
+      final raw =
+          'Sure, here you go:\n'
           '```html\n<html><body><h1>Hi</h1></body></html>\n```';
       final result = transformCode(
         htmlSource: raw,

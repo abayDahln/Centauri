@@ -22,8 +22,11 @@ class CodeExporterPage extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.code_off_outlined,
-                        size: 32, color: AppColors.textDisabled),
+                    Icon(
+                      Icons.code_off_outlined,
+                      size: 32,
+                      color: AppColors.textDisabled,
+                    ),
                     SizedBox(height: 12),
                     Text(
                       'Belum ada UI untuk diekspor',

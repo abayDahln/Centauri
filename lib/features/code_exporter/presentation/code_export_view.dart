@@ -24,12 +24,9 @@ class _CodeExportViewState extends State<CodeExportView> {
   bool _isSaving = false;
 
   String get _code => _cache.putIfAbsent(
-        _format,
-        () => transformCode(
-          htmlSource: widget.htmlSource,
-          format: _format,
-        ),
-      );
+    _format,
+    () => transformCode(htmlSource: widget.htmlSource, format: _format),
+  );
 
   Future<void> _copy() async {
     await _exportService.copyToClipboard(_code);
@@ -102,7 +99,8 @@ class _CodeExportViewState extends State<CodeExportView> {
               Text(
                 '${_code.length} karakter',
                 style: const TextStyle(
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: AppFonts.monoFamily,
+                  fontFamilyFallback: AppFonts.monoFallback,
                   fontSize: 10,
                   color: AppColors.textDisabled,
                 ),
@@ -116,13 +114,15 @@ class _CodeExportViewState extends State<CodeExportView> {
             height: 32,
             child: SegmentedButton<CodeFormat>(
               segments: CodeFormat.values
-                  .map((format) => ButtonSegment<CodeFormat>(
-                        value: format,
-                        label: Text(
-                          format.label,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ))
+                  .map(
+                    (format) => ButtonSegment<CodeFormat>(
+                      value: format,
+                      label: Text(
+                        format.label,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                  )
                   .toList(),
               selected: {_format},
               onSelectionChanged: (selection) =>
@@ -133,15 +133,13 @@ class _CodeExportViewState extends State<CodeExportView> {
                 side: WidgetStateProperty.all(
                   const BorderSide(color: AppColors.borderSubtle),
                 ),
-                backgroundColor:
-                    WidgetStateProperty.resolveWith((states) {
+                backgroundColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return AppColors.accentPrimary;
                   }
                   return AppColors.bgSurface;
                 }),
-                foregroundColor:
-                    WidgetStateProperty.resolveWith((states) {
+                foregroundColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return Colors.white;
                   }
@@ -168,7 +166,7 @@ class _CodeExportViewState extends State<CodeExportView> {
             decoration: BoxDecoration(
               color: AppColors.bgBase,
               border: Border.all(color: AppColors.borderSubtle),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppRadius.sm,
             ),
             clipBehavior: Clip.antiAlias,
             child: HighlightView(
@@ -177,7 +175,8 @@ class _CodeExportViewState extends State<CodeExportView> {
               theme: atomOneDarkTheme,
               padding: const EdgeInsets.all(12),
               textStyle: const TextStyle(
-                fontFamily: 'JetBrainsMono',
+                fontFamily: AppFonts.monoFamily,
+                fontFamilyFallback: AppFonts.monoFallback,
                 fontSize: 12,
                 height: 1.6,
               ),
@@ -192,10 +191,7 @@ class _CodeExportViewState extends State<CodeExportView> {
                 child: OutlinedButton.icon(
                   onPressed: _copy,
                   icon: const Icon(Icons.copy_all_outlined, size: 15),
-                  label: const Text(
-                    'Copy',
-                    style: TextStyle(fontSize: 12),
-                  ),
+                  label: const Text('Copy', style: TextStyle(fontSize: 12)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -214,10 +210,7 @@ class _CodeExportViewState extends State<CodeExportView> {
                       : const Icon(Icons.download_outlined, size: 15),
                   label: const Text(
                     'Download',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

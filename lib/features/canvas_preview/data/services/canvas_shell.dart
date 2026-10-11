@@ -1,6 +1,12 @@
 /// Shell HTML statis yang dimuat satu kali ke WebView. Render canvas
 /// dilakukan via `renderCanvas(html)` (iframe srcdoc) dan `setViewport(width)`
 /// sehingga update UI tidak perlu reload halaman penuh (FR-03).
+///
+/// Shell juga menjadi jembatan seleksi antara layers tree (Dart) dan elemen
+/// di dalam canvas:
+///  - picker di-inject ke dokumen iframe setiap kali selesai load,
+///  - hover/klik elemen dikirim ke Dart via `window.centauriSend`,
+///  - Dart memanggil `window.centauriSelect(id)` / `window.centauriHover(id)`.
 const String canvasShellHtml = '''
 <!DOCTYPE html>
 <html>
@@ -35,15 +41,157 @@ const String canvasShellHtml = '''
 <script>
   var frame = document.getElementById('frame');
   var stage = document.getElementById('stage');
+  var overlay = null;
+  var hoverBox = null;
+  var selectBox = null;
+  var selectedId = null;
+
+  function sendToHost(payload) {
+    var json = JSON.stringify(payload);
+    try {
+      if (window.centauriBridge && window.centauriBridge.postMessage) {
+        window.centauriBridge.postMessage(json);
+        return;
+      }
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage(json);
+        return;
+      }
+    } catch (e) { /* host bridge belum siap */ }
+  }
+
+  function frameDoc() {
+    try { return frame.contentDocument || frame.contentWindow.document; }
+    catch (e) { return null; }
+  }
+
+  function ensureOverlay(doc) {
+    if (overlay && overlay.ownerDocument === doc) return;
+    overlay = doc.createElement('div');
+    overlay.setAttribute('data-centauri-overlay', '1');
+    overlay.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:2147483647';
+
+    hoverBox = doc.createElement('div');
+    hoverBox.style.cssText = 'position:absolute;border:1px solid rgba(78,161,255,0.9);' +
+      'background:rgba(78,161,255,0.12);pointer-events:none;display:none;box-sizing:border-box';
+    selectBox = doc.createElement('div');
+    selectBox.style.cssText = 'position:absolute;border:1.5px solid rgb(0,120,212);' +
+      'background:rgba(0,120,212,0.10);pointer-events:none;display:none;box-sizing:border-box';
+
+    overlay.appendChild(hoverBox);
+    overlay.appendChild(selectBox);
+    doc.body.appendChild(overlay);
+  }
+
+  function rectOf(doc, id) {
+    var el = doc && id ? doc.querySelector('[data-centauri-id="' + id + '"]') : null;
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height };
+  }
+
+  function placeBox(box, rect, doc) {
+    if (!box) return;
+    if (!rect || rect.w <= 0 || rect.h <= 0) { box.style.display = 'none'; return; }
+    var sx = (doc.defaultView && doc.defaultView.scrollX) || 0;
+    var sy = (doc.defaultView && doc.defaultView.scrollY) || 0;
+    box.style.display = 'block';
+    box.style.left = (rect.x + sx) + 'px';
+    box.style.top = (rect.y + sy) + 'px';
+    box.style.width = rect.w + 'px';
+    box.style.height = rect.h + 'px';
+  }
+
+  function idFromEvent(e) {
+    var el = e.target;
+    while (el && el.getAttribute) {
+      var id = el.getAttribute('data-centauri-id');
+      if (id) return id;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function attachPicker() {
+    var doc = frameDoc();
+    if (!doc || !doc.body) return;
+    ensureOverlay(doc);
+
+    doc.addEventListener('mouseover', function (e) {
+      var id = idFromEvent(e);
+      if (!id) return;
+      placeBox(hoverBox, rectOf(doc, id), doc);
+      sendToHost({ type: 'hover', id: id });
+    }, true);
+
+    doc.addEventListener('mouseout', function () {
+      if (hoverBox) hoverBox.style.display = 'none';
+      sendToHost({ type: 'hover', id: null });
+    }, true);
+
+    doc.addEventListener('click', function (e) {
+      var id = idFromEvent(e);
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      selectedId = id;
+      placeBox(selectBox, rectOf(doc, id), doc);
+      sendToHost({ type: 'select', id: id });
+    }, true);
+
+    doc.addEventListener('scroll', function () {
+      refreshSelection();
+    }, true);
+
+    refreshSelection();
+  }
+
+  function refreshSelection() {
+    var doc = frameDoc();
+    if (!doc) return;
+    if (selectedId) placeBox(selectBox, rectOf(doc, selectedId), doc);
+  }
+
   function renderCanvas(html) {
     frame.srcdoc = html;
   }
+
+  // Dipanggil dari Dart saat tree memilih / hover node.
+  function centauriSelect(id) {
+    var doc = frameDoc();
+    if (!doc) return;
+    selectedId = id;
+    if (!id) { if (selectBox) selectBox.style.display = 'none'; return; }
+    var el = doc.querySelector('[data-centauri-id="' + id + '"]');
+    if (el && el.scrollIntoView) {
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+    placeBox(selectBox, rectOf(doc, id), doc);
+  }
+
+  function centauriHover(id) {
+    var doc = frameDoc();
+    if (!doc) return;
+    if (!id) { if (hoverBox) hoverBox.style.display = 'none'; return; }
+    placeBox(hoverBox, rectOf(doc, id), doc);
+  }
+
   function setViewport(width) {
     stage.style.maxWidth = width ? width + 'px' : '100%';
   }
-  function clearCanvas() {
-    frame.srcdoc = '<!DOCTYPE html><html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0F0F11;color:#52525B;font-family:Inter,sans-serif;font-size:14px">Canvas kosong</body></html>';
+
+  function setZoom(factor) {
+    // Zoom via CSS transform pada stage agar konten iframe tetap tajam.
+    stage.style.transform = (factor && factor !== 1) ? 'scale(' + factor + ')' : 'none';
+    stage.style.transformOrigin = 'top center';
   }
+
+  function clearCanvas() {
+    selectedId = null;
+    frame.srcdoc = '<!DOCTYPE html><html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0F0F11;color:#52525B;font-family:Inter,system-ui,sans-serif;font-size:13px">Belum ada canvas. Generate UI dari panel Prompt.</body></html>';
+  }
+
+  frame.addEventListener('load', attachPicker);
 </script>
 </body>
 </html>
