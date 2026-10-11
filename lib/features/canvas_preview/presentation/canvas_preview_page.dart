@@ -7,6 +7,7 @@ import '../../../app/widgets/stitch_widgets.dart';
 import '../../history/presentation/history_panel.dart';
 import '../../provider_config/presentation/providers/provider_config_provider.dart';
 import 'provider/canvas_provider.dart';
+import 'widgets/ai_status_indicator.dart';
 import 'widgets/board_canvas.dart';
 import 'widgets/chat_landing.dart';
 import 'widgets/code_panel.dart';
@@ -104,6 +105,13 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                             top: 16,
                             bottom: 96,
                             child: _RightToolbar(),
+                          ),
+                        // Status live AI saat board aktif (generating frame baru).
+                        if (hasUi)
+                          const Positioned(
+                            left: 16,
+                            top: 16,
+                            child: _BoardStatusPill(),
                           ),
                         const Positioned(
                           left: 16,
@@ -244,6 +252,30 @@ class _TopBar extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Pill status AI mengambang di board (muncul saat generating).
+class _BoardStatusPill extends ConsumerWidget {
+  const _BoardStatusPill();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = ref.watch(
+      canvasProvider.select((s) => s.status != AiStatus.idle),
+    );
+    if (!active) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: AppRadius.pill,
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: AppColors.shadowRaised,
+      ),
+      child: const AiStatusIndicator(compact: true),
     );
   }
 }

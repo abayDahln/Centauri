@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
 import '../provider/canvas_provider.dart';
+import 'ai_status_indicator.dart';
 import 'markdown_message.dart';
 
 /// Tampilan awal saat belum ada UI di board: percakapan biasa seperti chatbot.
@@ -22,45 +23,26 @@ class ChatLanding extends ConsumerWidget {
         border: Border.all(color: AppColors.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,
-      child: messages.isEmpty && !state.isGenerating
-          ? const _Welcome()
-          : ListView.separated(
-              // Padding bawah ekstra agar pesan terakhir tidak tertimpa
-              // kartu PromptBar yang mengambang di bawah.
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 180),
-              itemCount: messages.length + (state.isGenerating ? 1 : 0),
-              separatorBuilder: (_, _) => const SizedBox(height: 14),
-              itemBuilder: (context, index) {
-                if (index >= messages.length) return const _Typing();
-                return _Bubble(message: messages[index]);
-              },
-            ),
-    );
-  }
-}
-
-/// Indikator "AI sedang menyiapkan UI".
-class _Typing extends StatelessWidget {
-  const _Typing();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Align(
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.accentPrimary,
-            ),
-          ),
-          SizedBox(width: 10),
-          Text('Menyiapkan UI...', style: AppText.caption),
-        ],
+      // SelectionArea memungkinkan seleksi teks lintas pesan/blok sekaligus.
+      child: SelectionArea(
+        child: messages.isEmpty && !state.isGenerating
+            ? const _Welcome()
+            : ListView.separated(
+                // Padding bawah ekstra agar pesan terakhir tidak tertimpa
+                // kartu PromptBar yang mengambang di bawah.
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 180),
+                itemCount: messages.length + (state.isGenerating ? 1 : 0),
+                separatorBuilder: (_, _) => const SizedBox(height: 14),
+                itemBuilder: (context, index) {
+                  if (index >= messages.length) {
+                    return const Align(
+                      alignment: Alignment.centerLeft,
+                      child: AiStatusIndicator(),
+                    );
+                  }
+                  return _Bubble(message: messages[index]);
+                },
+              ),
       ),
     );
   }
@@ -147,7 +129,7 @@ class _Bubble extends StatelessWidget {
           ),
           // Pesan AI dirender sebagai markdown; pesan user/error sebagai teks.
           child: isUser
-              ? SelectableText(
+              ? Text(
                   message.text,
                   style: const TextStyle(
                     fontFamily: AppFonts.uiFamily,

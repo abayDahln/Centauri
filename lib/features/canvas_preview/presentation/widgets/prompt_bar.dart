@@ -138,7 +138,8 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                           child: TextField(
                             controller: _controller,
                             focusNode: _focusNode,
-                            enabled: !state.isGenerating,
+                            // Selalu bisa diketik walau AI sedang memproses;
+                            // hanya tombol kirim yang dinonaktifkan.
                             minLines: 1,
                             maxLines: 4,
                             keyboardType: TextInputType.multiline,

@@ -113,7 +113,9 @@ class MarkdownMessage extends StatelessWidget {
     return MarkdownBody(
       data: text.isEmpty ? '(kosong)' : text,
       styleSheet: style,
-      selectable: true,
+      // Render tiap blok sebagai teks biasa; seleksi lintas-blok ditangani
+      // oleh SelectionArea di pemanggil (mis. daftar pesan).
+      selectable: false,
       shrinkWrap: true,
     );
   }

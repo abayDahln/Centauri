@@ -119,13 +119,15 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   }
 
   Widget _buildMessageList(CanvasState state) {
-    return ListView.separated(
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      itemCount: state.messages.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) =>
-          _buildMessageBubble(state.messages[index], index),
+    return SelectionArea(
+      child: ListView.separated(
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        itemCount: state.messages.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (context, index) =>
+            _buildMessageBubble(state.messages[index], index),
+      ),
     );
   }
 
@@ -277,7 +279,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                   borderRadius: AppRadius.sm,
                 ),
                 child: SingleChildScrollView(
-                  child: SelectableText(
+                  child: Text(
                     message.text,
                     style: const TextStyle(
                       fontFamily: AppFonts.monoFamily,

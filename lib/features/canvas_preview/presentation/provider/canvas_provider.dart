@@ -31,6 +31,20 @@ class CanvasMessage {
 
 enum ChatMessageKind { chat, ui }
 
+/// Status proses AI yang ditampilkan live ke pengguna.
+enum AiStatus {
+  idle('', ''),
+  thinking('Berpikir', 'Menghubungi model...'),
+  responding('Menulis', 'Menerima respons'),
+  rendering('Merender', 'Menyiapkan board UI'),
+  done('Selesai', '');
+
+  const AiStatus(this.label, this.detail);
+
+  final String label;
+  final String detail;
+}
+
 /// State board: daftar frame + transformasi pan/zoom.
 class CanvasState {
   /// Batas zoom board.
@@ -53,6 +67,7 @@ class CanvasState {
     this.tool = BoardTool.select,
     this.generationStartedAt,
     this.showGrid = true,
+    this.status = AiStatus.idle,
   });
 
   /// Semua frame di board (urut kronologis).
@@ -84,6 +99,8 @@ class CanvasState {
   final DateTime? generationStartedAt;
   final bool showGrid;
 
+  /// Status proses AI saat ini (untuk indikator live).
+  final AiStatus status;
   BoardFrame? get activeFrame {
     if (activeFrameId == null) return null;
     for (final frame in frames) {
@@ -124,6 +141,7 @@ class CanvasState {
     DateTime? generationStartedAt,
     bool clearGenerationStart = false,
     bool? showGrid,
+    AiStatus? status,
   }) {
     return CanvasState(
       frames: frames ?? this.frames,
@@ -147,6 +165,7 @@ class CanvasState {
           ? null
           : (generationStartedAt ?? this.generationStartedAt),
       showGrid: showGrid ?? this.showGrid,
+      status: status ?? this.status,
     );
   }
 }
@@ -533,6 +552,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
     state = state.copyWith(
       isGenerating: true,
       generationStartedAt: DateTime.now(),
+      status: AiStatus.thinking,
       messages: [
         ...state.messages,
         CanvasMessage(role: ChatRole.user, text: userText),
@@ -544,6 +564,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
       final raw = await ref
           .read(aiApiServiceProvider)
           .generateUI(provider: activeProvider, messages: payload);
+      _setStatus(AiStatus.responding);
       final response = await classifyAiResponseInIsolate(raw);
 
       if (response.isChat) {
@@ -551,6 +572,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
         state = state.copyWith(
           isGenerating: false,
           clearGenerationStart: true,
+          status: AiStatus.idle,
           messages: [
             ...state.messages,
             CanvasMessage(
@@ -564,6 +586,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
       }
 
       // Balasan UI: baru sekarang buat frame-nya di board.
+      _setStatus(AiStatus.rendering);
       final tree = await buildDomTreeInIsolate(response.html!);
       final frameId = 'frame_${_frameCounter++}';
       final size = _sizeFor(viewport);
@@ -588,6 +611,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
         activeFrameId: frameId,
         isGenerating: false,
         clearGenerationStart: true,
+        status: AiStatus.idle,
         // Frame pertama: pusatkan board agar hasilnya langsung terlihat.
         panOffset: state.frames.isEmpty ? const Offset(60, 40) : null,
         messages: [
@@ -608,8 +632,17 @@ class CanvasNotifier extends Notifier<CanvasState> {
 
   /// Gagal sebelum frame dibuat: cukup tambahkan pesan error ke percakapan.
   void _failGeneration(String message) {
-    state = state.copyWith(isGenerating: false, clearGenerationStart: true);
+    state = state.copyWith(
+      isGenerating: false,
+      clearGenerationStart: true,
+      status: AiStatus.idle,
+    );
     _appendMessage(CanvasMessage(role: ChatRole.error, text: message));
+  }
+
+  void _setStatus(AiStatus status) {
+    if (state.status == status) return;
+    state = state.copyWith(status: status);
   }
 
   String _titleFromPrompt(String prompt) {
