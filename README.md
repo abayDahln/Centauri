@@ -25,14 +25,14 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 
 **Desain & Visualisasi**
 
-- Live Interactive Canvas: render real-time HTML5 & Tailwind CSS di WebView internal.
+- Live Interactive Canvas: render real-time HTML self-contained (CSS dan JS inline) di WebView internal.
 - Design Token Presets: tetapkan color palette, border radius, dan font family sebelum generasi.
 - Responsive Viewport Preview: pratinjau mode Mobile (375px), Tablet (768px), dan Desktop (100%).
 
 **Iterasi & Ekspor**
 
 - Iterative Refinement Chat: revisi UI secara bertahap melalui percakapan.
-- Multi-Format Code Exporter: ekspor ke React (JSX), Tailwind CSS, Flutter Widget, atau HTML murni dengan syntax highlighting.
+- Code Exporter: ekspor satu file HTML lengkap - seluruh CSS di `<style>` dan JS vanilla di `<script>`, tanpa CDN/framework, bisa langsung dijalankan offline. Tersedia konversi opsional ke React (JSX) dan Flutter Widget dengan syntax highlighting.
 
 ## Tech Stack
 
@@ -53,7 +53,7 @@ Centauri mengikuti Clean Architecture dengan pemisahan ketat antara UI, Domain, 
 2. **Input:** pengguna menulis prompt dan memilih Design Tokens.
 3. **Processing:** Prompt Engineering Layer menggabungkan input dengan System Prompt internal.
 4. **Eksekusi:** Dynamic HTTP Client (Dio) mengirim request ke provider AI yang dipilih.
-5. **Rendering:** respons AI (HTML/Tailwind) di-parse dan di-inject ke Live Canvas.
+5. **Rendering:** respons AI (HTML self-contained) di-parse dan di-inject ke Live Canvas.
 6. **Ekspor:** iterasi via Chat, lalu ekspor kode ke format yang diinginkan.
 
 ## Instalasi
@@ -93,7 +93,7 @@ Karena menggunakan arsitektur BYOK, konfigurasikan provider AI saat pertama kali
 | Versi | Target |
 | :--- | :--- |
 | v0.1.0 | Fondasi proyek, BYOK Manager, dan Live Canvas dasar |
-| v0.2.0 | Iterative Chat, Multi-format Code Exporter, dan Responsive Viewport |
+| v0.2.0 | Iterative Chat, Code Exporter (HTML self-contained), dan Responsive Viewport |
 | v1.0.0 | Rilis stabil (Android & Windows) dengan optimasi performa WebView |
 | v1.1.0 | Import desain dari Figma via Figma API |
 | v1.2.0 | Integrasi native Ollama tanpa setup server HTTP manual |

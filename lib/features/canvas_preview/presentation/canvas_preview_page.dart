@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/config/theme.dart';
+import '../../code_exporter/presentation/code_export_sheet.dart';
 import '../../prompt_editor/presentation/prompt_chat_panel.dart';
 import '../../provider_config/presentation/widgets/provider_status_card.dart';
 import '../data/services/canvas_webview_service.dart';
@@ -128,6 +129,8 @@ class _ViewportToolbar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final viewport = ref.watch(canvasProvider.select((s) => s.viewport));
+    final hasContent =
+        ref.watch(canvasProvider.select((s) => s.generatedHtml != null));
 
     return SizedBox(
       height: 48,
@@ -193,6 +196,19 @@ class _ViewportToolbar extends ConsumerWidget {
               fontSize: 10,
               color: AppColors.textDisabled,
             ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Ekspor kode (HTML / React / Flutter)',
+            icon: const Icon(Icons.code_outlined, size: 18),
+            color: AppColors.textSecondary,
+            splashRadius: 20,
+            onPressed: hasContent
+                ? () => showCodeExportSheet(
+                      context,
+                      ref.read(canvasProvider).generatedHtml!,
+                    )
+                : null,
           ),
           const SizedBox(width: 16),
         ],
