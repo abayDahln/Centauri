@@ -1,21 +1,17 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/config/theme.dart';
-import '../../prompt_editor/domain/prompt_templates.dart';
+import '../../../app/widgets/stitch_widgets.dart';
 import '../../prompt_editor/presentation/prompt_chat_panel.dart';
 import '../../provider_config/presentation/providers/provider_config_provider.dart';
-import '../../provider_config/presentation/widgets/provider_status_card.dart';
-import '../domain/viewport_mode.dart';
 import 'provider/canvas_provider.dart';
-import 'widgets/canvas_stage.dart';
+import 'widgets/board_canvas.dart';
+import 'widgets/chat_landing.dart';
 import 'widgets/code_panel.dart';
 import 'widgets/layers_panel.dart';
-
-enum _Activity { explorer, chat }
+import 'widgets/prompt_bar.dart';
 
 class CanvasPreviewPage extends StatelessWidget {
   const CanvasPreviewPage({super.key});
@@ -24,7 +20,7 @@ class CanvasPreviewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= 960) {
+        if (constraints.maxWidth >= 900) {
           return const _DesktopShell();
         }
         return const _MobileShell();
@@ -35,91 +31,309 @@ class CanvasPreviewPage extends StatelessWidget {
 
 // ---------------------------------------------------------------- desktop --
 
-class _DesktopShell extends StatefulWidget {
+class _DesktopShell extends ConsumerStatefulWidget {
   const _DesktopShell();
 
   @override
-  State<_DesktopShell> createState() => _DesktopShellState();
+  ConsumerState<_DesktopShell> createState() => _DesktopShellState();
 }
 
-class _DesktopShellState extends State<_DesktopShell> {
-  _Activity _activity = _Activity.explorer;
-  bool _sideBarVisible = true;
-
-  void _selectActivity(_Activity activity) {
-    setState(() {
-      if (_activity == activity) {
-        _sideBarVisible = !_sideBarVisible;
-      } else {
-        _activity = activity;
-        _sideBarVisible = true;
-      }
-    });
-  }
+class _DesktopShellState extends ConsumerState<_DesktopShell> {
+  bool _showPrompt = false;
+  bool _showLayers = false;
+  bool _showCode = false;
 
   @override
   Widget build(BuildContext context) {
+    final mode = ref.watch(canvasProvider.select((s) => s.outputMode));
+    final hasUi = ref.watch(
+      canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
+    );
+
+    // Sinkronkan visibilitas panel dengan mode.
+    // History (percakapan) selalu bisa dibuka, bahkan sebelum ada UI.
+    final showCode = hasUi && (mode == OutputMode.dev || _showCode);
+    final showLayers = hasUi && _showLayers;
+    final showPrompt = _showPrompt;
+
     return Scaffold(
-      body: Row(
+      backgroundColor: AppColors.bgBase,
+      body: Column(
         children: [
-          _ActivityBar(activity: _activity, onSelected: _selectActivity),
-          if (_sideBarVisible) ...[
-            _SideBarPanel(activity: _activity),
-            const VerticalDivider(width: 1),
-          ],
-          const Expanded(child: _EditorArea()),
+          _TopBar(
+            boardActive: hasUi,
+            onTogglePrompt: () => setState(() => _showPrompt = !_showPrompt),
+            onToggleLayers: () => setState(() => _showLayers = !_showLayers),
+            onToggleCode: () => setState(() => _showCode = !_showCode),
+            promptVisible: showPrompt,
+            layersVisible: showLayers,
+            codeVisible: showCode,
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (showPrompt) ...[
+                    const SizedBox(
+                      width: 300,
+                      child: SoftPanel(
+                        padding: EdgeInsets.zero,
+                        clip: true,
+                        child: PromptChatPanel(),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        if (hasUi)
+                          const BoardSurface()
+                        else if (!showPrompt)
+                          // Belum ada UI & panel riwayat tertutup: tampilkan
+                          // percakapan besar di tengah (mode chatbot).
+                          const ChatLanding()
+                        else
+                          // Panel riwayat terbuka: tengah cukup jadi latar netral.
+                          const _EmptyCanvasHint(),
+                        if (hasUi)
+                          const Positioned(
+                            right: 16,
+                            top: 16,
+                            bottom: 96,
+                            child: _RightToolbar(),
+                          ),
+                        const Positioned(
+                          left: 16,
+                          right: 16,
+                          bottom: 16,
+                          child: PromptBar(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (showLayers) ...[
+                    const SizedBox(width: 12),
+                    const SizedBox(
+                      width: 280,
+                      child: SoftPanel(
+                        padding: EdgeInsets.zero,
+                        clip: true,
+                        child: _LayersPanel(),
+                      ),
+                    ),
+                  ],
+                  if (showCode) ...[
+                    const SizedBox(width: 12),
+                    const SizedBox(
+                      width: 420,
+                      child: SoftPanel(
+                        padding: EdgeInsets.zero,
+                        clip: true,
+                        child: CodePanel(),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _ActivityBar extends StatelessWidget {
-  const _ActivityBar({required this.activity, required this.onSelected});
+class _TopBar extends ConsumerWidget {
+  const _TopBar({
+    required this.boardActive,
+    required this.onTogglePrompt,
+    required this.onToggleLayers,
+    required this.onToggleCode,
+    required this.promptVisible,
+    required this.layersVisible,
+    required this.codeVisible,
+  });
 
-  final _Activity activity;
-  final ValueChanged<_Activity> onSelected;
+  final bool boardActive;
+  final VoidCallback onTogglePrompt;
+  final VoidCallback onToggleLayers;
+  final VoidCallback onToggleCode;
+  final bool promptVisible;
+  final bool layersVisible;
+  final bool codeVisible;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = ref.watch(providerConfigProvider).value?.activeProvider;
+
+    return SizedBox(
+      height: AppColors.topBarHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            // History (percakapan) — selalu tersedia.
+            SoftIconButton(
+              icon: Icons.history,
+              tooltip: 'Riwayat percakapan',
+              active: promptVisible,
+              onPressed: onTogglePrompt,
+            ),
+            const SizedBox(width: 4),
+            // Konfigurasi provider — selalu tersedia.
+            SoftIconButton(
+              icon: Icons.settings_outlined,
+              tooltip: 'Konfigurasi provider',
+              onPressed: () => context.push('/provider-config'),
+            ),
+            const SizedBox(width: 12),
+            // Toggle panel board (hanya relevan setelah ada UI).
+            if (boardActive) ...[
+              SoftIconButton(
+                icon: Icons.layers_outlined,
+                tooltip: 'Layers',
+                active: layersVisible,
+                onPressed: onToggleLayers,
+              ),
+              const SizedBox(width: 4),
+              SoftIconButton(
+                icon: Icons.code_outlined,
+                tooltip: 'Code',
+                active: codeVisible,
+                onPressed: onToggleCode,
+              ),
+              const SizedBox(width: 12),
+            ],
+            InkWell(
+              onTap: () => context.push('/provider-config'),
+              borderRadius: AppRadius.pill,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.bgSurface,
+                  borderRadius: AppRadius.pill,
+                  border: Border.all(color: AppColors.borderSubtle),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: active == null
+                            ? AppColors.textDisabled
+                            : AppColors.statusSuccess,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(active?.name ?? 'Pilih provider', style: AppText.uiSmall),
+                  ],
+                ),
+              ),
+            ),
+            const Spacer(),
+            if (boardActive) const _CanvasViewControls(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Kontrol kanan atas: zoom, grid, fit, bersihkan.
+/// (Viewport dipilih lewat toggle di PromptBar.)
+class _CanvasViewControls extends ConsumerWidget {
+  const _CanvasViewControls();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(canvasProvider);
+    final notifier = ref.read(canvasProvider.notifier);
+
+    return Row(
+      children: [
+        _ZoomChip(scale: state.scale),
+        const SizedBox(width: 8),
+        SoftIconButton(
+          icon: Icons.grid_4x4,
+          tooltip: 'Dot grid',
+          active: state.showGrid,
+          onPressed: notifier.toggleGrid,
+        ),
+        const SizedBox(width: 4),
+        SoftIconButton(
+          icon: Icons.fit_screen_outlined,
+          tooltip: 'Fit ke frame',
+          onPressed: state.frames.isEmpty
+              ? null
+              : () => notifier.centerOnFrames(boardViewportSize(context)),
+        ),
+        const SizedBox(width: 4),
+        SoftIconButton(
+          icon: Icons.delete_outline,
+          tooltip: 'Bersihkan board',
+          onPressed: state.frames.isEmpty ? null : notifier.clearBoard,
+        ),
+      ],
+    );
+  }
+}
+
+class _ZoomChip extends ConsumerWidget {
+  const _ZoomChip({required this.scale});
+
+  final double scale;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(canvasProvider.notifier);
+    final canZoomOut = scale > CanvasState.minScale + 0.0001;
+    final canZoomIn = scale < CanvasState.maxScale - 0.0001;
+
     return Container(
-      width: AppColors.activityBarWidth,
-      color: AppColors.chromeBg,
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: AppRadius.pill,
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
         children: [
-          const SizedBox(
-            height: 44,
-            child: Center(
-              child: Text(
-                'C',
-                style: TextStyle(
-                  fontFamily: AppFonts.uiFamily,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accentPrimary,
+          SoftIconButton(
+            icon: Icons.remove,
+            tooltip: 'Zoom out',
+            size: 28,
+            iconSize: 15,
+            onPressed: canZoomOut
+                ? () => notifier.setScale(scale - 0.1)
+                : null,
+          ),
+          InkWell(
+            onTap: notifier.resetView,
+            child: SizedBox(
+              width: 48,
+              child: Center(
+                child: Text(
+                  '${(scale * 100).round()}%',
+                  style: AppText.uiSmall,
                 ),
               ),
             ),
           ),
-          _ActivityButton(
-            icon: Icons.layers_outlined,
-            tooltip: 'Explorer: provider, layers, tokens',
-            selected: activity == _Activity.explorer,
-            onPressed: () => onSelected(_Activity.explorer),
-          ),
-          _ActivityButton(
-            icon: Icons.forum_outlined,
-            tooltip: 'Prompt & iterasi',
-            selected: activity == _Activity.chat,
-            onPressed: () => onSelected(_Activity.chat),
-          ),
-          const Spacer(),
-          _ActivityButton(
-            icon: Icons.settings_outlined,
-            tooltip: 'Provider settings',
-            selected: false,
-            onPressed: () => context.push('/provider-config'),
+          SoftIconButton(
+            icon: Icons.add,
+            tooltip: 'Zoom in',
+            size: 28,
+            iconSize: 15,
+            onPressed: canZoomIn ? () => notifier.setScale(scale + 0.1) : null,
           ),
         ],
       ),
@@ -127,174 +341,131 @@ class _ActivityBar extends StatelessWidget {
   }
 }
 
-class _ActivityButton extends StatelessWidget {
-  const _ActivityButton({
+/// Toolbar vertikal kanan (select / pan / komentar / grid).
+class _RightToolbar extends ConsumerWidget {
+  const _RightToolbar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tool = ref.watch(canvasProvider.select((s) => s.tool));
+    final notifier = ref.read(canvasProvider.notifier);
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          borderRadius: AppRadius.pill,
+          border: Border.all(color: AppColors.borderSubtle),
+          boxShadow: AppColors.shadowRaised,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ToolButton(
+              icon: Icons.near_me_outlined,
+              tooltip: 'Pilih & geser frame',
+              active: tool == BoardTool.select,
+              onTap: () => notifier.setTool(BoardTool.select),
+            ),
+            _ToolButton(
+              icon: Icons.pan_tool_outlined,
+              tooltip: 'Geser board',
+              active: tool == BoardTool.hand,
+              onTap: () => notifier.setTool(BoardTool.hand),
+            ),
+            _ToolButton(
+              icon: Icons.zoom_out_map,
+              tooltip: 'Fit ke frame',
+              onTap: () =>
+                  notifier.centerOnFrames(boardViewportSize(context)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToolButton extends StatefulWidget {
+  const _ToolButton({
     required this.icon,
     required this.tooltip,
-    required this.selected,
-    required this.onPressed,
+    required this.onTap,
+    this.active = false,
   });
 
   final IconData icon;
   final String tooltip;
-  final bool selected;
-  final VoidCallback onPressed;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  State<_ToolButton> createState() => _ToolButtonState();
+}
+
+class _ToolButtonState extends State<_ToolButton> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: AppColors.activityBarWidth,
-      height: 48,
-      decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: selected ? AppColors.accentPrimary : Colors.transparent,
-            width: 2,
+    final background = widget.active
+        ? AppColors.accentSoft
+        : _hovered
+        ? AppColors.hoverBg
+        : Colors.transparent;
+    final color = widget.active
+        ? AppColors.accentPrimary
+        : AppColors.textSecondary;
+
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.symmetric(vertical: 2),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: AppRadius.sm,
+            ),
+            child: Icon(widget.icon, size: 18, color: color),
           ),
         ),
       ),
-      child: IconButton(
-        tooltip: tooltip,
-        iconSize: 22,
-        splashRadius: 22,
-        icon: Icon(
-          icon,
-          color: selected ? Colors.white : AppColors.textSecondary,
-        ),
-        style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.hovered)) return AppColors.hoverBg;
-            return Colors.transparent;
-          }),
-        ),
-        onPressed: onPressed,
-      ),
     );
   }
 }
 
-class _SideBarPanel extends StatelessWidget {
-  const _SideBarPanel({required this.activity});
-
-  final _Activity activity;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: AppColors.sideBarWidth,
-      child: ColoredBox(
-        color: AppColors.chromeBg,
-        child: switch (activity) {
-          _Activity.explorer => const _ExplorerView(),
-          _Activity.chat => const _ChatView(),
-        },
-      ),
-    );
-  }
-}
-
-// ----------------------------------------------------------------- sidebar --
-
-class _ExplorerView extends ConsumerWidget {
-  const _ExplorerView();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        _SideBarSection(
-          title: 'Provider',
-          actions: [
-            _SideBarIconButton(
-              icon: Icons.settings_outlined,
-              tooltip: 'Kelola provider',
-              onPressed: () => context.push('/provider-config'),
-            ),
-          ],
-          child: const ProviderStatusCard(),
-        ),
-        const Divider(height: 1),
-        const _LayersSection(),
-        const Divider(height: 1),
-        const _DesignTokensSection(),
-        const Divider(height: 1),
-        const _AboutSection(),
-      ],
-    );
-  }
-}
-
-class _ChatView extends StatelessWidget {
-  const _ChatView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      children: [
-        _SideBarSection(title: 'Prompt & Iterasi', child: SizedBox.shrink()),
-        Divider(height: 1),
-        Expanded(child: PromptChatPanel()),
-      ],
-    );
-  }
-}
-
-class _LayersSection extends ConsumerWidget {
-  const _LayersSection();
+class _LayersPanel extends ConsumerWidget {
+  const _LayersPanel();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasTree = ref.watch(
-      canvasProvider.select((s) => s.domTree != null),
+      canvasProvider.select((s) => s.activeFrame?.domTree != null),
     );
-    final selectedLabel = ref.watch(
-      canvasProvider.select((s) {
-        final id = s.selectedNodeId;
-        if (id == null) return null;
-        return s.domTree?.findById(id)?.label;
-      }),
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          height: 22,
-          padding: const EdgeInsets.only(left: 12, right: 4),
-          alignment: Alignment.centerLeft,
-          child: Row(
-            children: [
-              const Expanded(
-                child: Text('LAYERS', style: AppText.sectionHeader),
-              ),
-              if (selectedLabel != null)
-                Flexible(
-                  child: Text(
-                    selectedLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.caption,
-                  ),
-                ),
-              _SideBarIconButton(
-                icon: Icons.clear_all,
-                tooltip: 'Lepas pilihan',
-                onPressed: () =>
-                    ref.read(canvasProvider.notifier).selectNode(null),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 260,
+        const _PanelHeader(title: 'Layers'),
+        Expanded(
           child: hasTree
               ? const LayersPanel()
-              : const Padding(
-                  padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: Text(
-                    'Belum ada layer. Generate UI untuk melihat struktur elemen.',
-                    style: AppText.caption,
+              : const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Pilih frame yang sudah dirender untuk melihat layers.',
+                      textAlign: TextAlign.center,
+                      style: AppText.caption,
+                    ),
                   ),
                 ),
         ),
@@ -303,653 +474,67 @@ class _LayersSection extends ConsumerWidget {
   }
 }
 
-class _SideBarSection extends StatelessWidget {
-  const _SideBarSection({
-    required this.title,
-    required this.child,
-    this.actions = const [],
-  });
-
-  final String title;
-  final Widget child;
-  final List<Widget> actions;
+class _EmptyCanvasHint extends StatelessWidget {
+  const _EmptyCanvasHint();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          height: 22,
-          padding: const EdgeInsets.only(left: 12, right: 4),
-          alignment: Alignment.centerLeft,
-          child: Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: AppRadius.lg,
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Text(
-                  title.toUpperCase(),
-                  style: AppText.sectionHeader,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              const Icon(
+                Icons.dashboard_customize_outlined,
+                size: 30,
+                color: AppColors.textDisabled,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Belum ada UI',
+                style: const TextStyle(
+                  fontFamily: AppFonts.uiFamily,
+                  fontFamilyFallback: AppFonts.uiFallback,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
                 ),
               ),
-              ...actions,
+              const SizedBox(height: 6),
+              Text(
+                'Tulis prompt di bar bawah untuk mulai.',
+                style: AppText.caption,
+              ),
             ],
           ),
         ),
-        child,
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-}
-
-class _SideBarIconButton extends StatelessWidget {
-  const _SideBarIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 22,
-      height: 22,
-      child: IconButton(
-        icon: Icon(icon, size: 14),
-        tooltip: tooltip,
-        splashRadius: 12,
-        padding: EdgeInsets.zero,
-        color: AppColors.textSecondary,
-        onPressed: onPressed,
       ),
     );
   }
 }
 
-class _DesignTokensSection extends ConsumerWidget {
-  const _DesignTokensSection();
+class _PanelHeader extends StatelessWidget {
+  const _PanelHeader({required this.title});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selectedId = ref.watch(
-      canvasProvider.select((s) => s.selectedToken?.id),
-    );
-
-    return _SideBarSection(
-      title: 'Design Tokens',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: _swatches.entries.map((entry) {
-            final preset = entry.key;
-            final selected = preset.id == selectedId;
-            return _TokenChip(
-              label: preset.label,
-              swatch: entry.value,
-              selected: selected,
-              onTap: () => ref
-                  .read(canvasProvider.notifier)
-                  .setSelectedToken(selected ? null : preset),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-}
-
-final _swatches = {
-  designTokenPresets[0]: const Color(0xFF3B82F6),
-  designTokenPresets[1]: const Color(0xFF8B5CF6),
-  designTokenPresets[2]: const Color(0xFFFAFAFA),
-  designTokenPresets[3]: const Color(0xFF18181B),
-};
-
-class _TokenChip extends StatelessWidget {
-  const _TokenChip({
-    required this.label,
-    required this.swatch,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final Color swatch;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: AppRadius.sm,
-      child: Container(
-        height: 24,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.selectionBg : Colors.transparent,
-          borderRadius: AppRadius.sm,
-          border: Border.all(
-            color: selected ? AppColors.accentPrimary : AppColors.borderStrong,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: swatch,
-                borderRadius: AppRadius.sm,
-                border: Border.all(color: AppColors.borderStrong),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: AppFonts.uiFamily,
-                fontFamilyFallback: AppFonts.uiFallback,
-                fontSize: 11,
-                color: selected ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AboutSection extends StatelessWidget {
-  const _AboutSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return _SideBarSection(
-      title: 'About',
-      child: const Padding(
-        padding: EdgeInsets.fromLTRB(12, 0, 12, 4),
-        child: Text(
-          'Centauri\nAI UI/UX Canvas & Code Generator',
-          style: AppText.monoSmall,
-        ),
-      ),
-    );
-  }
-}
-
-// ------------------------------------------------------------- editor area --
-
-class _EditorArea extends ConsumerWidget {
-  const _EditorArea();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(canvasProvider.select((s) => s.outputMode));
-
-    return ColoredBox(
-      color: AppColors.bgBase,
-      child: Column(
-        children: [
-          const _EditorTabBar(),
-          const Divider(height: 1),
-          const _CanvasToolbar(),
-          Expanded(
-            child: switch (mode) {
-              OutputMode.design => const CanvasStage(),
-              OutputMode.dev => const _DevSplitView(),
-            },
-          ),
-          const Divider(height: 1),
-          const _StatusBar(),
-        ],
-      ),
-    );
-  }
-}
-
-class _DevSplitView extends StatelessWidget {
-  const _DevSplitView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(flex: 3, child: CanvasStage()),
-        SizedBox(
-          width: 420,
-          child: CodePanel(),
-        ),
-      ],
-    );
-  }
-}
-
-class _EditorTabBar extends ConsumerWidget {
-  const _EditorTabBar();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(canvasProvider.select((s) => s.outputMode));
-
-    return Container(
-      height: AppColors.tabHeight,
-      color: AppColors.chromeBg,
-      child: Row(
-        children: [
-          _Tab(
-            icon: Icons.brush_outlined,
-            title: 'Canvas Preview',
-            active: mode == OutputMode.design,
-            onTap: () => ref
-                .read(canvasProvider.notifier)
-                .setOutputMode(OutputMode.design),
-          ),
-          _Tab(
-            icon: Icons.code_outlined,
-            title: 'index.html',
-            active: mode == OutputMode.dev,
-            onTap: () => ref
-                .read(canvasProvider.notifier)
-                .setOutputMode(OutputMode.dev),
-          ),
-          const Spacer(),
-          const _ModeToggle(),
-          const SizedBox(width: 8),
-        ],
-      ),
-    );
-  }
-}
-
-class _Tab extends StatelessWidget {
-  const _Tab({
-    required this.icon,
-    required this.title,
-    required this.active,
-    required this.onTap,
-  });
-
-  final IconData icon;
   final String title;
-  final bool active;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: active ? AppColors.bgBase : Colors.transparent,
-          border: Border(
-            top: BorderSide(
-              color: active ? AppColors.accentPrimary : Colors.transparent,
-              width: 1,
-            ),
-            right: const BorderSide(color: AppColors.borderSubtle),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 13,
-              color: active ? AppColors.textPrimary : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontFamily: AppFonts.uiFamily,
-                fontFamilyFallback: AppFonts.uiFallback,
-                fontSize: 12,
-                color: active ? AppColors.textPrimary : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Design / Dev switch ala Figma.
-class _ModeToggle extends ConsumerWidget {
-  const _ModeToggle();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(canvasProvider.select((s) => s.outputMode));
     return Container(
-      height: 22,
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.borderStrong),
-        borderRadius: AppRadius.sm,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      alignment: Alignment.centerLeft,
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
       ),
-      child: Row(
-        children: [
-          _ModeSegment(
-            label: 'Design',
-            active: mode == OutputMode.design,
-            onTap: () => ref
-                .read(canvasProvider.notifier)
-                .setOutputMode(OutputMode.design),
-          ),
-          _ModeSegment(
-            label: 'Dev',
-            active: mode == OutputMode.dev,
-            onTap: () => ref
-                .read(canvasProvider.notifier)
-                .setOutputMode(OutputMode.dev),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeSegment extends StatelessWidget {
-  const _ModeSegment({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        alignment: Alignment.center,
-        color: active ? AppColors.accentPrimary : Colors.transparent,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppFonts.uiFamily,
-            fontFamilyFallback: AppFonts.uiFallback,
-            fontSize: 11,
-            color: active ? Colors.white : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CanvasToolbar extends ConsumerWidget {
-  const _CanvasToolbar();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(canvasProvider);
-    final hasContent = state.generatedHtml != null;
-    final wide = MediaQuery.sizeOf(context).width >= 640;
-
-    return Container(
-      height: AppColors.toolbarHeight,
-      color: AppColors.bgBase,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          if (wide) ...[
-            Text(
-              hasContent ? 'canvas / index.html' : 'canvas / belum ada konten',
-              style: AppText.monoSmall,
-            ),
-            const SizedBox(width: 12),
-          ],
-          SizedBox(
-            height: 24,
-            child: SegmentedButton<ViewportMode>(
-              segments: ViewportMode.values
-                  .map(
-                    (mode) => ButtonSegment<ViewportMode>(
-                      value: mode,
-                      tooltip: '${mode.label} - ${mode.widthLabel}',
-                      icon: Icon(switch (mode) {
-                        ViewportMode.mobile => Icons.smartphone_outlined,
-                        ViewportMode.tablet => Icons.tablet_mac_outlined,
-                        ViewportMode.desktop => Icons.desktop_windows_outlined,
-                      }, size: 13),
-                    ),
-                  )
-                  .toList(),
-              selected: {state.viewport},
-              onSelectionChanged: (selection) => ref
-                  .read(canvasProvider.notifier)
-                  .setViewport(selection.first),
-              showSelectedIcon: false,
-            ),
-          ),
-          if (wide) ...[
-            const SizedBox(width: 12),
-            _ZoomControl(zoom: state.zoom),
-          ],
-          const Spacer(),
-          _ToolbarButton(
-            icon: Icons.delete_outline,
-            tooltip: 'Bersihkan canvas',
-            onPressed: hasContent
-                ? () => ref.read(canvasProvider.notifier).clearCanvas()
-                : null,
-          ),
-          _ToolbarButton(
-            icon: Icons.code_outlined,
-            tooltip: 'Lihat kode (Dev mode)',
-            onPressed: hasContent
-                ? () => ref
-                      .read(canvasProvider.notifier)
-                      .setOutputMode(OutputMode.dev)
-                : null,
-          ),
-          const SizedBox(width: 6),
-        ],
-      ),
-    );
-  }
-}
-
-class _ZoomControl extends ConsumerWidget {
-  const _ZoomControl({required this.zoom});
-
-  final double zoom;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Row(
-      children: [
-        _ToolbarButton(
-          icon: Icons.remove,
-          tooltip: 'Zoom out',
-          onPressed: () => ref.read(canvasProvider.notifier).zoomOut(),
-        ),
-        InkWell(
-          onTap: () => ref.read(canvasProvider.notifier).resetZoom(),
-          child: SizedBox(
-            width: 44,
-            height: 24,
-            child: Center(
-              child: Text(
-                '${(zoom * 100).round()}%',
-                style: AppText.monoSmall,
-              ),
-            ),
-          ),
-        ),
-        _ToolbarButton(
-          icon: Icons.add,
-          tooltip: 'Zoom in',
-          onPressed: () => ref.read(canvasProvider.notifier).zoomIn(),
-        ),
-      ],
-    );
-  }
-}
-
-class _ToolbarButton extends StatelessWidget {
-  const _ToolbarButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 26,
-      height: 24,
-      child: IconButton(
-        icon: Icon(icon, size: 15),
-        tooltip: tooltip,
-        splashRadius: 13,
-        padding: EdgeInsets.zero,
-        color: AppColors.textSecondary,
-        onPressed: onPressed,
-      ),
-    );
-  }
-}
-
-class _StatusBar extends ConsumerWidget {
-  const _StatusBar();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(canvasProvider);
-    final providerAsync = ref.watch(providerConfigProvider);
-    final providerName = providerAsync.value?.activeProvider?.name;
-
-    return Container(
-      height: AppColors.statusBarHeight,
-      color: AppColors.accentPrimary,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          _StatusItem(
-            icon: Icons.cloud_outlined,
-            text: providerName ?? 'No provider',
-          ),
-          const SizedBox(width: 12),
-          _StatusItem(
-            icon: state.isGenerating ? Icons.sync : Icons.check,
-            text: state.isGenerating ? 'Generating' : 'Ready',
-          ),
-          if (state.isGenerating && state.generationStartedAt != null) ...[
-            const SizedBox(width: 8),
-            _ElapsedTicker(startedAt: state.generationStartedAt!),
-          ],
-          const Spacer(),
-          _StatusItem(text: 'Width: ${state.viewport.widthLabel}'),
-          const SizedBox(width: 12),
-          _StatusItem(
-            icon: Icons.layers_outlined,
-            text: '${state.domTree?.nodeCount ?? 0} nodes',
-          ),
-          const SizedBox(width: 12),
-          _StatusItem(
-            icon: Icons.forum_outlined,
-            text: '${state.messages.length} msgs',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Menampilkan durasi generate yang sedang berjalan, agar state "Generating"
-/// pada model lambat tidak terasa seperti hang.
-class _ElapsedTicker extends StatefulWidget {
-  const _ElapsedTicker({required this.startedAt});
-
-  final DateTime startedAt;
-
-  @override
-  State<_ElapsedTicker> createState() => _ElapsedTickerState();
-}
-
-class _ElapsedTickerState extends State<_ElapsedTicker> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final elapsed = DateTime.now().difference(widget.startedAt).inSeconds;
-    final minutes = elapsed ~/ 60;
-    final seconds = elapsed % 60;
-    final label = minutes > 0
-        ? '$minutes:${seconds.toString().padLeft(2, '0')}'
-        : '${seconds}s';
-    return Text(
-      label,
-      style: const TextStyle(
-        fontFamily: AppFonts.uiFamily,
-        fontFamilyFallback: AppFonts.uiFallback,
-        fontSize: 11,
-        color: Colors.white,
-      ),
-    );
-  }
-}
-
-class _StatusItem extends StatelessWidget {
-  const _StatusItem({required this.text, this.icon});
-
-  final String text;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-        ],
-        Text(
-          text,
-          style: const TextStyle(
-            fontFamily: AppFonts.uiFamily,
-            fontFamilyFallback: AppFonts.uiFallback,
-            fontSize: 11,
-            color: Colors.white,
-          ),
-        ),
-      ],
+      child: Text(title, style: AppText.sectionTitle),
     );
   }
 }
@@ -961,86 +546,62 @@ class _MobileShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(canvasProvider.select((s) => s.outputMode));
+    final hasUi = ref.watch(
+      canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
+    );
 
     return Scaffold(
+      backgroundColor: AppColors.bgBase,
       appBar: AppBar(
-        toolbarHeight: 34,
-        title: Text(
-          mode == OutputMode.design ? 'Centauri - Canvas' : 'Centauri - Code',
-        ),
+        toolbarHeight: 52,
+        title: Text(hasUi ? 'Board' : 'Centauri'),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-            child: const _ModeToggle(),
+          SoftIconButton(
+            icon: Icons.history,
+            tooltip: 'Riwayat percakapan',
+            onPressed: () => _openSheet(
+              context,
+              const PromptChatPanel(),
+              heightFactor: 0.7,
+            ),
           ),
-          IconButton(
-            tooltip: 'Provider settings',
-            icon: const Icon(Icons.settings_outlined, size: 18),
+          SoftIconButton(
+            icon: Icons.settings_outlined,
+            tooltip: 'Konfigurasi provider',
             onPressed: () => context.push('/provider-config'),
           ),
+          if (hasUi) ...[
+            SoftIconButton(
+              icon: Icons.layers_outlined,
+              tooltip: 'Layers',
+              onPressed: () => _openSheet(
+                context,
+                const _LayersPanel(),
+                heightFactor: 0.6,
+              ),
+            ),
+            SoftIconButton(
+              icon: Icons.code_outlined,
+              tooltip: 'Code',
+              onPressed: () =>
+                  _openSheet(context, const CodePanel(), heightFactor: 0.8),
+            ),
+          ],
+          const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          const _CanvasToolbar(),
-          const Divider(height: 1),
-          Expanded(
-            child: mode == OutputMode.design
-                ? const CanvasStage()
-                : const CodePanel(),
-          ),
-        ],
-      ),
-      bottomNavigationBar: const _MobileBottomNav(),
-    );
-  }
-}
-
-class _MobileBottomNav extends StatelessWidget {
-  const _MobileBottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.chromeBg,
-        border: Border(top: BorderSide(color: AppColors.borderSubtle)),
-      ),
-      child: SafeArea(
-        child: SizedBox(
-          height: 48,
-          child: Row(
-            children: [
-              Expanded(
-                child: _BottomNavItem(
-                  icon: Icons.layers_outlined,
-                  label: 'Layers',
-                  onTap: () =>
-                      _openSheet(context, const LayersPanel(), heightFactor: 0.6),
-                ),
-              ),
-              Expanded(
-                child: _BottomNavItem(
-                  icon: Icons.forum_outlined,
-                  label: 'Prompt',
-                  onTap: () => _openSheet(
-                    context,
-                    const PromptChatPanel(),
-                    heightFactor: 0.75,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _BottomNavItem(
-                  icon: Icons.code_outlined,
-                  label: 'Code',
-                  onTap: () =>
-                      _openSheet(context, const CodePanel(), heightFactor: 0.8),
-                ),
-              ),
-            ],
-          ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Stack(
+          children: [
+            if (hasUi) const BoardSurface() else const ChatLanding(),
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: PromptBar(),
+            ),
+          ],
         ),
       ),
     );
@@ -1054,10 +615,9 @@ class _MobileBottomNav extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.chromeBg,
+      backgroundColor: AppColors.bgSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(3)),
-        side: BorderSide(color: AppColors.borderStrong),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => SizedBox(
         height: MediaQuery.sizeOf(context).height * heightFactor,
@@ -1067,38 +627,10 @@ class _MobileBottomNav extends StatelessWidget {
   }
 }
 
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      hoverColor: AppColors.hoverBg,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: AppFonts.uiFamily,
-              fontFamilyFallback: AppFonts.uiFallback,
-              fontSize: 10,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+/// Ukuran viewport board saat ini (untuk perhitungan fit/center).
+Size boardViewportSize(BuildContext context) {
+  final box = BoardSurface.boardViewportKey.currentContext?.findRenderObject()
+      as RenderBox?;
+  if (box != null && box.hasSize) return box.size;
+  return const Size(900, 600);
 }

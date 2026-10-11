@@ -4,49 +4,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Mobile shell shows canvas, hint, and bottom nav', (
+  testWidgets('Empty board shows chat landing (not the board)', (
     tester,
   ) async {
-    // tester.view.physicalSize memakai physical pixels; DPR 3.0 di tester.
     tester.view
       ..physicalSize = const Size(1200, 2400)
       ..devicePixelRatio = 3.0;
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    expect(find.text('Centauri - Canvas'), findsOneWidget);
+    expect(find.text('Mulai dengan sebuah prompt'), findsOneWidget);
+    expect(find.text('Board masih kosong'), findsNothing);
     expect(
-      find.text('Buka panel Prompt, lalu ketik deskripsi UI untuk mulai.'),
+      find.text('What would you like to change or create?'),
       findsOneWidget,
     );
-    expect(find.text('Canvas kosong'), findsOneWidget);
-    expect(find.text('Layers'), findsOneWidget);
-    expect(find.text('Prompt'), findsOneWidget);
-    expect(find.text('Code'), findsOneWidget);
 
     addTearDown(tester.view.reset);
   });
 
-  testWidgets('Desktop shell shows activity bar, sidebar, tabs, status bar', (
+  testWidgets('Top-left exposes history and provider settings', (
     tester,
   ) async {
-    // 4320x2700 physical => 1440x900 logical (DPR 3.0).
     tester.view
       ..physicalSize = const Size(4320, 2700)
       ..devicePixelRatio = 3.0;
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    expect(find.text('Canvas Preview'), findsOneWidget);
-    expect(find.text('index.html'), findsOneWidget);
-    expect(find.text('Design'), findsOneWidget);
-    expect(find.text('Dev'), findsOneWidget);
-    expect(find.text('canvas / belum ada konten'), findsOneWidget);
-    expect(find.text('PROVIDER'), findsOneWidget);
-    expect(find.text('LAYERS'), findsOneWidget);
-    expect(find.text('DESIGN TOKENS'), findsOneWidget);
-    expect(find.text('Width: 100%'), findsOneWidget);
-    expect(find.text('No provider'), findsWidgets);
+    // Tombol riwayat + konfigurasi provider selalu ada di kiri atas.
+    expect(find.byIcon(Icons.history), findsOneWidget);
+    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+    // Provider pill juga tersedia.
+    expect(find.text('Pilih provider'), findsOneWidget);
+    expect(
+      find.text('What would you like to change or create?'),
+      findsOneWidget,
+    );
+
+    addTearDown(() async => tester.binding.setSurfaceSize(null));
+  });
+
+  testWidgets('Board controls hidden until a UI exists', (tester) async {
+    tester.view
+      ..physicalSize = const Size(4320, 2700)
+      ..devicePixelRatio = 3.0;
+    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pump();
+
+    // Zoom chip + viewport toggle (di prompt bar) tetap ada; kontrol board
+    // lain (grid/fit/clear) hanya saat board aktif.
+    expect(find.byIcon(Icons.grid_4x4), findsNothing);
+    expect(find.byIcon(Icons.fit_screen_outlined), findsNothing);
 
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });

@@ -48,8 +48,8 @@ class _SkeletonBoxState extends State<SkeletonBox>
           height: widget.height,
           decoration: BoxDecoration(
             color: Color.lerp(
-              AppColors.bgElevated,
-              AppColors.hoverBg,
+              AppColors.bgSunken,
+              const Color(0xFFE4E6EB),
               t,
             ),
             borderRadius: widget.radius,

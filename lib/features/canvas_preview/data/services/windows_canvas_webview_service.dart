@@ -28,7 +28,7 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   @override
   Future<void> init() async {
     await _controller.initialize();
-    await _controller.setBackgroundColor(const Color(0xFF0F0F11));
+    await _controller.setBackgroundColor(const Color(0xFFFFFFFF));
 
     _messageSubscription = _controller.webMessage.listen((message) {
       final event = CanvasSelectEvent.tryParse(message);

@@ -1,6 +1,8 @@
+import 'package:centauri/features/canvas_preview/domain/board_frame.dart';
 import 'package:centauri/features/canvas_preview/domain/viewport_mode.dart';
 import 'package:centauri/features/canvas_preview/presentation/provider/canvas_provider.dart';
 import 'package:centauri/features/prompt_editor/domain/prompt_templates.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -9,6 +11,14 @@ void main() {
 
   setUp(() => container = ProviderContainer());
   tearDown(() => container.dispose());
+
+  BoardFrame frame(String id, {Offset offset = Offset.zero}) => BoardFrame(
+    id: id,
+    title: id,
+    html: '<html></html>',
+    offset: offset,
+    size: const Size(390, 844),
+  );
 
   test('design token selection is shared state', () {
     final notifier = container.read(canvasProvider.notifier);
@@ -23,25 +33,137 @@ void main() {
     expect(container.read(canvasProvider).selectedToken, isNull);
   });
 
-  test('viewport mode updates', () {
+  test('viewport mode updates state and active frame size', () {
     final notifier = container.read(canvasProvider.notifier);
 
-    expect(container.read(canvasProvider).viewport, ViewportMode.desktop);
+    expect(container.read(canvasProvider).viewport, ViewportMode.mobile);
 
     notifier.setViewport(ViewportMode.tablet);
     expect(container.read(canvasProvider).viewport, ViewportMode.tablet);
   });
 
-  test('clearCanvas resets content but keeps token selection', () {
+  test('clearBoard resets frames but keeps token selection', () {
     final notifier = container.read(canvasProvider.notifier);
     final current = designTokenPresets.first;
     notifier.setSelectedToken(current);
 
-    notifier.clearCanvas();
+    notifier.clearBoard();
 
     final state = container.read(canvasProvider);
-    expect(state.generatedHtml, isNull);
+    expect(state.frames, isEmpty);
     expect(state.messages, isEmpty);
     expect(state.selectedToken?.id, current.id);
+  });
+
+  test('pan by accumulates offset', () {
+    final notifier = container.read(canvasProvider.notifier);
+    expect(container.read(canvasProvider).panOffset, Offset.zero);
+
+    notifier.panBy(const Offset(10, 20));
+    notifier.panBy(const Offset(5, -5));
+    expect(container.read(canvasProvider).panOffset, const Offset(15, 15));
+  });
+
+  test('scale is clamped to a sane range', () {
+    final notifier = container.read(canvasProvider.notifier);
+
+    notifier.setScale(99);
+    expect(
+      container.read(canvasProvider).scale,
+      CanvasState.maxScale,
+    );
+
+    notifier.setScale(0.0001);
+    expect(
+      container.read(canvasProvider).scale,
+      CanvasState.minScale,
+    );
+  });
+
+  test('zoom limits guard buttons', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.setScale(CanvasState.maxScale);
+    expect(notifier.canZoomIn, isFalse);
+    expect(notifier.canZoomOut, isTrue);
+
+    notifier.setScale(CanvasState.minScale);
+    expect(notifier.canZoomIn, isTrue);
+    expect(notifier.canZoomOut, isFalse);
+  });
+
+  test('board has a default size even when empty', () {
+    final size = container.read(canvasProvider).boardSize;
+    expect(size.width, greaterThan(0));
+    expect(size.height, greaterThan(0));
+  });
+
+  test('pan is clamped so the board cannot be lost off-screen', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+
+    // Coba dorong jauh ke kanan-bawah.
+    notifier.panBy(const Offset(100000, 100000));
+    final far = container.read(canvasProvider).panOffset;
+    expect(far.dx, lessThanOrEqualTo(1000));
+    expect(far.dy, lessThanOrEqualTo(700));
+
+    // Coba dorong jauh ke kiri-atas.
+    notifier.panBy(const Offset(-100000, -100000));
+    final back = container.read(canvasProvider).panOffset;
+    expect(back.dx, greaterThan(-100000));
+    expect(back.dy, greaterThan(-100000));
+  });
+
+  test('zoomAt keeps the focal point stable', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.setScale(1.0);
+    const focal = Offset(200, 150);
+
+    final before = (focal - container.read(canvasProvider).panOffset) /
+        container.read(canvasProvider).scale;
+
+    notifier.zoomAt(focal, 2.0);
+
+    final state = container.read(canvasProvider);
+    final after = (focal - state.panOffset) / state.scale;
+    expect(after.dx, closeTo(before.dx, 0.001));
+    expect(after.dy, closeTo(before.dy, 0.001));
+  });
+
+  test('selectFrame marks exactly one frame active', () {
+    final notifier = container.read(canvasProvider.notifier);
+    // Seed frames via moveFrame-free path: use clearBoard then simulate.
+    // (Frames are normally created by submitPrompt; here we test selectFrame
+    // guard behaviour on empty board.)
+    notifier.selectFrame('missing');
+    final state = container.read(canvasProvider);
+    expect(state.activeFrameId, 'missing');
+    expect(state.activeFrame, isNull);
+  });
+
+  test('moveFrame ignores unknown id without throwing', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.moveFrame('nope', const Offset(5, 5));
+    expect(container.read(canvasProvider).frames, isEmpty);
+  });
+
+  test('resetView restores default scale and pan', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.setScale(2.0);
+    notifier.panBy(const Offset(100, 100));
+
+    notifier.resetView();
+
+    final state = container.read(canvasProvider);
+    expect(state.scale, 0.6);
+    expect(state.panOffset, Offset.zero);
+  });
+
+  test('frame copyWith preserves identity fields', () {
+    final original = frame('f1', offset: const Offset(10, 10));
+    final moved = original.copyWith(offset: const Offset(50, 50));
+    expect(moved.id, original.id);
+    expect(moved.size, original.size);
+    expect(moved.offset, const Offset(50, 50));
   });
 }

@@ -6,81 +6,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/config/theme.dart';
 import '../../data/services/canvas_webview_service.dart';
 import '../../data/services/canvas_webview_service_factory.dart';
+import '../../domain/board_frame.dart';
 import '../../domain/viewport_mode.dart';
 import '../provider/canvas_provider.dart';
 
-/// Stage canvas: membungkus WebView native, mendorong perubahan state
-/// (HTML, viewport, zoom, seleksi) ke dalam shell, dan menerima event
-/// seleksi/hover dari canvas untuk disinkronkan ke layers tree.
-class CanvasStage extends ConsumerWidget {
-  const CanvasStage({super.key});
+/// Satu frame di board: kartu mengambang berisi WebView yang merender HTML
+/// frame tersebut. Setiap frame punya service WebView sendiri.
+class BoardFrameView extends ConsumerStatefulWidget {
+  const BoardFrameView({
+    super.key,
+    required this.frame,
+    required this.scale,
+    required this.viewport,
+  });
+
+  final BoardFrame frame;
+
+  /// Skala board saat ini (untuk mengompensasi lebar viewport WebView).
+  final double scale;
+  final ViewportMode viewport;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hasContent = ref.watch(
-      canvasProvider.select((s) => s.generatedHtml != null),
-    );
-
-    return Container(
-      color: AppColors.bgBase,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.bgBase,
-          border: Border.all(color: AppColors.borderSubtle),
-        ),
-        child: ClipRect(
-          child: Stack(
-            children: [
-              const CanvasWebviewHost(),
-              if (!hasContent) const CanvasPlaceholder(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  ConsumerState<BoardFrameView> createState() => _BoardFrameViewState();
 }
 
-class CanvasPlaceholder extends StatelessWidget {
-  const CanvasPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: AppColors.bgBase,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.brush_outlined, size: 28, color: AppColors.textDisabled),
-            SizedBox(height: 12),
-            Text('Canvas kosong', style: AppText.ui),
-            SizedBox(height: 6),
-            Text(
-              'Buka panel Prompt, lalu ketik deskripsi UI untuk mulai.',
-              style: AppText.caption,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Host WebView: mengelola lifecycle service per-platform dan mendorong
-/// perubahan state ke dalam canvas. Juga meneruskan event seleksi dari
-/// canvas kembali ke [canvasProvider].
-class CanvasWebviewHost extends ConsumerStatefulWidget {
-  const CanvasWebviewHost({super.key});
-
-  @override
-  ConsumerState<CanvasWebviewHost> createState() => _CanvasWebviewHostState();
-}
-
-class _CanvasWebviewHostState extends ConsumerState<CanvasWebviewHost> {
+class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
   final CanvasWebviewService _service = createCanvasWebviewService();
-  StreamSubscription<CanvasSelectEvent>? _selectionSubscription;
+  StreamSubscription<CanvasSelectEvent>? _subscription;
   bool _ready = false;
 
   @override
@@ -90,22 +42,21 @@ class _CanvasWebviewHostState extends ConsumerState<CanvasWebviewHost> {
   }
 
   Future<void> _initialize() async {
-    final state = ref.read(canvasProvider);
     try {
       await _service.init();
-      await _service.setViewportWidth(state.viewport.width);
-      await _service.setZoom(state.zoom);
-      await _service.renderHtml(state.generatedHtml);
-
-      _selectionSubscription = _service.selectionEvents.listen(_onCanvasEvent);
+      await _service.setViewportWidth(widget.viewport.width);
+      await _service.setZoom(1 / widget.scale);
+      await _service.renderHtml(widget.frame.html.isEmpty ? null : widget.frame.html);
+      _subscription = _service.selectionEvents.listen(_onEvent);
     } catch (_) {
-      // WebView gagal init (mis. WebView2 runtime tidak tersedia).
+      // WebView gagal init (mis. runtime WebView2 tidak tersedia).
     }
     if (mounted) setState(() => _ready = true);
   }
 
-  void _onCanvasEvent(CanvasSelectEvent event) {
+  void _onEvent(CanvasSelectEvent event) {
     final notifier = ref.read(canvasProvider.notifier);
+    if (widget.frame.id != ref.read(canvasProvider).activeFrameId) return;
     if (event.type == 'select') {
       notifier.selectNodeFromCanvas(event.id);
     } else if (event.type == 'hover') {
@@ -114,48 +65,221 @@ class _CanvasWebviewHostState extends ConsumerState<CanvasWebviewHost> {
   }
 
   @override
+  void didUpdateWidget(covariant BoardFrameView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.frame.html != widget.frame.html) {
+      _service.renderHtml(
+        widget.frame.html.isEmpty ? null : widget.frame.html,
+      );
+    }
+    if (oldWidget.viewport != widget.viewport) {
+      _service.setViewportWidth(widget.viewport.width);
+    }
+    if (oldWidget.scale != widget.scale) {
+      _service.setZoom(1 / widget.scale);
+    }
+  }
+
+  @override
   void dispose() {
-    _selectionSubscription?.cancel();
+    _subscription?.cancel();
     _service.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<String?>(
-      canvasProvider.select((s) => s.generatedHtml),
-      (_, html) => _service.renderHtml(html),
+    final isActive = ref.watch(
+      canvasProvider.select((s) => s.activeFrameId == widget.frame.id),
     );
-    ref.listen<ViewportMode>(
-      canvasProvider.select((s) => s.viewport),
-      (_, mode) => _service.setViewportWidth(mode.width),
-    );
-    ref.listen<double>(
-      canvasProvider.select((s) => s.zoom),
-      (_, zoom) => _service.setZoom(zoom),
-    );
+
     ref.listen<String?>(
       canvasProvider.select((s) => s.selectedNodeId),
-      (_, id) => _service.selectNode(id),
+      (_, id) => _service.selectNode(isActive ? id : null),
     );
     ref.listen<String?>(
       canvasProvider.select((s) => s.hoveredNodeId),
-      (_, id) => _service.hoverNode(id),
+      (_, id) => _service.hoverNode(isActive ? id : null),
     );
 
-    if (!_ready) {
-      return const Center(
+    return _FrameCard(
+      frame: widget.frame,
+      isActive: isActive,
+      scale: widget.scale,
+      onSelect: () =>
+          ref.read(canvasProvider.notifier).selectFrame(widget.frame.id),
+      onDelete: () =>
+          ref.read(canvasProvider.notifier).deleteFrame(widget.frame.id),
+      onDrag: (delta) =>
+          ref.read(canvasProvider.notifier).moveFrame(widget.frame.id, delta),
+      child: _ready
+          ? _service.buildView()
+          : const _WebviewLoading(),
+    );
+  }
+}
+
+class _WebviewLoading extends StatelessWidget {
+  const _WebviewLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: AppColors.bgSurface,
+      child: Center(
         child: SizedBox(
-          height: 18,
           width: 18,
+          height: 18,
           child: CircularProgressIndicator(
             strokeWidth: 2,
             color: AppColors.accentPrimary,
           ),
         ),
-      );
-    }
+      ),
+    );
+  }
+}
 
-    return _service.buildView();
+
+/// Kartu frame: judul + area konten + ring aksen saat aktif.
+class _FrameCard extends StatelessWidget {
+  const _FrameCard({
+    required this.frame,
+    required this.isActive,
+    required this.scale,
+    required this.onSelect,
+    required this.onDelete,
+    required this.onDrag,
+    required this.child,
+  });
+
+  final BoardFrame frame;
+  final bool isActive;
+  final double scale;
+  final VoidCallback onSelect;
+  final VoidCallback onDelete;
+  final ValueChanged<Offset> onDrag;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: frame.offset.dx,
+      top: frame.offset.dy,
+      width: frame.size.width,
+      height: frame.size.height,
+      child: GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        onTap: onSelect,
+        onPanUpdate: (details) => onDrag(details.delta / scale),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _FrameLabel(
+              frame: frame,
+              isActive: isActive,
+              onSelect: onSelect,
+              onDelete: onDelete,
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                decoration: BoxDecoration(
+                  color: AppColors.bgSurface,
+                  borderRadius: AppRadius.md,
+                  border: Border.all(
+                    color: isActive
+                        ? AppColors.accentPrimary
+                        : AppColors.borderSubtle,
+                    width: isActive ? 1.8 : 1,
+                  ),
+                  boxShadow: AppColors.shadowRaised,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: child,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FrameLabel extends StatelessWidget {
+  const _FrameLabel({
+    required this.frame,
+    required this.isActive,
+    required this.onSelect,
+    required this.onDelete,
+  });
+
+  final BoardFrame frame;
+  final bool isActive;
+  final VoidCallback onSelect;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          Icons.crop_square,
+          size: 13,
+          color: isActive ? AppColors.accentPrimary : AppColors.textSecondary,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            frame.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AppFonts.uiFamily,
+              fontFamilyFallback: AppFonts.uiFallback,
+              fontSize: 12.5,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+              color: isActive
+                  ? AppColors.accentPrimary
+                  : AppColors.textSecondary,
+            ),
+          ),
+        ),
+        if (isActive)
+          _FrameAction(
+            icon: Icons.close,
+            tooltip: 'Hapus frame',
+            onTap: onDelete,
+          ),
+      ],
+    );
+  }
+}
+
+class _FrameAction extends StatelessWidget {
+  const _FrameAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.sm,
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Icon(icon, size: 14, color: AppColors.textSecondary),
+        ),
+      ),
+    );
   }
 }

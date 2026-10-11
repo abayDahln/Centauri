@@ -19,7 +19,7 @@ const String canvasShellHtml = '''
     margin: 0;
     padding: 0;
     height: 100%;
-    background: #0F0F11;
+    background: #FFFFFF;
     overflow: auto;
   }
   #stage {
@@ -188,7 +188,7 @@ const String canvasShellHtml = '''
 
   function clearCanvas() {
     selectedId = null;
-    frame.srcdoc = '<!DOCTYPE html><html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0F0F11;color:#52525B;font-family:Inter,system-ui,sans-serif;font-size:13px">Belum ada canvas. Generate UI dari panel Prompt.</body></html>';
+    frame.srcdoc = '<!DOCTYPE html><html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:#9AA0A6;font-family:Inter,system-ui,sans-serif;font-size:13px">Frame kosong</body></html>';
   }
 
   frame.addEventListener('load', attachPicker);

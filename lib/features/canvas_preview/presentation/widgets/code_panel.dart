@@ -57,13 +57,10 @@ class _CodePanelState extends ConsumerState<CodePanel> {
 
   @override
   Widget build(BuildContext context) {
-    final html = ref.watch(canvasProvider.select((s) => s.generatedHtml));
+    final html = ref.watch(canvasProvider.select((s) => s.activeFrame?.html));
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.bgBase,
-        border: Border(left: BorderSide(color: AppColors.borderSubtle)),
-      ),
+    return ColoredBox(
+      color: AppColors.bgSurface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -179,42 +176,51 @@ class _CodeBody extends StatelessWidget {
     final lineCount = '\n'.allMatches(code).length + 1;
     final gutterWidth = 16.0 + (lineCount.toString().length * 8);
 
-    return Scrollbar(
-      controller: verticalController,
-      child: SingleChildScrollView(
-        controller: verticalController,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _LineGutter(lineCount: lineCount, width: gutterWidth),
-            Expanded(
-              child: Scrollbar(
-                controller: horizontalController,
-                notificationPredicate: (n) => n.depth == 1,
-                child: SingleChildScrollView(
-                  controller: horizontalController,
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: MediaQuery.sizeOf(context).width,
-                    ),
-                    child: HighlightView(
-                      code,
-                      language: 'html',
-                      theme: atomOneDarkTheme,
-                      padding: const EdgeInsets.fromLTRB(8, 8, 16, 24),
-                      textStyle: const TextStyle(
-                        fontFamily: AppFonts.monoFamily,
-                        fontFamilyFallback: AppFonts.monoFallback,
-                        fontSize: 12,
-                        height: 1.6,
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: ClipRRect(
+        borderRadius: AppRadius.md,
+        child: ColoredBox(
+          color: const Color(0xFF16181D),
+          child: Scrollbar(
+            controller: verticalController,
+            child: SingleChildScrollView(
+              controller: verticalController,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _LineGutter(lineCount: lineCount, width: gutterWidth),
+                  Expanded(
+                    child: Scrollbar(
+                      controller: horizontalController,
+                      notificationPredicate: (n) => n.depth == 1,
+                      child: SingleChildScrollView(
+                        controller: horizontalController,
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: MediaQuery.sizeOf(context).width / 2,
+                          ),
+                          child: HighlightView(
+                            code,
+                            language: 'html',
+                            theme: atomOneDarkTheme,
+                            padding: const EdgeInsets.fromLTRB(8, 12, 16, 24),
+                            textStyle: const TextStyle(
+                              fontFamily: AppFonts.monoFamily,
+                              fontFamilyFallback: AppFonts.monoFallback,
+                              fontSize: 12,
+                              height: 1.6,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -231,8 +237,8 @@ class _LineGutter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      color: AppColors.bgBase,
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+      color: const Color(0xFF13151A),
+      padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: List.generate(lineCount, (index) {

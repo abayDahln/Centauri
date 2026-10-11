@@ -42,7 +42,7 @@ class _LayersPanelState extends ConsumerState<LayersPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final tree = ref.watch(canvasProvider.select((s) => s.domTree));
+    final tree = ref.watch(canvasProvider.select((s) => s.activeFrame?.domTree));
     final selectedId = ref.watch(canvasProvider.select((s) => s.selectedNodeId));
     final hoveredId = ref.watch(canvasProvider.select((s) => s.hoveredNodeId));
 
@@ -189,7 +189,7 @@ class _LayersHeader extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Row(
         children: [
-          const Expanded(child: Text('LAYERS', style: AppText.sectionHeader)),
+          const Expanded(child: Text('Layers', style: AppText.sectionTitle)),
           Text('$nodeCount', style: AppText.caption),
         ],
       ),
@@ -246,7 +246,7 @@ class _LayerRowState extends State<_LayerRow> {
         : Colors.transparent;
 
     final foreground = widget.selected
-        ? Colors.white
+        ? AppColors.accentPrimary
         : node.isText
         ? AppColors.textDisabled
         : AppColors.textPrimary;

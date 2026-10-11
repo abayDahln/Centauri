@@ -12,16 +12,17 @@ class CentauriApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Centauri - AI UI/UX Canvas',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       routerConfig: appRouter,
       builder: (context, child) {
-        if (!AppTitleBar.isSupported || child == null) return child ?? const SizedBox.shrink();
+        if (!AppTitleBar.isSupported || child == null) {
+          return child ?? const SizedBox.shrink();
+        }
         return Scaffold(
-          backgroundColor: AppColors.chromeBg,
+          backgroundColor: AppColors.bgBase,
           body: Column(
             children: [
               const AppTitleBar(),
-              const Divider(height: 1),
               Expanded(child: child),
             ],
           ),

@@ -12,7 +12,7 @@ class CodeExporterPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final htmlSource = ref.watch(canvasProvider).generatedHtml;
+    final htmlSource = ref.watch(canvasProvider).activeFrame?.html;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ekspor Kode')),

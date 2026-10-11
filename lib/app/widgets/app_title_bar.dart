@@ -5,9 +5,8 @@ import 'package:window_manager/window_manager.dart';
 
 import '../config/theme.dart';
 
-/// Title bar kustom untuk shell desktop (Windows). Menggantikan title bar
-/// bawaan OS: drag area, judul, dan tombol minimize/maximize/close.
-/// Di mobile widget ini tidak dipasang.
+/// Title bar kustom untuk shell desktop (Windows). Gaya lembut ala Stitch:
+/// latar putih, teks gelap, tombol window minimalis.
 class AppTitleBar extends StatefulWidget {
   const AppTitleBar({super.key, this.title = 'Centauri'});
 
@@ -66,24 +65,43 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onPanStart: (_) => windowManager.startDragging(),
+      onPanStart: (_) => _safe(windowManager.startDragging),
       onDoubleTap: _toggleMaximize,
       child: SizedBox(
         height: AppColors.titleBarHeight,
         child: ColoredBox(
-          color: AppColors.chromeBg,
+          color: AppColors.bgSurface,
           child: Row(
             children: [
-              const SizedBox(width: 10),
-              const Icon(
-                Icons.crop_square,
-                size: 12,
-                color: AppColors.accentPrimary,
+              const SizedBox(width: 14),
+              Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(
+                  color: AppColors.accentPrimary,
+                  borderRadius: BorderRadius.all(Radius.circular(6)),
+                ),
+                alignment: Alignment.center,
+                child: const Text(
+                  'C',
+                  style: TextStyle(
+                    fontFamily: AppFonts.uiFamily,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
                 widget.title,
-                style: AppText.uiSmall,
+                style: const TextStyle(
+                  fontFamily: AppFonts.uiFamily,
+                  fontFamilyFallback: AppFonts.uiFallback,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -170,13 +188,13 @@ class _WindowButtonState extends State<_WindowButton> {
         child: GestureDetector(
           onTap: widget.onTap,
           child: Container(
-            width: 44,
+            width: 46,
             height: AppColors.titleBarHeight,
             alignment: Alignment.center,
             color: _hovered ? hoverColor : Colors.transparent,
             child: Icon(
               widget.icon,
-              size: 13,
+              size: 14,
               color: _hovered && widget.isClose
                   ? Colors.white
                   : AppColors.textSecondary,

@@ -27,7 +27,7 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   Future<void> init() async {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF0F0F11))
+      ..setBackgroundColor(const Color(0xFFFFFFFF))
       ..addJavaScriptChannel(
         'centauriBridge',
         onMessageReceived: (message) {
