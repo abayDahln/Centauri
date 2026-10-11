@@ -11,10 +11,12 @@ class LocalStorageService {
 
   late Box<String> _providersBox;
   late Box<String> _metaBox;
+  late Box<String> _projectsBox;
 
   Future<void> init() async {
     _providersBox = await Hive.openBox<String>(AppConstants.providersBoxName);
     _metaBox = await Hive.openBox<String>(AppConstants.metaBoxName);
+    _projectsBox = await Hive.openBox<String>(AppConstants.projectsBoxName);
   }
 
   List<String> readAllProvidersJson() => _providersBox.values.toList();
@@ -28,4 +30,21 @@ class LocalStorageService {
 
   Future<void> setActiveProviderId(String id) =>
       _metaBox.put(AppConstants.activeProviderIdKey, id);
+
+  // ------------------------------------------------------------- projects --
+
+  List<String> readAllProjectsJson() => _projectsBox.values.toList();
+
+  void writeProjectJson(String id, String json) => _projectsBox.put(id, json);
+
+  Future<void> deleteProjectJson(String id) => _projectsBox.delete(id);
+
+  String? get activeProjectId =>
+      _metaBox.get(AppConstants.activeProjectIdKey);
+
+  Future<void> setActiveProjectId(String id) =>
+      _metaBox.put(AppConstants.activeProjectIdKey, id);
+
+  Future<void> clearActiveProjectId() =>
+      _metaBox.delete(AppConstants.activeProjectIdKey);
 }

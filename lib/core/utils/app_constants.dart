@@ -10,7 +10,9 @@ class AppConstants {
   // Hive boxes.
   static const String providersBoxName = 'centauri_providers';
   static const String metaBoxName = 'centauri_meta';
+  static const String projectsBoxName = 'centauri_projects';
   static const String activeProviderIdKey = 'active_provider_id';
+  static const String activeProjectIdKey = 'active_project_id';
 
   // Network defaults.
   static const Duration connectTimeout = Duration(seconds: 30);

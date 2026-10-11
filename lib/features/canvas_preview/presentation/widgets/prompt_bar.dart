@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../history/presentation/history_provider.dart';
 import '../../../prompt_editor/domain/prompt_templates.dart';
 import '../../domain/viewport_mode.dart';
 import '../provider/canvas_provider.dart';
@@ -44,6 +45,8 @@ class _PromptBarState extends ConsumerState<PromptBar> {
           designToken: ref.read(canvasProvider).selectedToken,
           viewport: ref.read(canvasProvider).viewport,
         );
+    // Auto-save percakapan + board ke riwayat.
+    ref.read(historyProvider.notifier).persistCurrent();
   }
 
   @override

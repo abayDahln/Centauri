@@ -392,6 +392,50 @@ class CanvasNotifier extends Notifier<CanvasState> {
       clearSelection: true,
       clearHover: true,
       clearGenerationStart: true,
+      panOffset: Offset.zero,
+      scale: 0.6,
+    );
+  }
+
+  /// Muat ulang board & percakapan dari data proyek tersimpan.
+  /// DOM tree dibangun ulang dari HTML (di isolate) agar layers tetap bekerja.
+  Future<void> loadSession({
+    required List<CanvasMessage> messages,
+    required List<BoardFrame> frames,
+    String? activeFrameId,
+  }) async {
+    final rebuilt = <BoardFrame>[];
+    for (final frame in frames) {
+      if (frame.html.isEmpty) {
+        rebuilt.add(frame);
+        continue;
+      }
+      try {
+        final tree = await buildDomTreeInIsolate(frame.html);
+        rebuilt.add(frame.copyWith(html: tree.stampedHtml, domTree: tree));
+      } catch (_) {
+        rebuilt.add(frame);
+      }
+    }
+
+    // Pastikan id frame berikutnya tidak bentrok dengan yang sudah dimuat.
+    _frameCounter = rebuilt.length;
+    for (final frame in rebuilt) {
+      final match = RegExp(r'frame_(\d+)').firstMatch(frame.id);
+      final value = int.tryParse(match?.group(1) ?? '');
+      if (value != null && value >= _frameCounter) _frameCounter = value + 1;
+    }
+
+    final normalized = _normalizeFrames(rebuilt);
+    state = CanvasState(
+      frames: normalized,
+      boardSize: _boardSizeFor(normalized),
+      activeFrameId: activeFrameId,
+      messages: messages,
+      viewport: state.viewport,
+      outputMode: state.outputMode,
+      tool: state.tool,
+      showGrid: state.showGrid,
     );
   }
 

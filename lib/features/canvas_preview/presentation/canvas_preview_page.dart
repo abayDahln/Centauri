@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/config/theme.dart';
 import '../../../app/widgets/stitch_widgets.dart';
-import '../../prompt_editor/presentation/prompt_chat_panel.dart';
+import '../../history/presentation/history_panel.dart';
 import '../../provider_config/presentation/providers/provider_config_provider.dart';
 import 'provider/canvas_provider.dart';
 import 'widgets/board_canvas.dart';
@@ -39,7 +39,7 @@ class _DesktopShell extends ConsumerStatefulWidget {
 }
 
 class _DesktopShellState extends ConsumerState<_DesktopShell> {
-  bool _showPrompt = false;
+  bool _showHistory = false;
   bool _showLayers = false;
   bool _showCode = false;
 
@@ -51,10 +51,10 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
     );
 
     // Sinkronkan visibilitas panel dengan mode.
-    // History (percakapan) selalu bisa dibuka, bahkan sebelum ada UI.
+    // Riwayat selalu bisa dibuka, bahkan sebelum ada UI.
     final showCode = hasUi && (mode == OutputMode.dev || _showCode);
     final showLayers = hasUi && _showLayers;
-    final showPrompt = _showPrompt;
+    final showHistory = _showHistory;
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -62,10 +62,10 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
         children: [
           _TopBar(
             boardActive: hasUi,
-            onTogglePrompt: () => setState(() => _showPrompt = !_showPrompt),
+            onTogglePrompt: () => setState(() => _showHistory = !_showHistory),
             onToggleLayers: () => setState(() => _showLayers = !_showLayers),
             onToggleCode: () => setState(() => _showCode = !_showCode),
-            promptVisible: showPrompt,
+            promptVisible: showHistory,
             layersVisible: showLayers,
             codeVisible: showCode,
           ),
@@ -75,13 +75,17 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (showPrompt) ...[
-                    const SizedBox(
+                  if (showHistory) ...[
+                    SizedBox(
                       width: 300,
                       child: SoftPanel(
                         padding: EdgeInsets.zero,
                         clip: true,
-                        child: PromptChatPanel(),
+                        child: HistoryPanel(
+                          onOpenProject: () => setState(
+                            () => _showHistory = false,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -91,13 +95,9 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                       children: [
                         if (hasUi)
                           const BoardSurface()
-                        else if (!showPrompt)
-                          // Belum ada UI & panel riwayat tertutup: tampilkan
-                          // percakapan besar di tengah (mode chatbot).
-                          const ChatLanding()
                         else
-                          // Panel riwayat terbuka: tengah cukup jadi latar netral.
-                          const _EmptyCanvasHint(),
+                          // Belum ada UI: tampilkan percakapan besar di tengah.
+                          const ChatLanding(),
                         if (hasUi)
                           const Positioned(
                             right: 16,
@@ -474,52 +474,6 @@ class _LayersPanel extends ConsumerWidget {
   }
 }
 
-class _EmptyCanvasHint extends StatelessWidget {
-  const _EmptyCanvasHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        borderRadius: AppRadius.lg,
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.dashboard_customize_outlined,
-                size: 30,
-                color: AppColors.textDisabled,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Belum ada UI',
-                style: const TextStyle(
-                  fontFamily: AppFonts.uiFamily,
-                  fontFamilyFallback: AppFonts.uiFallback,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Tulis prompt di bar bawah untuk mulai.',
-                style: AppText.caption,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _PanelHeader extends StatelessWidget {
   const _PanelHeader({required this.title});
 
@@ -561,7 +515,7 @@ class _MobileShell extends ConsumerWidget {
             tooltip: 'Riwayat percakapan',
             onPressed: () => _openSheet(
               context,
-              const PromptChatPanel(),
+              const HistoryPanel(),
               heightFactor: 0.7,
             ),
           ),
