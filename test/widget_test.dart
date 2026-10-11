@@ -8,7 +8,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('Centauri Canvas'), findsOneWidget);
-    expect(find.text('Live Canvas Preview'), findsOneWidget);
-    expect(find.text('Generate UI'), findsOneWidget);
+    expect(find.text('Canvas siap'), findsOneWidget);
   });
 }
