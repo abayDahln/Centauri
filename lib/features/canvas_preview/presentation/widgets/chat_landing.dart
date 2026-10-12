@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../prompt_editor/domain/attachment.dart';
 import '../provider/canvas_provider.dart';
 import 'ai_status_indicator.dart';
+import 'attachment_preview_dialog.dart';
 import 'markdown_message.dart';
 
 /// Tampilan awal saat belum ada UI di board: percakapan biasa seperti chatbot.
@@ -127,9 +129,23 @@ class _Bubble extends StatelessWidget {
                 ? Border.all(color: AppColors.statusError)
                 : null,
           ),
-          // Pesan AI dirender sebagai markdown; pesan user/error sebagai teks.
-          child: isUser
-              ? Text(
+          // Lampiran (gambar) di atas teks; tap untuk pratinjau.
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (message.attachments.isNotEmpty) ...[
+                _MessageAttachments(
+                  attachments: message.attachments,
+                  onDark: isUser,
+                ),
+                const SizedBox(height: 8),
+              ] else if (message.attachmentNames.isNotEmpty) ...[
+                _AttachmentNameChips(names: message.attachmentNames),
+                const SizedBox(height: 8),
+              ],
+              // Pesan AI dirender sebagai markdown; user/error sebagai teks.
+              if (isUser)
+                Text(
                   message.text,
                   style: const TextStyle(
                     fontFamily: AppFonts.uiFamily,
@@ -139,14 +155,137 @@ class _Bubble extends StatelessWidget {
                     color: Colors.white,
                   ),
                 )
-              : MarkdownMessage(
+              else
+                MarkdownMessage(
                   text: message.text,
                   baseColor: isError
                       ? AppColors.statusError
                       : AppColors.textPrimary,
                 ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Deretan thumbnail lampiran di dalam bubble pesan user.
+class _MessageAttachments extends StatelessWidget {
+  const _MessageAttachments({required this.attachments, required this.onDark});
+
+  final List<Attachment> attachments;
+  final bool onDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: attachments.map((attachment) {
+        return GestureDetector(
+          onTap: () => showAttachmentPreview(context, attachment),
+          child: ClipRRect(
+            borderRadius: AppRadius.sm,
+            child: _attachmentThumb(attachment),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _attachmentThumb(Attachment attachment) {
+    if (!attachment.isText) {
+      return Image.memory(
+        attachment.bytes,
+        width: 120,
+        height: 84,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fileChip(attachment),
+      );
+    }
+    return _fileChip(attachment);
+  }
+
+  Widget _fileChip(Attachment attachment) {
+    final icon = attachment.mimeType.contains('svg')
+        ? Icons.image_outlined
+        : attachment.mimeType.contains('html')
+        ? Icons.html
+        : attachment.mimeType.contains('css')
+        ? Icons.css
+        : Icons.description_outlined;
+    return Container(
+      width: 120,
+      height: 84,
+      color: onDark ? Colors.white24 : AppColors.bgSurface,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 24,
+            color: onDark ? Colors.white : AppColors.textSecondary,
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              attachment.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AppFonts.uiFamily,
+                fontFamilyFallback: AppFonts.uiFallback,
+                fontSize: 9,
+                color: onDark ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip nama lampiran (untuk pesan lama yang gambarnya tidak tersimpan di memori).
+class _AttachmentNameChips extends StatelessWidget {
+  const _AttachmentNameChips({required this.names});
+
+  final List<String> names;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: names
+          .map(
+            (name) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: AppRadius.pill,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.attach_file, size: 11, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontFamily: AppFonts.uiFamily,
+                      fontFamilyFallback: AppFonts.uiFallback,
+                      fontSize: 10,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }

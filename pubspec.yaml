@@ -48,6 +48,8 @@ dependencies:
   html: ^0.15.7
   window_manager: ^0.5.2
   flutter_markdown: ^0.7.7+1
+  desktop_drop: ^0.8.4
+  super_clipboard: ^0.9.1
 
 dev_dependencies:
   flutter_test:

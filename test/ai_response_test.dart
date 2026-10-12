@@ -90,11 +90,59 @@ Berikut UI-nya:
       final result = classifyAiResponse(raw);
       expect(result.isUi, isTrue);
     });
+
+    test('embeds an explanation note before the html', () {
+      const raw = '''
+Saya membuat landing page dengan hero, pricing, dan footer.
+
+```html
+<!DOCTYPE html><html><body>Hi</body></html>
+```
+''';
+      final result = classifyAiResponse(raw);
+      expect(result.isUi, isTrue);
+      expect(result.note, contains('landing page'));
+    });
+
+    test('extracts multiple screens from multiple fences', () {
+      const raw = '''
+Berikut 3 layar:
+
+### Home
+```html
+<!DOCTYPE html><html><body>Home</body></html>
+```
+
+### Profile
+```html
+<!DOCTYPE html><html><body>Profile</body></html>
+```
+
+### Settings
+```html
+<!DOCTYPE html><html><body>Settings</body></html>
+```
+''';
+      final result = classifyAiResponse(raw);
+      expect(result.isUi, isTrue);
+      expect(result.screens.length, 3);
+      expect(result.screens[0].title, 'Home');
+      expect(result.screens[1].title, 'Profile');
+      expect(result.screens[1].html, contains('Profile'));
+      expect(result.note, contains('3 layar'));
+    });
+
+    test('does not treat a tiny partial snippet as a screen', () {
+      const raw = 'Contoh markup:\n\n```html\n<div class="x">hi</div>\n```\n';
+      final result = classifyAiResponse(raw);
+      // Snippet kecil (tanpa doctype/html/body) tetap dianggap chat.
+      expect(result.isChat, isTrue);
+    });
   });
 
   group('AiResponse serialization', () {
     test('round-trips a ui response', () {
-      const original = AiResponse.ui('<!DOCTYPE html><html></html>');
+      final original = AiResponse.ui('<!DOCTYPE html><html></html>');
       final restored = AiResponse.fromJson(original.toJson());
       expect(restored.isUi, isTrue);
       expect(restored.html, original.html);

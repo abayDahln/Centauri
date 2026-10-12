@@ -4,13 +4,21 @@ import 'package:flutter/material.dart';
 
 /// Event seleksi yang datang dari canvas (picker di dalam iframe).
 class CanvasSelectEvent {
-  const CanvasSelectEvent({required this.type, required this.id});
+  const CanvasSelectEvent({
+    required this.type,
+    required this.id,
+    this.contentHeight,
+  });
 
-  /// `select` saat elemen diklik, `hover` saat pointer melewatinya.
+  /// `select` saat elemen diklik, `hover` saat pointer melewatinya,
+  /// `resize` saat dokumen melaporkan tinggi kontennya.
   final String type;
 
   /// Id node (`data-centauri-id`), null saat hover keluar.
   final String? id;
+
+  /// Tinggi konten dokumen (untuk event `resize`).
+  final double? contentHeight;
 
   static CanvasSelectEvent? tryParse(Object? raw) {
     if (raw is! String || raw.trim().isEmpty) return null;
@@ -20,7 +28,12 @@ class CanvasSelectEvent {
       final type = decoded['type'];
       if (type is! String) return null;
       final id = decoded['id'];
-      return CanvasSelectEvent(type: type, id: id is String ? id : null);
+      final height = decoded['height'];
+      return CanvasSelectEvent(
+        type: type,
+        id: id is String ? id : null,
+        contentHeight: height is num ? height.toDouble() : null,
+      );
     } on FormatException {
       return null;
     }

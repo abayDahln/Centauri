@@ -7,7 +7,6 @@ import '../../../../app/config/theme.dart';
 import '../../data/services/canvas_webview_service.dart';
 import '../../data/services/canvas_webview_service_factory.dart';
 import '../../domain/board_frame.dart';
-import '../../domain/viewport_mode.dart';
 import '../provider/canvas_provider.dart';
 
 /// Satu frame di board: kartu mengambang berisi WebView yang merender HTML
@@ -17,14 +16,12 @@ class BoardFrameView extends ConsumerStatefulWidget {
     super.key,
     required this.frame,
     required this.scale,
-    required this.viewport,
   });
 
   final BoardFrame frame;
 
-  /// Skala board saat ini (untuk mengompensasi lebar viewport WebView).
+  /// Skala board saat ini (dipakai untuk drag frame yang akurat).
   final double scale;
-  final ViewportMode viewport;
 
   @override
   ConsumerState<BoardFrameView> createState() => _BoardFrameViewState();
@@ -44,9 +41,13 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
   Future<void> _initialize() async {
     try {
       await _service.init();
-      await _service.setViewportWidth(widget.viewport.width);
-      await _service.setZoom(1 / widget.scale);
-      await _service.renderHtml(widget.frame.html.isEmpty ? null : widget.frame.html);
+      // Konten dirender tepat selebar frame dan tanpa zoom internal.
+      // Skala visual ditangani oleh Transform board, bukan oleh WebView.
+      await _service.setViewportWidth(widget.frame.size.width);
+      await _service.setZoom(1);
+      await _service.renderHtml(
+        widget.frame.html.isEmpty ? null : widget.frame.html,
+      );
       _subscription = _service.selectionEvents.listen(_onEvent);
     } catch (_) {
       // WebView gagal init (mis. runtime WebView2 tidak tersedia).
@@ -56,6 +57,13 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
 
   void _onEvent(CanvasSelectEvent event) {
     final notifier = ref.read(canvasProvider.notifier);
+    if (event.type == 'resize') {
+      final height = event.contentHeight;
+      if (height != null && height > 0) {
+        notifier.setFrameContentHeight(widget.frame.id, height);
+      }
+      return;
+    }
     if (widget.frame.id != ref.read(canvasProvider).activeFrameId) return;
     if (event.type == 'select') {
       notifier.selectNodeFromCanvas(event.id);
@@ -72,11 +80,8 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
         widget.frame.html.isEmpty ? null : widget.frame.html,
       );
     }
-    if (oldWidget.viewport != widget.viewport) {
-      _service.setViewportWidth(widget.viewport.width);
-    }
-    if (oldWidget.scale != widget.scale) {
-      _service.setZoom(1 / widget.scale);
+    if (oldWidget.frame.size.width != widget.frame.size.width) {
+      _service.setViewportWidth(widget.frame.size.width);
     }
   }
 

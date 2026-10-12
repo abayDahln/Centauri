@@ -34,7 +34,6 @@ class BoardSurface extends ConsumerWidget {
                 key: ValueKey(frame.id),
                 frame: frame,
                 scale: state.scale,
-                viewport: state.viewport,
               ),
           ],
         ),

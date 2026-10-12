@@ -117,7 +117,8 @@ class AiApiService {
         data: {
           'model': provider.model,
           'messages': messages,
-          'temperature': 0.2,
+          'temperature': AppConstants.designTemperature,
+          'max_tokens': AppConstants.designMaxTokens,
           // Minta respons tunggal. Sebagian gateway tetap membalas SSE;
           // keduanya ditangani di bawah.
           'stream': false,

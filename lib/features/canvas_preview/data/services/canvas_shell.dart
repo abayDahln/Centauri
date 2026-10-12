@@ -126,6 +126,7 @@ const String canvasShellHtml = '''
     if (!doc || !doc.body) return;
     hideFrameScrollbars(doc);
     ensureOverlay(doc);
+    reportContentSize(doc);
 
     doc.addEventListener('mouseover', function (e) {
       var id = idFromEvent(e);
@@ -160,6 +161,18 @@ const String canvasShellHtml = '''
     var doc = frameDoc();
     if (!doc) return;
     if (selectedId) placeBox(selectBox, rectOf(doc, selectedId), doc);
+  }
+
+  // Ukur tinggi konten dokumen lalu laporkan ke Dart agar frame bisa
+  // menyesuaikan tinggi (konten utuh, tanpa scrollbar).
+  function reportContentSize(doc) {
+    try {
+      var height = Math.max(
+        doc.body.scrollHeight,
+        doc.documentElement ? doc.documentElement.scrollHeight : 0
+      );
+      if (height > 0) sendToHost({ type: 'resize', height: height });
+    } catch (e) { /* abaikan */ }
   }
 
   // Sembunyikan scrollbar dokumen yang dirender agar UI tampil bersih.

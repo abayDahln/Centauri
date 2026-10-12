@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:centauri/features/history/domain/project.dart';
+import 'package:centauri/features/prompt_editor/domain/attachment.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -56,6 +59,41 @@ void main() {
       expect(renamed.id, 'p1');
       expect(renamed.title, 'Baru');
       expect(renamed.frames.length, 1);
+    });
+
+    test('round-trips message attachments', () {
+      final project = Project(
+        id: 'p2',
+        title: 'With image',
+        messages: [
+          ProjectMessage(
+            role: 'user',
+            text: 'buat ulang design ini',
+            kind: 'chat',
+            attachmentNames: const ['ref.png'],
+            attachments: [
+              Attachment(
+                id: 'a1',
+                name: 'ref.png',
+                mimeType: 'image/png',
+                bytes: Uint8List.fromList([1, 2, 3, 4]),
+              ),
+            ],
+          ),
+        ],
+        frames: const [],
+        activeFrameId: null,
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+
+      final restored = Project.fromJson(project.toJson());
+      final message = restored.messages.single;
+      expect(message.attachmentNames, ['ref.png']);
+      expect(message.attachments.length, 1);
+      expect(message.attachments.first.name, 'ref.png');
+      expect(message.attachments.first.bytes, [1, 2, 3, 4]);
+      expect(message.attachments.first.mimeType, 'image/png');
     });
   });
 }

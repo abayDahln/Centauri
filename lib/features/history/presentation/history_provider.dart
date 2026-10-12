@@ -149,6 +149,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
             role: _roleFromName(m.role),
             text: m.text,
             kind: m.kind == 'ui' ? ChatMessageKind.ui : ChatMessageKind.chat,
+            attachmentNames: m.attachmentNames,
+            attachments: m.attachments,
           ),
         )
         .toList();

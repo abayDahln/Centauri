@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/config/theme.dart';
 import '../../canvas_preview/presentation/provider/canvas_provider.dart';
+import '../../canvas_preview/presentation/widgets/attachment_preview_dialog.dart';
 import '../../canvas_preview/presentation/widgets/markdown_message.dart';
 
 /// Panel riwayat percakapan (read-only). Hanya menampilkan pesan user dan AI.
@@ -143,15 +144,66 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
               color: AppColors.accentPrimary,
               borderRadius: AppRadius.md,
             ),
-            child: Text(
-              message.text,
-              style: const TextStyle(
-                fontFamily: AppFonts.uiFamily,
-                fontFamilyFallback: AppFonts.uiFallback,
-                fontSize: 12.5,
-                height: 1.5,
-                color: Colors.white,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (message.attachments.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: message.attachments
+                        .map(
+                          (a) => GestureDetector(
+                            onTap: () => showAttachmentPreview(context, a),
+                            child: ClipRRect(
+                              borderRadius: AppRadius.sm,
+                              child: a.isText
+                                  ? Container(
+                                      width: 72,
+                                      height: 52,
+                                      color: Colors.white24,
+                                      alignment: Alignment.center,
+                                      child: const Icon(
+                                        Icons.description_outlined,
+                                        size: 20,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Image.memory(
+                                      a.bytes,
+                                      width: 72,
+                                      height: 52,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Container(
+                                        width: 72,
+                                        height: 52,
+                                        color: Colors.white24,
+                                        alignment: Alignment.center,
+                                        child: const Icon(
+                                          Icons.broken_image_outlined,
+                                          size: 20,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 6),
+                ],
+                Text(
+                  message.text,
+                  style: const TextStyle(
+                    fontFamily: AppFonts.uiFamily,
+                    fontFamilyFallback: AppFonts.uiFallback,
+                    fontSize: 12.5,
+                    height: 1.5,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ),
         );

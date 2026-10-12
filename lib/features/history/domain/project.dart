@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 
 import '../../canvas_preview/presentation/provider/canvas_provider.dart';
+import '../../prompt_editor/domain/attachment.dart';
 
 /// Satu percakapan/proyek yang tersimpan: berisi riwayat pesan dan frame UI
 /// di board. Analog dengan "chat" di Gemini.
@@ -53,22 +54,35 @@ class ProjectMessage {
     required this.role,
     required this.text,
     required this.kind,
+    this.attachmentNames = const [],
+    this.attachments = const [],
   });
 
   final String role; // user | assistant | error
   final String text; // chat | ui
   final String kind;
+  final List<String> attachmentNames;
+  final List<Attachment> attachments;
 
   Map<String, dynamic> toJson() => {
     'role': role,
     'text': text,
     'kind': kind,
+    'attachmentNames': attachmentNames,
+    'attachments': attachments.map((a) => a.toJson()).toList(),
   };
 
   static ProjectMessage fromJson(Map<String, dynamic> json) => ProjectMessage(
     role: json['role'] as String? ?? 'user',
     text: json['text'] as String? ?? '',
     kind: json['kind'] as String? ?? 'chat',
+    attachmentNames:
+        (json['attachmentNames'] as List<dynamic>? ?? [])
+            .map((e) => e as String)
+            .toList(),
+    attachments: (json['attachments'] as List<dynamic>? ?? [])
+        .map((a) => Attachment.fromJson(a as Map<String, dynamic>))
+        .toList(),
   );
 }
 
@@ -169,6 +183,8 @@ class Project {
               role: m.role.name,
               text: m.text,
               kind: m.kind.name,
+              attachmentNames: m.attachmentNames,
+              attachments: m.attachments,
             ),
           )
           .toList(),

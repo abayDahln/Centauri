@@ -3,8 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  desktop_drop
   flutter_secure_storage_windows
+  irondash_engine_context
   screen_retriever_windows
+  super_native_extensions
   webview_windows
   window_manager
 )

@@ -2,103 +2,180 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+/// Satu layar UI hasil generate.
+@immutable
+class UiScreen {
+  const UiScreen({required this.title, required this.html});
+
+  /// Judul layar (dari heading sebelum blok, mis. "Home"); boleh kosong.
+  final String title;
+
+  /// HTML self-contained layar ini.
+  final String html;
+
+  Map<String, dynamic> toJson() => {'title': title, 'html': html};
+
+  static UiScreen fromJson(Map<String, dynamic> json) => UiScreen(
+    title: json['title'] as String? ?? '',
+    html: json['html'] as String? ?? '',
+  );
+}
+
 /// Jenis balasan AI.
-/// - [ui]   : dokumen HTML self-contained siap dirender di canvas.
+/// - [ui]   : minimal satu dokumen HTML siap dirender di canvas.
 /// - [chat] : jawaban percakapan teks biasa (tanpa UI).
 enum AiResponseKind { ui, chat }
 
-/// Balasan AI yang sudah diklasifikasi. Dipisah dari [html_parser] supaya
-/// canvas bisa merender mode chat maupun UI secara dinamis.
+/// Balasan AI yang sudah diklasifikasi.
 @immutable
 class AiResponse {
   const AiResponse._({
     required this.kind,
-    this.html,
+    this.screens = const [],
     this.text,
+    this.note,
   });
 
-  const AiResponse.ui(String html)
-      : this._(kind: AiResponseKind.ui, html: html);
+  /// Satu layar UI.
+  AiResponse.ui(String html, {String? title, String? note})
+    : this._(
+        kind: AiResponseKind.ui,
+        screens: [UiScreen(title: title ?? '', html: html)],
+        note: note,
+      );
 
+  /// Beberapa layar UI sekaligus.
+  // ignore: prefer_const_constructors_in_immutables
+  AiResponse.screens(List<UiScreen> screens, {String? note})
+    : this._(kind: AiResponseKind.ui, screens: screens, note: note);
+
+  /// Jawaban percakapan biasa.
   const AiResponse.chat(String text)
-      : this._(kind: AiResponseKind.chat, text: text);
+    : this._(kind: AiResponseKind.chat, text: text);
 
   final AiResponseKind kind;
 
-  /// HTML self-contained (hanya untuk [AiResponseKind.ui]).
-  final String? html;
+  /// Layar-layar UI (hanya untuk [AiResponseKind.ui]).
+  final List<UiScreen> screens;
 
-  /// Teks jawaban (hanya untuk [AiResponseKind.chat]).
+  /// Teks jawaban percakapan (hanya untuk [AiResponseKind.chat]).
   final String? text;
+
+  /// Catatan penjelasan yang menyertai hasil UI (PART 1 dari MODE B).
+  final String? note;
 
   bool get isUi => kind == AiResponseKind.ui;
   bool get isChat => kind == AiResponseKind.chat;
 
+  /// Layar pertama (untuk kompatibilitas/back-compat).
+  String? get html => screens.isEmpty ? null : screens.first.html;
+
   Map<String, dynamic> toJson() => {
     'kind': kind.name,
-    'html': html,
+    'screens': screens.map((s) => s.toJson()).toList(),
     'text': text,
+    'note': note,
   };
 
   static AiResponse fromJson(Map<String, dynamic> json) {
     final kind = json['kind'] == 'ui' ? AiResponseKind.ui : AiResponseKind.chat;
     return AiResponse._(
       kind: kind,
-      html: json['html'] as String?,
+      screens: (json['screens'] as List<dynamic>? ?? [])
+          .map((s) => UiScreen.fromJson(s as Map<String, dynamic>))
+          .toList(),
       text: json['text'] as String?,
+      note: json['note'] as String?,
     );
   }
 }
 
-/// Klasifikasi balasan AI murni (dijalankan di isolate via [classifyAiResponseInIsolate]).
+/// Klasifikasi balasan AI murni (dijalankan di isolate via
+/// [classifyAiResponseInIsolate]).
 ///
-/// Aturan:
-/// 1. Fenced ```html / ```xml block -> UI.
-/// 2. Ada dokumen HTML (`<!doctype` / `<html`) -> UI.
-/// 3. `{ "html": ... }` -> UI.
-/// 4. Selain itu -> chat (teks biasa).
+/// Aturan MODE B: balasan boleh berisi catatan teks (PART 1) lalu satu atau
+/// lebih blok ```html (PART 2). Semua blok HTML diambil sebagai layar.
+/// Bila tidak ada HTML sama sekali -> chat biasa.
 AiResponse classifyAiResponse(String rawResponse) {
   final raw = rawResponse.trim();
   if (raw.isEmpty) {
-    return const AiResponse.chat('Respons AI kosong. Coba kirim ulang prompt Anda.');
+    return const AiResponse.chat(
+      'Respons AI kosong. Coba kirim ulang prompt Anda.',
+    );
   }
 
-  // 1. Fenced code block (```html / ```xml / ```).
-  final fenceMatch = RegExp(
-    r'```(?:html|xml|HTML|XML)?\s*([\s\S]*?)```',
-  ).firstMatch(raw);
-  if (fenceMatch != null) {
-    final body = fenceMatch.group(1)!.trim();
-    if (_looksLikeHtml(body)) {
-      return AiResponse.ui(_ensureDoctype(body));
-    }
-    // Fence berisi teks/kode non-HTML -> tetap chat, pakai teks asli.
+  // 1. Kumpulkan semua fence berisi HTML (satu per layar).
+  final fenceRegex = RegExp(r'```[a-zA-Z]*[ \t]*\n?([\s\S]*?)```');
+  final screens = <UiScreen>[];
+  final matches = fenceRegex.allMatches(raw).toList();
+  for (var i = 0; i < matches.length; i++) {
+    final match = matches[i];
+    final body = match.group(1)!.trim();
+    if (!_looksLikeHtml(body)) continue;
+    screens.add(
+      UiScreen(
+        title: _titleBeforeFence(raw, match.start),
+        html: _ensureDoctype(body),
+      ),
+    );
   }
 
-  // 2. Dokumen HTML mentah di mana pun dalam respons.
+  if (screens.isNotEmpty) {
+    return AiResponse.screens(
+      screens,
+      note: _noteText(raw, matches.isEmpty ? 0 : matches.first.start),
+    );
+  }
+
+  // 2. Dokumen HTML mentah tanpa fence.
   final lower = raw.toLowerCase();
   final doctypeIndex = lower.indexOf('<!doctype html');
   final htmlIndex = lower.indexOf('<html');
-  final startIndex = doctypeIndex >= 0
-      ? doctypeIndex
-      : htmlIndex;
+  final startIndex = doctypeIndex >= 0 ? doctypeIndex : htmlIndex;
   if (startIndex >= 0) {
     var htmlPart = raw.substring(startIndex);
     final endIndex = htmlPart.toLowerCase().lastIndexOf('</html>');
     if (endIndex >= 0) {
       htmlPart = htmlPart.substring(0, endIndex + '</html>'.length);
     }
-    return AiResponse.ui(_ensureDoctype(htmlPart.trim()));
+    return AiResponse.ui(
+      _ensureDoctype(htmlPart.trim()),
+      note: _noteText(raw, startIndex),
+    );
   }
 
-  // 3. JSON wrapper {"html": "..."}.
+  // 3. JSON wrapper {"html": "..."} atau {"screens": [...]}.
   if (raw.startsWith('{')) {
     final decoded = _tryDecodeJson(raw);
     if (decoded != null) {
+      final screensJson = decoded['screens'];
+      if (screensJson is List && screensJson.isNotEmpty) {
+        final list = <UiScreen>[];
+        for (final item in screensJson) {
+          if (item is Map<String, dynamic>) {
+            final screen = UiScreen.fromJson(item);
+            if (_looksLikeHtml(screen.html)) {
+              list.add(UiScreen(
+                title: screen.title,
+                html: _ensureDoctype(screen.html.trim()),
+              ));
+            }
+          }
+        }
+        if (list.isNotEmpty) {
+          return AiResponse.screens(
+            list,
+            note: decoded['note'] as String? ?? decoded['text'] as String?,
+          );
+        }
+      }
       for (final key in const ['html', 'code', 'output', 'result']) {
         final value = decoded[key];
         if (value is String && _looksLikeHtml(value)) {
-          return AiResponse.ui(_ensureDoctype(value.trim()));
+          return AiResponse.ui(
+            _ensureDoctype(value.trim()),
+            note: decoded['note'] as String?,
+          );
         }
       }
       for (final key in const ['text', 'message', 'content', 'answer']) {
@@ -118,14 +195,47 @@ AiResponse classifyAiResponse(String rawResponse) {
 Future<AiResponse> classifyAiResponseInIsolate(String rawResponse) =>
     compute(classifyAiResponse, rawResponse);
 
+/// Ambil heading singkat tepat sebelum sebuah fence (mis. "### Home").
+String _titleBeforeFence(String raw, int fenceStart) {
+  final before = raw.substring(0, fenceStart);
+  final lines = before.split('\n');
+  for (var i = lines.length - 1; i >= 0 && i >= lines.length - 4; i--) {
+    final line = lines[i].trim();
+    if (line.isEmpty) continue;
+    return line.replaceAll(RegExp(r'^#+\s*'), '').replaceAll(':', '').trim();
+  }
+  return '';
+}
+
+/// Teks catatan (penjelasan) sebelum bagian HTML pertama.
+String? _noteText(String raw, int firstHtmlIndex) {
+  if (firstHtmlIndex <= 0) return null;
+  var before = raw.substring(0, firstHtmlIndex).trim();
+  if (before.endsWith('```')) {
+    before = before.substring(0, before.length - 3).trim();
+  }
+  // Buang heading layar pertama bila ada di ujung (mis. "### Home").
+  final lines = before.split('\n');
+  while (lines.isNotEmpty) {
+    final last = lines.last.trim();
+    if (last.isEmpty || RegExp(r'^#+\s').hasMatch(last)) {
+      lines.removeLast();
+    } else {
+      break;
+    }
+  }
+  final note = lines.join('\n').trim();
+  return note.isEmpty ? null : note;
+}
+
+/// Apakah teks ini dokumen HTML yang lengkap (layak jadi satu layar).
+/// Snippet parsial (mis. hanya `<div>`) sengaja TIDAK dihitung agar potongan
+/// kode di jawaban chat tidak salah dirender sebagai UI.
 bool _looksLikeHtml(String text) {
   final lower = text.toLowerCase();
   return lower.contains('<!doctype') ||
       lower.contains('<html') ||
-      lower.contains('<body') ||
-      (lower.contains('<div') && lower.contains('>')) ||
-      (lower.contains('<section') && lower.contains('>')) ||
-      (lower.contains('<style') && lower.contains('>'));
+      lower.contains('<body');
 }
 
 String _ensureDoctype(String html) {

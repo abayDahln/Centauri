@@ -33,6 +33,12 @@ class AppConstants {
   static const String testConnectionPath = '/models';
   static const String chatCompletionsPath = '/chat/completions';
 
+  // Parameter generasi UI. Temperature lebih tinggi dari chat agar model
+  // berani berkreasi desain (bukan output dasar yang seragam). max_tokens
+  // besar agar UI kaya tidak terpotong; sebagian provider mengabaikannya.
+  static const double designTemperature = 0.7;
+  static const int designMaxTokens = 16000;
+
   // Preset endpoint umum untuk helper di UI.
   static const Map<String, String> knownProviderPresets = {
     'OpenAI': 'https://api.openai.com/v1',

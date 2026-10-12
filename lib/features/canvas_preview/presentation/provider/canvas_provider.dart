@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../prompt_editor/domain/ai_response.dart';
+import '../../../prompt_editor/domain/attachment.dart';
 import '../../../prompt_editor/domain/prompt_templates.dart';
 import '../../../provider_config/data/datasources/ai_api_service.dart';
 import '../../../provider_config/presentation/providers/provider_config_provider.dart';
@@ -22,11 +23,20 @@ class CanvasMessage {
     required this.role,
     required this.text,
     this.kind = ChatMessageKind.chat,
+    this.attachmentNames = const [],
+    this.attachments = const [],
   });
 
   final ChatRole role;
   final String text;
   final ChatMessageKind kind;
+
+  /// Nama lampiran yang menyertai pesan ini (dipakai untuk persistensi).
+  final List<String> attachmentNames;
+
+  /// Lampiran lengkap (in-memory) agar bisa ditampilkan & dipratinjau di chat.
+  /// Tidak disimpan ke riwayat untuk menghemat ruang.
+  final List<Attachment> attachments;
 }
 
 enum ChatMessageKind { chat, ui }
@@ -67,6 +77,7 @@ class CanvasState {
     this.generationStartedAt,
     this.showGrid = true,
     this.status = AiStatus.idle,
+    this.attachments = const [],
   });
 
   /// Semua frame di board (urut kronologis).
@@ -96,6 +107,9 @@ class CanvasState {
 
   /// Status proses AI saat ini (untuk indikator live).
   final AiStatus status;
+
+  /// Lampiran yang menunggu dikirim bersama prompt berikutnya.
+  final List<Attachment> attachments;
   BoardFrame? get activeFrame {
     if (activeFrameId == null) return null;
     for (final frame in frames) {
@@ -136,6 +150,7 @@ class CanvasState {
     bool clearGenerationStart = false,
     bool? showGrid,
     AiStatus? status,
+    List<Attachment>? attachments,
   }) {
     return CanvasState(
       frames: frames ?? this.frames,
@@ -159,6 +174,7 @@ class CanvasState {
           : (generationStartedAt ?? this.generationStartedAt),
       showGrid: showGrid ?? this.showGrid,
       status: status ?? this.status,
+      attachments: attachments ?? this.attachments,
     );
   }
 }
@@ -356,6 +372,22 @@ class CanvasNotifier extends Notifier<CanvasState> {
     );
   }
 
+  /// Sesuaikan tinggi frame agar kontennya utuh (tanpa scrollbar).
+  /// Lebar tetap; tinggi hanya tumbuh, tidak menyusut di bawah ukuran awal.
+  void setFrameContentHeight(String id, double contentHeight) {
+    const minHeight = 200.0;
+    const maxHeight = 6000.0;
+    final height = contentHeight.clamp(minHeight, maxHeight);
+    final frames = state.frames.map((f) {
+      if (f.id != id) return f;
+      // Beri sedikit ruang ekstra agar tepi konten tidak mepet.
+      final target = height + 2;
+      if ((target - f.size.height).abs() < 4) return f;
+      return f.copyWith(size: Size(f.size.width, target));
+    }).toList();
+    state = state.copyWith(frames: frames);
+  }
+
   void deleteFrame(String id) {
     final frames = _normalizeFrames(
       state.frames.where((f) => f.id != id).toList(),
@@ -458,6 +490,35 @@ class CanvasNotifier extends Notifier<CanvasState> {
     state = state.copyWith(selectedToken: token);
   }
 
+  // ---------------------------------------------------------- attachments --
+
+  /// Tambah lampiran (abaikan duplikat berdasarkan nama + ukuran).
+  /// Mengembalikan pesan error bila kuota/ukuran tidak valid, null bila sukses.
+  String? addAttachment(Attachment attachment) {
+    final duplicate = state.attachments.any(
+      (a) => a.name == attachment.name && a.sizeBytes == attachment.sizeBytes,
+    );
+    if (duplicate) return null;
+    if (state.attachments.length >= 6) {
+      return 'Maksimal 6 lampiran per prompt.';
+    }
+    state = state.copyWith(
+      attachments: [...state.attachments, attachment],
+    );
+    return null;
+  }
+
+  void removeAttachment(String id) {
+    state = state.copyWith(
+      attachments: state.attachments.where((a) => a.id != id).toList(),
+    );
+  }
+
+  void clearAttachments() {
+    if (state.attachments.isEmpty) return;
+    state = state.copyWith(attachments: const []);
+  }
+
   void selectNode(String? id) {
     if (id == null) {
       if (state.selectedNodeId == null) return;
@@ -510,6 +571,9 @@ class CanvasNotifier extends Notifier<CanvasState> {
         ? trimmed
         : '$trimmed\n\n[Design Token: ${designToken.label}] ${designToken.promptFragment}';
 
+    // Lampiran yang dikirim bersama prompt ini.
+    final pendingAttachments = state.attachments;
+
     // Jangan buat frame dulu: kita belum tahu apakah AI akan menjawab teks
     // (chat) atau membuat UI. Frame hanya dibuat setelah balasan terdeteksi UI,
     // supaya board tidak sempat tampil dengan placeholder yang batal.
@@ -519,17 +583,25 @@ class CanvasNotifier extends Notifier<CanvasState> {
       status: AiStatus.thinking,
       messages: [
         ...state.messages,
-        CanvasMessage(role: ChatRole.user, text: userText),
+        CanvasMessage(
+          role: ChatRole.user,
+          text: userText,
+          attachmentNames: pendingAttachments.map((a) => a.name).toList(),
+          attachments: pendingAttachments,
+        ),
       ],
     );
 
     try {
-      final payload = _buildMessagesPayload();
+      final payload = _buildMessagesPayload(attachments: pendingAttachments);
       final raw = await ref
           .read(aiApiServiceProvider)
           .generateUI(provider: activeProvider, messages: payload);
       _setStatus(AiStatus.responding);
       final response = await classifyAiResponseInIsolate(raw);
+
+      // Lampiran sudah terpakai; kosongkan setelah permintaan dikirim.
+      state = state.copyWith(attachments: const []);
 
       if (response.isChat) {
         // Bukan permintaan UI: cukup tampilkan di percakapan, board tak tersentuh.
@@ -549,42 +621,71 @@ class CanvasNotifier extends Notifier<CanvasState> {
         return;
       }
 
-      // Balasan UI: baru sekarang buat frame-nya di board.
+      // Balasan UI: buat satu frame per layar.
       _setStatus(AiStatus.rendering);
-      final tree = await buildDomTreeInIsolate(response.html!);
-      final frameId = 'frame_${_frameCounter++}';
       final size = _sizeFor(viewport);
-      final frame = BoardFrame(
-        id: frameId,
-        title: _titleFromPrompt(trimmed),
-        html: tree.stampedHtml,
-        offset: _nextFrameOffset(size),
-        size: size,
-        domTree: tree,
-        isActive: true,
-      );
+      final baseTitle = _titleFromPrompt(trimmed);
+      final isFirstOnBoard = state.frames.isEmpty;
+
+      final newFrames = <BoardFrame>[];
+      var offset = _nextFrameOffset(size);
+      for (var i = 0; i < response.screens.length; i++) {
+        final screen = response.screens[i];
+        final tree = await buildDomTreeInIsolate(screen.html);
+        final frameId = 'frame_${_frameCounter++}';
+        final title = screen.title.isNotEmpty
+            ? screen.title
+            : (response.screens.length > 1
+                  ? '$baseTitle ${i + 1}'
+                  : baseTitle);
+        newFrames.add(
+          BoardFrame(
+            id: frameId,
+            title: title,
+            html: tree.stampedHtml,
+            offset: offset,
+            size: size,
+            domTree: tree,
+            isActive: i == 0,
+          ),
+        );
+        offset = Offset(offset.dx + size.width + _gap, offset.dy);
+      }
 
       final seeded = _normalizeFrames([
         ...state.frames.map((f) => f.copyWith(isActive: false)),
-        frame,
+        ...newFrames,
       ]);
+
+      // Catatan penjelasan AI (PART 1) tampil sebagai pesan chat.
+      final note = response.note?.trim();
+      final messages = [...state.messages];
+      if (note != null && note.isNotEmpty) {
+        messages.add(
+          CanvasMessage(
+            role: ChatRole.assistant,
+            kind: ChatMessageKind.chat,
+            text: note,
+          ),
+        );
+      }
+      messages.add(
+        CanvasMessage(
+          role: ChatRole.assistant,
+          kind: ChatMessageKind.ui,
+          text: response.screens.first.html,
+        ),
+      );
 
       state = state.copyWith(
         frames: seeded,
-        activeFrameId: frameId,
+        activeFrameId: newFrames.first.id,
         isGenerating: false,
         clearGenerationStart: true,
         status: AiStatus.idle,
-        // Frame pertama: pusatkan board agar hasilnya langsung terlihat.
-        panOffset: state.frames.isEmpty ? const Offset(60, 40) : null,
-        messages: [
-          ...state.messages,
-          CanvasMessage(
-            role: ChatRole.assistant,
-            kind: ChatMessageKind.ui,
-            text: response.html!,
-          ),
-        ],
+        // Frame pertama di board: pusatkan agar hasilnya langsung terlihat.
+        panOffset: isFirstOnBoard ? const Offset(60, 40) : null,
+        messages: messages,
       );
     } on ApiConnectionException catch (e) {
       _failGeneration(e.message);
@@ -615,18 +716,66 @@ class CanvasNotifier extends Notifier<CanvasState> {
     return words.length > 42 ? '${words.substring(0, 42)}...' : words;
   }
 
-  List<Map<String, dynamic>> _buildMessagesPayload() {
-    return [
+  List<Map<String, dynamic>> _buildMessagesPayload({
+    List<Attachment> attachments = const [],
+  }) {
+    final history = state.messages
+        .where((m) => m.role != ChatRole.error)
+        .toList();
+
+    final payload = <Map<String, dynamic>>[
       {'role': 'system', 'content': uiSystemPrompt},
-      ...state.messages
-          .where((m) => m.role != ChatRole.error)
-          .map(
-            (m) => {
-              'role': m.role == ChatRole.user ? 'user' : 'assistant',
-              'content': m.text,
-            },
-          ),
     ];
+
+    for (var i = 0; i < history.length; i++) {
+      final message = history[i];
+      final isLastUser =
+          i == history.length - 1 && message.role == ChatRole.user;
+
+      if (isLastUser && attachments.isNotEmpty) {
+        // Pesan terakhir dari user + lampiran -> bentuk multimodal content.
+        payload.add({
+          'role': 'user',
+          'content': _buildVisionContent(message.text, attachments),
+        });
+      } else {
+        payload.add({
+          'role': message.role == ChatRole.user ? 'user' : 'assistant',
+          'content': message.text,
+        });
+      }
+    }
+
+    return payload;
+  }
+
+  /// Susun content multimodal OpenAI: teks + image_url (data URL) untuk gambar,
+  /// dan teks inline untuk format berbasis teks (svg/html).
+  List<Map<String, dynamic>> _buildVisionContent(
+    String text,
+    List<Attachment> attachments,
+  ) {
+    final content = <Map<String, dynamic>>[
+      {'type': 'text', 'text': text},
+    ];
+
+    for (final attachment in attachments) {
+      if (attachment.isText) {
+        content.add({
+          'type': 'text',
+          'text':
+              '\n\n--- Attached file: ${attachment.name} ---\n'
+              '${attachment.textContent}',
+        });
+      } else {
+        content.add({
+          'type': 'image_url',
+          'image_url': {'url': attachment.dataUrl},
+        });
+      }
+    }
+
+    return content;
   }
 
   void _appendMessage(CanvasMessage message) {
