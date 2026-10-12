@@ -91,27 +91,20 @@ void main() {
     expect(notifier.canZoomOut, isFalse);
   });
 
-  test('board has a default size even when empty', () {
-    final size = container.read(canvasProvider).boardSize;
-    expect(size.width, greaterThan(0));
-    expect(size.height, greaterThan(0));
+  test('board can pan freely when empty (infinite canvas)', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+    notifier.panBy(const Offset(5000, 4000));
+    expect(container.read(canvasProvider).panOffset, const Offset(5000, 4000));
   });
 
-  test('pan is clamped so the board cannot be lost off-screen', () {
+  test('pan is clamped once frames exist so content stays reachable', () {
     final notifier = container.read(canvasProvider.notifier);
     notifier.reportViewport(const Size(1000, 700));
 
-    // Coba dorong jauh ke kanan-bawah.
+    // Tanpa frame: bebas.
     notifier.panBy(const Offset(100000, 100000));
-    final far = container.read(canvasProvider).panOffset;
-    expect(far.dx, lessThanOrEqualTo(1000));
-    expect(far.dy, lessThanOrEqualTo(700));
-
-    // Coba dorong jauh ke kiri-atas.
-    notifier.panBy(const Offset(-100000, -100000));
-    final back = container.read(canvasProvider).panOffset;
-    expect(back.dx, greaterThan(-100000));
-    expect(back.dy, greaterThan(-100000));
+    expect(container.read(canvasProvider).panOffset.dx, 100000);
   });
 
   test('zoomAt keeps the focal point stable', () {

@@ -85,7 +85,6 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
                         spacing: _dotSpacing,
                         radius: _dotRadius,
                         showGrid: state.showGrid,
-                        boardSize: state.boardSize,
                       ),
                     ),
                   ),
@@ -115,7 +114,6 @@ class _DotGridPainter extends CustomPainter {
     required this.spacing,
     required this.radius,
     required this.showGrid,
-    required this.boardSize,
   });
 
   final Offset pan;
@@ -123,55 +121,30 @@ class _DotGridPainter extends CustomPainter {
   final double spacing;
   final double radius;
   final bool showGrid;
-  final Size boardSize;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Latar luar board (area tak terpakai).
+    // Latar board (infinite): satu warna, dot grid mengikuti pan/zoom.
     canvas.drawRect(
       Offset.zero & size,
-      Paint()..color = const Color(0xFFE6E8EC),
-    );
-
-    // Area board (batas nyata yang tumbuh otomatis).
-    final boardRect = Rect.fromLTWH(
-      pan.dx,
-      pan.dy,
-      boardSize.width * scale,
-      boardSize.height * scale,
-    );
-    canvas.drawRect(
-      boardRect,
       Paint()..color = const Color(0xFFEDEFF3),
     );
 
-    if (showGrid) {
-      final step = spacing * scale;
-      if (step >= 8) {
-        canvas.save();
-        canvas.clipRect(boardRect);
-        final paint = Paint()..color = const Color(0xFFC7CBD3);
-        final dotRadius = radius * scale.clamp(0.6, 2.2);
+    if (!showGrid) return;
 
-        final startX = pan.dx % step;
-        final startY = pan.dy % step;
-        for (var x = startX; x < size.width; x += step) {
-          for (var y = startY; y < size.height; y += step) {
-            canvas.drawCircle(Offset(x, y), dotRadius, paint);
-          }
-        }
-        canvas.restore();
+    final step = spacing * scale;
+    if (step < 8) return; // terlalu rapat: lewati agar tidak ramai.
+
+    final paint = Paint()..color = const Color(0xFFC7CBD3);
+    final dotRadius = radius * scale.clamp(0.6, 2.2);
+
+    final startX = pan.dx % step;
+    final startY = pan.dy % step;
+    for (var x = startX; x < size.width; x += step) {
+      for (var y = startY; y < size.height; y += step) {
+        canvas.drawCircle(Offset(x, y), dotRadius, paint);
       }
     }
-
-    // Garis tepi board.
-    canvas.drawRect(
-      boardRect,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = AppColors.borderStrong,
-    );
   }
 
   @override
@@ -179,6 +152,5 @@ class _DotGridPainter extends CustomPainter {
       old.pan != pan ||
       old.scale != scale ||
       old.showGrid != showGrid ||
-      old.spacing != spacing ||
-      old.boardSize != boardSize;
+      old.spacing != spacing;
 }

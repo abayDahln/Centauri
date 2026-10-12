@@ -19,12 +19,17 @@ const String canvasShellHtml = '''
     margin: 0;
     padding: 0;
     height: 100%;
+    width: 100%;
     background: #FFFFFF;
-    overflow: auto;
+    /* Tanpa scrollbar di shell: frame mengisi penuh area. */
+    overflow: hidden;
   }
   #stage {
     margin: 0 auto;
     height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
     transition: max-width 300ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   #frame {
@@ -33,7 +38,11 @@ const String canvasShellHtml = '''
     border: 0;
     display: block;
     background: #FFFFFF;
+    /* Sembunyikan scrollbar di dalam dokumen yang dirender. */
+    overflow: hidden;
   }
+  /* Sembunyikan scrollbar webkit di dalam frame. */
+  ::-webkit-scrollbar { width: 0; height: 0; }
 </style>
 </head>
 <body>
@@ -115,6 +124,7 @@ const String canvasShellHtml = '''
   function attachPicker() {
     var doc = frameDoc();
     if (!doc || !doc.body) return;
+    hideFrameScrollbars(doc);
     ensureOverlay(doc);
 
     doc.addEventListener('mouseover', function (e) {
@@ -150,6 +160,22 @@ const String canvasShellHtml = '''
     var doc = frameDoc();
     if (!doc) return;
     if (selectedId) placeBox(selectBox, rectOf(doc, selectedId), doc);
+  }
+
+  // Sembunyikan scrollbar dokumen yang dirender agar UI tampil bersih.
+  function hideFrameScrollbars(doc) {
+    try {
+      var style = doc.getElementById('centauri-scroll-fix');
+      if (!style) {
+        style = doc.createElement('style');
+        style.id = 'centauri-scroll-fix';
+        doc.head.appendChild(style);
+      }
+      style.textContent =
+        'html{overflow:hidden;}body{overflow:hidden;}' +
+        '::-webkit-scrollbar{width:0;height:0;display:none;}' +
+        '*{scrollbar-width:none;-ms-overflow-style:none;}';
+    } catch (e) { /* abaikan */ }
   }
 
   function renderCanvas(html) {

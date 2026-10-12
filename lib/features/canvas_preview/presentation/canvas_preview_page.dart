@@ -10,6 +10,7 @@ import 'provider/canvas_provider.dart';
 import 'widgets/ai_status_indicator.dart';
 import 'widgets/board_canvas.dart';
 import 'widgets/chat_landing.dart';
+import 'widgets/chat_side_panel.dart';
 import 'widgets/code_panel.dart';
 import 'widgets/layers_panel.dart';
 import 'widgets/prompt_bar.dart';
@@ -40,9 +41,10 @@ class _DesktopShell extends ConsumerStatefulWidget {
 }
 
 class _DesktopShellState extends ConsumerState<_DesktopShell> {
-  bool _showHistory = false;
+  bool _showChat = false;
   bool _showLayers = false;
   bool _showCode = false;
+  bool _autoShownChat = false;
 
   @override
   Widget build(BuildContext context) {
@@ -51,11 +53,16 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
       canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
     );
 
-    // Sinkronkan visibilitas panel dengan mode.
-    // Riwayat selalu bisa dibuka, bahkan sebelum ada UI.
+    // Saat board pertama kali muncul, tampilkan panel chat otomatis.
+    if (hasUi && !_autoShownChat) {
+      _autoShownChat = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _showChat = true);
+      });
+    }
+
     final showCode = hasUi && (mode == OutputMode.dev || _showCode);
     final showLayers = hasUi && _showLayers;
-    final showHistory = _showHistory;
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -63,10 +70,10 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
         children: [
           _TopBar(
             boardActive: hasUi,
-            onTogglePrompt: () => setState(() => _showHistory = !_showHistory),
+            onTogglePrompt: () => setState(() => _showChat = !_showChat),
             onToggleLayers: () => setState(() => _showLayers = !_showLayers),
             onToggleCode: () => setState(() => _showCode = !_showCode),
-            promptVisible: showHistory,
+            promptVisible: _showChat,
             layersVisible: showLayers,
             codeVisible: showCode,
           ),
@@ -76,19 +83,8 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (showHistory) ...[
-                    SizedBox(
-                      width: 300,
-                      child: SoftPanel(
-                        padding: EdgeInsets.zero,
-                        clip: true,
-                        child: HistoryPanel(
-                          onOpenProject: () => setState(
-                            () => _showHistory = false,
-                          ),
-                        ),
-                      ),
-                    ),
+                  if (hasUi && _showChat) ...[
+                    const SizedBox(width: 320, child: ChatSidePanel()),
                     const SizedBox(width: 12),
                   ],
                   Expanded(

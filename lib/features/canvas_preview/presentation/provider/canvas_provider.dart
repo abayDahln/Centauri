@@ -57,7 +57,6 @@ class CanvasState {
     this.panOffset = Offset.zero,
     this.scale = 0.6,
     this.viewport = ViewportMode.mobile,
-    this.boardSize = const Size(1200, 1200),
     this.messages = const [],
     this.isGenerating = false,
     this.selectedToken,
@@ -84,10 +83,6 @@ class CanvasState {
 
   /// Preset viewport untuk frame baru.
   final ViewportMode viewport;
-
-  /// Ukuran area board (otomatis tumbuh mengikuti frame, tidak pernah menyusut
-  /// di bawah konten agar frame tidak "hilang").
-  final Size boardSize;
 
   final List<CanvasMessage> messages;
   final bool isGenerating;
@@ -127,7 +122,6 @@ class CanvasState {
     Offset? panOffset,
     double? scale,
     ViewportMode? viewport,
-    Size? boardSize,
     List<CanvasMessage>? messages,
     bool? isGenerating,
     DesignTokenPreset? selectedToken,
@@ -151,7 +145,6 @@ class CanvasState {
       panOffset: panOffset ?? this.panOffset,
       scale: scale ?? this.scale,
       viewport: viewport ?? this.viewport,
-      boardSize: boardSize ?? this.boardSize,
       messages: messages ?? this.messages,
       isGenerating: isGenerating ?? this.isGenerating,
       selectedToken: clearToken ? null : (selectedToken ?? this.selectedToken),
@@ -176,70 +169,16 @@ final canvasProvider = NotifierProvider<CanvasNotifier, CanvasState>(
 
 class CanvasNotifier extends Notifier<CanvasState> {
   static const double _gap = 80;
-
-  /// Padding di sekeliling konten agar frame tidak menempel di tepi board.
-  static const double _boardPadding = 240;
-
-  /// Ukuran minimum area board yang selalu tersedia di sebelah kanan/bawah
   /// frame terakhir (agar "ruang kosong" untuk frame berikutnya).
-  static const double _boardRunway = 600;
 
   int _frameCounter = 0;
 
   @override
-  CanvasState build() => CanvasState(boardSize: _boardSizeFor(const []));
+  CanvasState build() => const CanvasState();
 
-  /// Hitung ukuran board dari bounding box semua frame + padding + runway.
-  /// Board selalu tumbuh, tidak pernah menyusut di bawah konten.
-  Size _boardSizeFor(List<BoardFrame> frames) {
-    if (frames.isEmpty) {
-      return const Size(_boardRunway, _boardRunway);
-    }
-
-    var maxRight = 0.0;
-    var maxBottom = 0.0;
-    for (final frame in frames) {
-      final right = frame.offset.dx + frame.size.width;
-      final bottom = frame.offset.dy + frame.size.height;
-      if (right > maxRight) maxRight = right;
-      if (bottom > maxBottom) maxBottom = bottom;
-    }
-
-    return Size(
-      maxRight + _boardPadding + _boardRunway,
-      maxBottom + _boardPadding + _boardRunway,
-    );
-  }
-
-  /// Frame tidak boleh keluar dari batas board; clamp posisinya.
-  Offset _clampFrameOffset(Offset offset, Size frameSize, Size boardSize) {
-    final maxX = boardSize.width - frameSize.width - 40;
-    final maxY = boardSize.height - frameSize.height - 40;
-    return Offset(
-      offset.dx.clamp(-40.0, maxX < -40 ? -40.0 : maxX),
-      offset.dy.clamp(-40.0, maxY < -40 ? -40.0 : maxY),
-    );
-  }
-
-  /// Terapkan clamp + recompute ukuran board untuk daftar frame.
-  List<BoardFrame> _normalizeFrames(List<BoardFrame> frames) {
-    var board = _boardSizeFor(frames);
-    final normalized = frames
-        .map(
-          (f) => f.copyWith(
-            offset: _clampFrameOffset(f.offset, f.size, board),
-          ),
-        )
-        .toList();
-    board = _boardSizeFor(normalized);
-    return normalized
-        .map(
-          (f) => f.copyWith(
-            offset: _clampFrameOffset(f.offset, f.size, board),
-          ),
-        )
-        .toList();
-  }
+  /// Board kini tak terbatas, jadi frame tidak dibatasi posisinya.
+  /// Dibiarkan sebagai hook agar mudah menambah aturan bila perlu.
+  List<BoardFrame> _normalizeFrames(List<BoardFrame> frames) => frames;
 
   void setViewport(ViewportMode mode) {
     if (mode == state.viewport) return;
@@ -248,9 +187,11 @@ class CanvasNotifier extends Notifier<CanvasState> {
   }
 
   Size _sizeFor(ViewportMode mode) => switch (mode) {
+    // Lebar tetap (fixed) agar konsisten; tinggi lega agar konten muat
+    // tanpa scrollbar di dalam frame.
     ViewportMode.mobile => const Size(390, 844),
-    ViewportMode.tablet => const Size(820, 1000),
-    ViewportMode.desktop => const Size(1280, 900),
+    ViewportMode.tablet => const Size(768, 1024),
+    ViewportMode.desktop => const Size(1280, 800),
   };
 
   void setOutputMode(OutputMode mode) {
@@ -275,22 +216,50 @@ class CanvasNotifier extends Notifier<CanvasState> {
     _viewport = size;
   }
 
-  /// Clamp pan agar area board tidak bisa hilang sepenuhnya dari layar:
-  /// minimal sebagian board selalu terlihat.
+  /// Clamp pan pada board TAK terbatas: user boleh pan ke mana saja, tetapi
+  /// bounding box frame tidak boleh hilang sepenuhnya dari layar. Ini mencegah
+  /// UI "tersesat" di luar viewport sekaligus tetap terasa infinite.
   Offset _clampPan(Offset pan, double scale) {
-    final boardW = state.boardSize.width * scale;
-    final boardH = state.boardSize.height * scale;
+    // Tanpa frame: bebas menggeser (area kosong tak terbatas).
+    if (state.frames.isEmpty) return pan;
 
-    const margin = 120.0;
-    final minX = -(boardW - margin);
-    final maxX = _viewport.width - margin;
-    final minY = -(boardH - margin);
-    final maxY = _viewport.height - margin;
+    // Bounding box konten dalam koordinat board.
+    var left = double.infinity;
+    var top = double.infinity;
+    var right = -double.infinity;
+    var bottom = -double.infinity;
+    for (final frame in state.frames) {
+      left = left < frame.offset.dx ? left : frame.offset.dx;
+      top = top < frame.offset.dy ? top : frame.offset.dy;
+      final frameRight = frame.offset.dx + frame.size.width;
+      final frameBottom = frame.offset.dy + frame.size.height;
+      right = right > frameRight ? right : frameRight;
+      bottom = bottom > frameBottom ? bottom : frameBottom;
+    }
 
-    return Offset(
-      pan.dx.clamp(minX, maxX < minX ? minX : maxX),
-      pan.dy.clamp(minY, maxY < minY ? minY : maxY),
-    );
+    // Posisi konten di layar pada pan saat ini.
+    final contentLeft = left * scale + pan.dx;
+    final contentTop = top * scale + pan.dy;
+    final contentRight = right * scale + pan.dx;
+    final contentBottom = bottom * scale + pan.dy;
+
+    // Wajib menyisakan minimal [keep] px konten terlihat di tiap sisi.
+    const keep = 120.0;
+    var dx = pan.dx;
+    var dy = pan.dy;
+
+    if (contentRight < keep) {
+      dx += keep - contentRight;
+    } else if (contentLeft > _viewport.width - keep) {
+      dx -= contentLeft - (_viewport.width - keep);
+    }
+    if (contentBottom < keep) {
+      dy += keep - contentBottom;
+    } else if (contentTop > _viewport.height - keep) {
+      dy -= contentTop - (_viewport.height - keep);
+    }
+
+    return Offset(dx, dy);
   }
 
   void panBy(Offset delta) {
@@ -384,7 +353,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
     final frames = _normalizeFrames(moved);
     state = state.copyWith(
       frames: frames,
-      boardSize: _boardSizeFor(frames),
     );
   }
 
@@ -394,7 +362,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
     );
     state = state.copyWith(
       frames: frames,
-      boardSize: _boardSizeFor(frames),
       clearActiveFrame: state.activeFrameId == id,
       clearSelection: true,
     );
@@ -404,7 +371,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
     _frameCounter = 0;
     state = state.copyWith(
       frames: const [],
-      boardSize: _boardSizeFor(const []),
       messages: const [],
       isGenerating: false,
       clearActiveFrame: true,
@@ -448,7 +414,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
     final normalized = _normalizeFrames(rebuilt);
     state = CanvasState(
       frames: normalized,
-      boardSize: _boardSizeFor(normalized),
       activeFrameId: activeFrameId,
       messages: messages,
       viewport: state.viewport,
@@ -466,7 +431,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
     );
     state = state.copyWith(
       frames: frames,
-      boardSize: _boardSizeFor(frames),
     );
   }
 
@@ -607,7 +571,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
 
       state = state.copyWith(
         frames: seeded,
-        boardSize: _boardSizeFor(seeded),
         activeFrameId: frameId,
         isGenerating: false,
         clearGenerationStart: true,
