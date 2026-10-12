@@ -28,6 +28,13 @@ class AppColors {
   /// Item terpilih (biru sangat lembut).
   static const Color selectionBg = Color(0xFFE8F0FE);
 
+  /// Highlight seleksi teks. Sengaja amber/emas agar TIDAK menyatu dengan
+  /// bubble chat user yang biru (aksen) — user jadi jelas mana yang terseleksi.
+  static const Color textSelection = Color(0xFFFFD54F);
+
+  /// Warna handle & kursor seleksi teks.
+  static const Color textSelectionHandle = Color(0xFF1A73E8);
+
   /// Latar input.
   static const Color inputBg = Color(0xFFFFFFFF);
 
@@ -200,6 +207,17 @@ class AppTheme {
       hoverColor: AppColors.hoverBg,
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
+
+      // Seleksi teks: latar amber + teks tetap gelap agar kontras di bubble
+      // biru maupun permukaan terang. Handle pakai aksen biru.
+      // Catatan: `SelectionArea` (chat) memakai `selectionColor` dari sini.
+      // Amber dipilih karena bubble chat user berwarna biru — highlight biru
+      // samar membuat user ragu apakah teks benar-benar terseleksi.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: AppColors.accentPrimary,
+        selectionColor: AppColors.textSelection.withValues(alpha: 0.55),
+        selectionHandleColor: AppColors.accentPrimary,
+      ),
 
       textTheme: const TextTheme(
         displaySmall: AppText.ui,

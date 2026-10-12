@@ -41,6 +41,8 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
 
     // Pastikan DOM shell sudah siap sebelum executeScript.
     await _waitForDomReady();
+    // Beri tahu shell bahwa skala ditangani zoomFactor native WebView2.
+    await _controller.executeScript('window.centauriSetNativeZoom(true)');
     _ready = true;
 
     if (_pendingViewportWidth != null) {
@@ -93,7 +95,11 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   Future<void> setZoom(double factor) async {
     _pendingZoom = factor;
     if (!_ready || _disposed) return;
-    await _controller.executeScript('window.setZoom($factor)');
+    // ZoomFactor WebView2 menskalakan piksel CSS: viewport CSS menjadi
+    // (lebar widget * dpr) / (dpr * factor), sehingga desain tetap pada lebar
+    // CSS aslinya namun dirender tajam saat board di-zoom.
+    final clamped = factor.clamp(0.1, 5.0);
+    await _controller.setZoomFactor(clamped);
   }
 
   @override

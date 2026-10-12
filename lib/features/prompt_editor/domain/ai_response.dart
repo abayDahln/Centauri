@@ -196,12 +196,31 @@ Future<AiResponse> classifyAiResponseInIsolate(String rawResponse) =>
     compute(classifyAiResponse, rawResponse);
 
 /// Ambil heading singkat tepat sebelum sebuah fence (mis. "### Home").
+/// Hanya menerima baris pendek seperti heading. Kalimat panjang dari catatan
+/// penjelasan AI (PART 1) sengaja ditolak agar tidak menjadi judul frame
+/// yang membingungkan di board.
 String _titleBeforeFence(String raw, int fenceStart) {
   final before = raw.substring(0, fenceStart);
   final lines = before.split('\n');
   for (var i = lines.length - 1; i >= 0 && i >= lines.length - 4; i--) {
     final line = lines[i].trim();
     if (line.isEmpty) continue;
+    // Heading markdown selalu diterima (mis. "### Pricing").
+    if (RegExp(r'^#+\s').hasMatch(line)) {
+      final cleaned = line
+          .replaceAll(RegExp(r'^#+\s*'), '')
+          .replaceAll(':', '')
+          .trim();
+      if (cleaned.isEmpty || cleaned.length > 60) return '';
+      return cleaned;
+    }
+    // Tanpa heading: tolak kalimat panjang (catatan PART 1), hanya terima
+    // label pendek satu baris tanpa titik (mis. "Pricing Page").
+    if (line.length > 60 || line.contains('.') || line.contains('!')) {
+      return '';
+    }
+    final words = line.split(RegExp(r'\s+'));
+    if (words.length > 8) return '';
     return line.replaceAll(RegExp(r'^#+\s*'), '').replaceAll(':', '').trim();
   }
   return '';

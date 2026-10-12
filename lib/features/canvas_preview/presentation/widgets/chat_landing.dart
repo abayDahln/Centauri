@@ -26,7 +26,9 @@ class ChatLanding extends ConsumerWidget {
       ),
       clipBehavior: Clip.antiAlias,
       // SelectionArea memungkinkan seleksi teks lintas pesan/blok sekaligus.
+      // Warna highlight amber eksplisit agar jelas terlihat di atas bubble biru.
       child: SelectionArea(
+        selectionControls: materialTextSelectionControls,
         child: messages.isEmpty && !state.isGenerating
             ? const _Welcome()
             : ListView.separated(
@@ -146,7 +148,7 @@ class _Bubble extends StatelessWidget {
               // Pesan AI dirender sebagai markdown; user/error sebagai teks.
               if (isUser)
                 Text(
-                  message.text,
+                  message.shownText,
                   style: const TextStyle(
                     fontFamily: AppFonts.uiFamily,
                     fontFamilyFallback: AppFonts.uiFallback,

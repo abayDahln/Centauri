@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/config/theme.dart';
 import '../../../app/widgets/stitch_widgets.dart';
-import '../../history/presentation/history_panel.dart';
 import '../../provider_config/presentation/providers/provider_config_provider.dart';
 import 'provider/canvas_provider.dart';
 import 'widgets/ai_status_indicator.dart';
@@ -12,7 +11,6 @@ import 'widgets/board_canvas.dart';
 import 'widgets/chat_landing.dart';
 import 'widgets/chat_side_panel.dart';
 import 'widgets/code_panel.dart';
-import 'widgets/layers_panel.dart';
 import 'widgets/prompt_bar.dart';
 
 class CanvasPreviewPage extends StatelessWidget {
@@ -42,7 +40,6 @@ class _DesktopShell extends ConsumerStatefulWidget {
 
 class _DesktopShellState extends ConsumerState<_DesktopShell> {
   bool _showChat = false;
-  bool _showLayers = false;
   bool _showCode = false;
   bool _autoShownChat = false;
 
@@ -62,7 +59,6 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
     }
 
     final showCode = hasUi && (mode == OutputMode.dev || _showCode);
-    final showLayers = hasUi && _showLayers;
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -71,10 +67,8 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
           _TopBar(
             boardActive: hasUi,
             onTogglePrompt: () => setState(() => _showChat = !_showChat),
-            onToggleLayers: () => setState(() => _showLayers = !_showLayers),
             onToggleCode: () => setState(() => _showCode = !_showCode),
             promptVisible: _showChat,
-            layersVisible: showLayers,
             codeVisible: showCode,
           ),
           Expanded(
@@ -83,7 +77,7 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (hasUi && _showChat) ...[
+                  if (_showChat) ...[
                     const SizedBox(width: 320, child: ChatSidePanel()),
                     const SizedBox(width: 12),
                   ],
@@ -92,9 +86,13 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                       children: [
                         if (hasUi)
                           const BoardSurface()
+                        else if (!_showChat)
+                          // Belum ada UI & panel chat tertutup: tampilkan
+                          // percakapan besar di tengah sebagai landing.
+                          const ChatLanding()
                         else
-                          // Belum ada UI: tampilkan percakapan besar di tengah.
-                          const ChatLanding(),
+                          // Panel chat terbuka: tengah cukup latar netral.
+                          const _EmptyCanvasHint(),
                         if (hasUi)
                           const Positioned(
                             right: 16,
@@ -118,17 +116,6 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                       ],
                     ),
                   ),
-                  if (showLayers) ...[
-                    const SizedBox(width: 12),
-                    const SizedBox(
-                      width: 280,
-                      child: SoftPanel(
-                        padding: EdgeInsets.zero,
-                        clip: true,
-                        child: _LayersPanel(),
-                      ),
-                    ),
-                  ],
                   if (showCode) ...[
                     const SizedBox(width: 12),
                     const SizedBox(
@@ -154,19 +141,15 @@ class _TopBar extends ConsumerWidget {
   const _TopBar({
     required this.boardActive,
     required this.onTogglePrompt,
-    required this.onToggleLayers,
     required this.onToggleCode,
     required this.promptVisible,
-    required this.layersVisible,
     required this.codeVisible,
   });
 
   final bool boardActive;
   final VoidCallback onTogglePrompt;
-  final VoidCallback onToggleLayers;
   final VoidCallback onToggleCode;
   final bool promptVisible;
-  final bool layersVisible;
   final bool codeVisible;
 
   @override
@@ -179,10 +162,10 @@ class _TopBar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: [
-            // History (percakapan) — selalu tersedia.
+            // Menu: buka/tutup panel kiri (Chat · History · Layers).
             SoftIconButton(
-              icon: Icons.history,
-              tooltip: 'Riwayat percakapan',
+              icon: Icons.menu,
+              tooltip: 'Panel (Chat · History · Layers)',
               active: promptVisible,
               onPressed: onTogglePrompt,
             ),
@@ -194,15 +177,8 @@ class _TopBar extends ConsumerWidget {
               onPressed: () => context.push('/provider-config'),
             ),
             const SizedBox(width: 12),
-            // Toggle panel board (hanya relevan setelah ada UI).
+            // Toggle panel Code (hanya relevan setelah ada UI).
             if (boardActive) ...[
-              SoftIconButton(
-                icon: Icons.layers_outlined,
-                tooltip: 'Layers',
-                active: layersVisible,
-                onPressed: onToggleLayers,
-              ),
-              const SizedBox(width: 4),
               SoftIconButton(
                 icon: Icons.code_outlined,
                 tooltip: 'Code',
@@ -471,55 +447,52 @@ class _ToolButtonState extends State<_ToolButton> {
   }
 }
 
-class _LayersPanel extends ConsumerWidget {
-  const _LayersPanel();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hasTree = ref.watch(
-      canvasProvider.select((s) => s.activeFrame?.domTree != null),
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _PanelHeader(title: 'Layers'),
-        Expanded(
-          child: hasTree
-              ? const LayersPanel()
-              : const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'Pilih frame yang sudah dirender untuk melihat layers.',
-                      textAlign: TextAlign.center,
-                      style: AppText.caption,
-                    ),
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PanelHeader extends StatelessWidget {
-  const _PanelHeader({required this.title});
-
-  final String title;
+class _EmptyCanvasHint extends StatelessWidget {
+  const _EmptyCanvasHint();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      alignment: Alignment.centerLeft,
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: AppRadius.lg,
+        border: Border.all(color: AppColors.borderSubtle),
       ),
-      child: Text(title, style: AppText.sectionTitle),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.dashboard_customize_outlined,
+                size: 30,
+                color: AppColors.textDisabled,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Belum ada UI',
+                style: TextStyle(
+                  fontFamily: AppFonts.uiFamily,
+                  fontFamilyFallback: AppFonts.uiFallback,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Tulis prompt di bar bawah untuk mulai.',
+                style: AppText.caption,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
+
 
 // ------------------------------------------------------------------ mobile --
 
@@ -539,12 +512,12 @@ class _MobileShell extends ConsumerWidget {
         title: Text(hasUi ? 'Board' : 'Centauri'),
         actions: [
           SoftIconButton(
-            icon: Icons.history,
-            tooltip: 'Riwayat percakapan',
+            icon: Icons.menu,
+            tooltip: 'Panel (Chat · History · Layers)',
             onPressed: () => _openSheet(
               context,
-              const HistoryPanel(),
-              heightFactor: 0.7,
+              const ChatSidePanel(),
+              heightFactor: 0.75,
             ),
           ),
           SoftIconButton(
@@ -553,15 +526,6 @@ class _MobileShell extends ConsumerWidget {
             onPressed: () => context.push('/provider-config'),
           ),
           if (hasUi) ...[
-            SoftIconButton(
-              icon: Icons.layers_outlined,
-              tooltip: 'Layers',
-              onPressed: () => _openSheet(
-                context,
-                const _LayersPanel(),
-                heightFactor: 0.6,
-              ),
-            ),
             SoftIconButton(
               icon: Icons.code_outlined,
               tooltip: 'Code',

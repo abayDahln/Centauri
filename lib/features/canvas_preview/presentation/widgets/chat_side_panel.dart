@@ -5,9 +5,11 @@ import '../../../../app/config/theme.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../../../history/presentation/history_panel.dart';
 import '../../../prompt_editor/presentation/prompt_chat_panel.dart';
+import '../provider/canvas_provider.dart';
+import 'layers_panel.dart';
 
-/// Panel kiri saat board aktif: punya dua tab, **Chat** dan **History**.
-/// Bisa disembunyikan lewat tombol di top bar.
+/// Panel kiri saat board aktif: tiga tab, **Chat**, **History**, **Layers**.
+/// Bisa disembunyikan lewat tombol menu di top bar.
 class ChatSidePanel extends ConsumerStatefulWidget {
   const ChatSidePanel({super.key});
 
@@ -31,11 +33,41 @@ class _ChatSidePanelState extends ConsumerState<ChatSidePanel> {
             onChanged: (value) => setState(() => _tab = value),
           ),
           Expanded(
-            child: _tab == 0 ? const PromptChatPanel() : const HistoryPanel(),
+            child: switch (_tab) {
+              0 => const PromptChatPanel(),
+              1 => const HistoryPanel(),
+              _ => const _LayersTab(),
+            },
           ),
         ],
       ),
     );
+  }
+}
+
+/// Konten tab Layers: tree DOM frame aktif.
+class _LayersTab extends ConsumerWidget {
+  const _LayersTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasTree = ref.watch(
+      canvasProvider.select((s) => s.activeFrame?.domTree != null),
+    );
+    if (!hasTree) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Pilih frame yang sudah dirender untuk melihat layers.\n\n'
+            'Klik komponen di canvas untuk memilihnya.',
+            textAlign: TextAlign.center,
+            style: AppText.caption,
+          ),
+        ),
+      );
+    }
+    return const LayersPanel();
   }
 }
 
@@ -49,24 +81,37 @@ class _TabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
       ),
       child: Row(
         children: [
-          _TabButton(
-            label: 'Chat',
-            icon: Icons.forum_outlined,
-            active: index == 0,
-            onTap: () => onChanged(0),
+          Expanded(
+            child: _TabButton(
+              label: 'Chat',
+              icon: Icons.forum_outlined,
+              active: index == 0,
+              onTap: () => onChanged(0),
+            ),
           ),
-          const SizedBox(width: 4),
-          _TabButton(
-            label: 'History',
-            icon: Icons.history,
-            active: index == 1,
-            onTap: () => onChanged(1),
+          const SizedBox(width: 2),
+          Expanded(
+            child: _TabButton(
+              label: 'History',
+              icon: Icons.history,
+              active: index == 1,
+              onTap: () => onChanged(1),
+            ),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: _TabButton(
+              label: 'Layers',
+              icon: Icons.layers_outlined,
+              active: index == 2,
+              onTap: () => onChanged(2),
+            ),
           ),
         ],
       ),
@@ -89,31 +134,33 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active
-        ? AppColors.accentPrimary
-        : AppColors.textSecondary;
+    final color = active ? AppColors.accentPrimary : AppColors.textSecondary;
     return InkWell(
       onTap: onTap,
       borderRadius: AppRadius.sm,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
           color: active ? AppColors.accentSoft : Colors.transparent,
           borderRadius: AppRadius.sm,
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 15, color: color),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: AppFonts.uiFamily,
-                fontFamilyFallback: AppFonts.uiFallback,
-                fontSize: 12.5,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                color: color,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AppFonts.uiFamily,
+                  fontFamilyFallback: AppFonts.uiFallback,
+                  fontSize: 12.5,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  color: color,
+                ),
               ),
             ),
           ],

@@ -25,11 +25,7 @@ const String canvasShellHtml = '''
     overflow: hidden;
   }
   #stage {
-    margin: 0 auto;
     height: 100%;
-    width: 100%;
-    display: flex;
-    justify-content: center;
     transition: max-width 300ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   #frame {
@@ -50,6 +46,7 @@ const String canvasShellHtml = '''
 <script>
   var frame = document.getElementById('frame');
   var stage = document.getElementById('stage');
+  var designWidth = 0;
   var overlay = null;
   var hoverBox = null;
   var selectBox = null;
@@ -126,7 +123,8 @@ const String canvasShellHtml = '''
     if (!doc || !doc.body) return;
     hideFrameScrollbars(doc);
     ensureOverlay(doc);
-    reportContentSize(doc);
+    ensureImageFallback(doc);
+    scheduleContentSizeReports(doc);
 
     doc.addEventListener('mouseover', function (e) {
       var id = idFromEvent(e);
@@ -175,6 +173,22 @@ const String canvasShellHtml = '''
     } catch (e) { /* abaikan */ }
   }
 
+  // Laporkan tinggi konten beberapa kali (gambar/font memuat asinkron dapat
+  // mengubah tinggi dokumen setelah load pertama).
+  function scheduleContentSizeReports(doc) {
+    reportContentSize(doc);
+    var delays = [150, 400, 900, 1600];
+    for (var i = 0; i < delays.length; i++) {
+      setTimeout(function () { reportContentSize(doc); }, delays[i]);
+    }
+    try {
+      var imgs = doc.querySelectorAll('img');
+      for (var j = 0; j < imgs.length; j++) {
+        imgs[j].addEventListener('load', function () { reportContentSize(doc); });
+      }
+    } catch (e) { /* abaikan */ }
+  }
+
   // Sembunyikan scrollbar dokumen yang dirender agar UI tampil bersih.
   function hideFrameScrollbars(doc) {
     try {
@@ -188,6 +202,31 @@ const String canvasShellHtml = '''
         'html{overflow:hidden;}body{overflow:hidden;}' +
         '::-webkit-scrollbar{width:0;height:0;display:none;}' +
         '*{scrollbar-width:none;-ms-overflow-style:none;}';
+    } catch (e) { /* abaikan */ }
+  }
+
+  // Jaring pengaman gambar: bila sebuah <img> gagal dimuat, ganti dengan
+  // gradien lembut agar UI tidak menampilkan kotak rusak/kosong.
+  function ensureImageFallback(doc) {
+    try {
+      if (doc.getElementById('centauri-img-fix')) return;
+      var style = doc.createElement('style');
+      style.id = 'centauri-img-fix';
+      style.textContent =
+        'img.centauri-fallback{background:linear-gradient(135deg,#6366F1,#8B5CF6,' +
+        '#EC4899)!important;object-fit:cover!important;color:transparent;}';
+      doc.head.appendChild(style);
+
+      function attach(img) {
+        if (img.dataset.centauriImg) return;
+        img.dataset.centauriImg = '1';
+        img.addEventListener('error', function () {
+          img.classList.add('centauri-fallback');
+          img.removeAttribute('src');
+        });
+      }
+      var imgs = doc.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) attach(imgs[i]);
     } catch (e) { /* abaikan */ }
   }
 
@@ -215,14 +254,41 @@ const String canvasShellHtml = '''
     placeBox(hoverBox, rectOf(doc, id), doc);
   }
 
+  // Lebar CSS desain (mis. 390px). Lebar ini FIXED dan tidak boleh berubah
+  // saat board di-zoom: zoom hanya memperbesar/memperkecil tampilan, bukan
+  // meng-reflow layout. Pada Windows, skala board ditangani oleh
+  // zoomFactor WebView2, jadi shell selalu 100%. Pada mobile (tanpa zoomFactor
+  // native) skala diterapkan lewat transform CSS di setZoom.
   function setViewport(width) {
-    stage.style.maxWidth = width ? width + 'px' : '100%';
+    designWidth = width || 0;
+    if (window.__centauriNativeZoom) {
+      stage.style.width = '100%';
+      stage.style.maxWidth = '100%';
+    } else {
+      // Jangan cap dengan max-width:100% — widget Flutter memang lebih kecil
+      // dari lebar desain saat zoom-out (size*scale), dan transform scale()
+      // yang akan mengecilkannya agar pas. Capping justru mengubah lebar CSS
+      // (mis. 1280 -> 192) sehingga layout reflow dan terlihat "berubah".
+      stage.style.width = (width ? width + 'px' : '100%');
+      stage.style.maxWidth = (width ? width + 'px' : '100%');
+    }
   }
 
   function setZoom(factor) {
-    // Zoom via CSS transform pada stage agar konten iframe tetap tajam.
-    stage.style.transform = (factor && factor !== 1) ? 'scale(' + factor + ')' : 'none';
-    stage.style.transformOrigin = 'top center';
+    if (window.__centauriNativeZoom) {
+      // Native zoom mengurus semuanya; shell tetap netral.
+      stage.style.transform = 'none';
+      return;
+    }
+    // Fallback (mobile): skala via transform dari kiri atas.
+    var f = factor || 1;
+    stage.style.transform = (f !== 1) ? 'scale(' + f + ')' : 'none';
+    stage.style.transformOrigin = 'top left';
+  }
+
+  // Ditandai oleh host Windows yang memakai zoomFactor native WebView2.
+  function centauriSetNativeZoom(enabled) {
+    window.__centauriNativeZoom = !!enabled;
   }
 
   function clearCanvas() {

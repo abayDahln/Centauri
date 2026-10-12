@@ -54,6 +54,7 @@ class ProjectMessage {
     required this.role,
     required this.text,
     required this.kind,
+    this.displayText,
     this.attachmentNames = const [],
     this.attachments = const [],
   });
@@ -61,6 +62,9 @@ class ProjectMessage {
   final String role; // user | assistant | error
   final String text; // chat | ui
   final String kind;
+
+  /// Teks bersih untuk ditampilkan (tanpa konteks internal). Boleh null.
+  final String? displayText;
   final List<String> attachmentNames;
   final List<Attachment> attachments;
 
@@ -68,6 +72,7 @@ class ProjectMessage {
     'role': role,
     'text': text,
     'kind': kind,
+    if (displayText != null) 'displayText': displayText,
     'attachmentNames': attachmentNames,
     'attachments': attachments.map((a) => a.toJson()).toList(),
   };
@@ -76,6 +81,7 @@ class ProjectMessage {
     role: json['role'] as String? ?? 'user',
     text: json['text'] as String? ?? '',
     kind: json['kind'] as String? ?? 'chat',
+    displayText: json['displayText'] as String?,
     attachmentNames:
         (json['attachmentNames'] as List<dynamic>? ?? [])
             .map((e) => e as String)
@@ -183,6 +189,7 @@ class Project {
               role: m.role.name,
               text: m.text,
               kind: m.kind.name,
+              displayText: m.displayText,
               attachmentNames: m.attachmentNames,
               attachments: m.attachments,
             ),

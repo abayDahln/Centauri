@@ -148,6 +148,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
           (m) => CanvasMessage(
             role: _roleFromName(m.role),
             text: m.text,
+            displayText: m.displayText,
             kind: m.kind == 'ui' ? ChatMessageKind.ui : ChatMessageKind.chat,
             attachmentNames: m.attachmentNames,
             attachments: m.attachments,

@@ -42,6 +42,51 @@ void main() {
     expect(container.read(canvasProvider).viewport, ViewportMode.tablet);
   });
 
+  test('detectViewportOverride: user text wins over the toggle', () {
+    // Tidak menyebut apa pun -> null (tombol dipakai sebagai default).
+    expect(detectViewportOverride('Build a pricing page'), isNull);
+
+    // Pola eksplisit paling kuat.
+    expect(
+      detectViewportOverride('Build a landing page. Viewport: desktop.'),
+      ViewportMode.desktop,
+    );
+    expect(
+      detectViewportOverride('viewport=mobile please'),
+      ViewportMode.mobile,
+    );
+
+    // Nama device.
+    expect(detectViewportOverride('a tablet layout'), ViewportMode.tablet);
+
+    // Lebar px.
+    expect(detectViewportOverride('design at 1280px wide'), ViewportMode.desktop);
+    expect(detectViewportOverride('use 390 width'), ViewportMode.mobile);
+
+    // Device disebut terakhir menang.
+    expect(
+      detectViewportOverride('build desktop version, then also a mobile one'),
+      ViewportMode.mobile,
+    );
+  });
+
+  test('setViewport does not resize existing frames', () async {
+    final notifier = container.read(canvasProvider.notifier);
+    // Buat frame lewat loadSession agar ukurannya diketahui.
+    await notifier.loadSession(
+      messages: const [],
+      frames: [frame('f1', offset: const Offset(0, 0))],
+      activeFrameId: 'f1',
+    );
+
+    final before = container.read(canvasProvider).frames.first.size;
+    notifier.setViewport(ViewportMode.desktop);
+    final after = container.read(canvasProvider).frames.first.size;
+
+    // Ukuran frame tidak boleh berubah oleh tombol viewport.
+    expect(after, before);
+  });
+
   test('clearBoard resets frames but keeps token selection', () {
     final notifier = container.read(canvasProvider.notifier);
     final current = designTokenPresets.first;

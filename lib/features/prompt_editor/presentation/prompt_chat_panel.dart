@@ -194,7 +194,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                   const SizedBox(height: 6),
                 ],
                 Text(
-                  message.text,
+                  message.shownText,
                   style: const TextStyle(
                     fontFamily: AppFonts.uiFamily,
                     fontFamilyFallback: AppFonts.uiFallback,

@@ -22,6 +22,7 @@ class CanvasMessage {
   const CanvasMessage({
     required this.role,
     required this.text,
+    this.displayText,
     this.kind = ChatMessageKind.chat,
     this.attachmentNames = const [],
     this.attachments = const [],
@@ -29,6 +30,15 @@ class CanvasMessage {
 
   final ChatRole role;
   final String text;
+
+  /// Teks yang ditampilkan di UI. Bila null, pakai [text].
+  /// Dipakai agar konteks internal (mis. `[CANVAS TARGET]`, design token)
+  /// yang di-append ke prompt tidak bocor ke chat bubble user.
+  final String? displayText;
+
+  /// Teks bersih untuk ditampilkan ke pengguna.
+  String get shownText => displayText ?? text;
+
   final ChatMessageKind kind;
 
   /// Nama lampiran yang menyertai pesan ini (dipakai untuk persistensi).
@@ -196,11 +206,21 @@ class CanvasNotifier extends Notifier<CanvasState> {
   /// Dibiarkan sebagai hook agar mudah menambah aturan bila perlu.
   List<BoardFrame> _normalizeFrames(List<BoardFrame> frames) => frames;
 
+  /// Target viewport untuk generate BERIKUTNYA (murni hint prompt).
+  /// Sengaja TIDAK mengubah ukuran frame yang sudah ada di board — tombol
+  /// viewport di prompt bar bukan editor layout. Resize diam-diam justru
+  /// membuat UI "berubah" dan membingungkan (bug laporan user).
   void setViewport(ViewportMode mode) {
     if (mode == state.viewport) return;
     state = state.copyWith(viewport: mode);
-    _updateActive((frame) => frame.copyWith(size: _sizeFor(mode)));
   }
+
+  /// Jika user menyebut viewport secara eksplisit di prompt ("mobile",
+  /// "tablet", "desktop", "viewport: ...", "390px", "768px", "1280px"),
+  /// itu MENANG atas tombol di prompt bar. Mengembalikan null bila user
+  /// tidak menyebut apa pun (pakai tombol sebagai default/fallback).
+  ViewportMode? _detectViewportOverride(String prompt) =>
+      detectViewportOverride(prompt);
 
   Size _sizeFor(ViewportMode mode) => switch (mode) {
     // Lebar tetap (fixed) agar konsisten; tinggi lega agar konten muat
@@ -285,7 +305,10 @@ class CanvasNotifier extends Notifier<CanvasState> {
   }
 
   void zoomAt(Offset focalScreen, double factor) {
-    final newScale = (state.scale * factor).clamp(CanvasState.minScale, CanvasState.maxScale);
+    final newScale = (state.scale * factor).clamp(
+      CanvasState.minScale,
+      CanvasState.maxScale,
+    );
     if (newScale == state.scale) return;
 
     // Jaga titik fokus tetap di bawah kursor saat zoom.
@@ -373,7 +396,9 @@ class CanvasNotifier extends Notifier<CanvasState> {
   }
 
   /// Sesuaikan tinggi frame agar kontennya utuh (tanpa scrollbar).
-  /// Lebar tetap; tinggi hanya tumbuh, tidak menyusut di bawah ukuran awal.
+  /// Lebar tetap (FIXED sesuai viewport); tinggi hanya TUMBUH mengikuti konten
+  /// agar layout tidak "melompat" saat zoom atau saat gambar/font selesai load.
+  /// Penyusutan diabaikan supaya frame stabil di semua tingkat zoom board.
   void setFrameContentHeight(String id, double contentHeight) {
     const minHeight = 200.0;
     const maxHeight = 6000.0;
@@ -382,7 +407,8 @@ class CanvasNotifier extends Notifier<CanvasState> {
       if (f.id != id) return f;
       // Beri sedikit ruang ekstra agar tepi konten tidak mepet.
       final target = height + 2;
-      if ((target - f.size.height).abs() < 4) return f;
+      // Histeresis 4px + grow-only: abaikan perubahan kecil & penyusutan.
+      if (target <= f.size.height + 4) return f;
       return f.copyWith(size: Size(f.size.width, target));
     }).toList();
     state = state.copyWith(frames: frames);
@@ -452,17 +478,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
       outputMode: state.outputMode,
       tool: state.tool,
       showGrid: state.showGrid,
-    );
-  }
-
-  void _updateActive(BoardFrame Function(BoardFrame) transform) {
-    final id = state.activeFrameId;
-    if (id == null) return;
-    final frames = _normalizeFrames(
-      state.frames.map((f) => f.id == id ? transform(f) : f).toList(),
-    );
-    state = state.copyWith(
-      frames: frames,
     );
   }
 
@@ -567,9 +582,28 @@ class CanvasNotifier extends Notifier<CanvasState> {
       return;
     }
 
-    final userText = designToken == null
+    // User text menang atas tombol: bila prompt menyebut viewport eksplisit,
+    // pakai itu sebagai target (dan sinkronkan tombol agar tidak membingungkan).
+    final effectiveViewport = _detectViewportOverride(trimmed) ?? viewport;
+    final size = _sizeFor(effectiveViewport);
+    final viewportContext =
+        '\n\n[CANVAS TARGET] Design for a FIXED viewport width of exactly '
+        '${size.width.round()} CSS px (${effectiveViewport.name}). '
+        'The layout MUST fit this width with NO horizontal overflow, NO '
+        'horizontal scrollbar, and NO clipped text. '
+        'Height starts at ${size.height.round()}px but the page may grow '
+        'vertically as needed (min-height, natural document flow). '
+        'Respect the user-requested style (e.g. minimal stays minimal, but '
+        'never empty: keep full structure, real copy, working controls). '
+        'Every interactive affordance you draw MUST work with vanilla JS '
+        '(toggles, accordions, tabs, menus). Use real imagery with unique '
+        'seeds so the page feels alive.';
+
+    final baseText = designToken == null
         ? trimmed
         : '$trimmed\n\n[Design Token: ${designToken.label}] ${designToken.promptFragment}';
+
+    final userText = '$baseText$viewportContext';
 
     // Lampiran yang dikirim bersama prompt ini.
     final pendingAttachments = state.attachments;
@@ -577,15 +611,20 @@ class CanvasNotifier extends Notifier<CanvasState> {
     // Jangan buat frame dulu: kita belum tahu apakah AI akan menjawab teks
     // (chat) atau membuat UI. Frame hanya dibuat setelah balasan terdeteksi UI,
     // supaya board tidak sempat tampil dengan placeholder yang batal.
+    // Sinkronkan tombol viewport bila user meng-override via teks.
     state = state.copyWith(
       isGenerating: true,
       generationStartedAt: DateTime.now(),
       status: AiStatus.thinking,
+      viewport: effectiveViewport,
       messages: [
         ...state.messages,
         CanvasMessage(
           role: ChatRole.user,
           text: userText,
+          // Tampilkan hanya prompt asli user; `[CANVAS TARGET]` dan design token
+          // tetap dikirim ke AI tapi tidak ditampilkan di bubble chat.
+          displayText: trimmed,
           attachmentNames: pendingAttachments.map((a) => a.name).toList(),
           attachments: pendingAttachments,
         ),
@@ -623,7 +662,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
 
       // Balasan UI: buat satu frame per layar.
       _setStatus(AiStatus.rendering);
-      final size = _sizeFor(viewport);
       final baseTitle = _titleFromPrompt(trimmed);
       final isFirstOnBoard = state.frames.isEmpty;
 
@@ -633,11 +671,10 @@ class CanvasNotifier extends Notifier<CanvasState> {
         final screen = response.screens[i];
         final tree = await buildDomTreeInIsolate(screen.html);
         final frameId = 'frame_${_frameCounter++}';
-        final title = screen.title.isNotEmpty
-            ? screen.title
-            : (response.screens.length > 1
-                  ? '$baseTitle ${i + 1}'
-                  : baseTitle);
+        final fallbackTitle = response.screens.length > 1
+            ? '$baseTitle ${i + 1}'
+            : baseTitle;
+        final title = _sanitizeScreenTitle(screen.title, fallbackTitle);
         newFrames.add(
           BoardFrame(
             id: frameId,
@@ -712,8 +749,31 @@ class CanvasNotifier extends Notifier<CanvasState> {
   String _titleFromPrompt(String prompt) {
     final cleaned = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (cleaned.isEmpty) return 'Untitled';
-    final words = cleaned.split(' ').take(5).join(' ');
-    return words.length > 42 ? '${words.substring(0, 42)}...' : words;
+    // Ambil 4 kata pertama agar judul frame pendek dan mudah dipindai.
+    // Buang tanda baca trailing agar terlihat seperti judul Figma/Stitch.
+    final words = cleaned
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .take(4)
+        .join(' ')
+        .replaceAll(RegExp(r'[,.:;!?]+$'), '');
+    if (words.isEmpty) return 'Untitled';
+    final titled = words.length > 32 ? '${words.substring(0, 32).trim()}...' : words;
+    // Kapitalisasi huruf pertama tiap kata untuk tampilan frame yang rapi.
+    return titled
+        .split(' ')
+        .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
+
+  /// Judul layar dari AI hanya dipakai bila pendek dan layak tampil.
+  /// Judul panjang (kalimat catatan PART 1) dibuang demi [fallback].
+  String _sanitizeScreenTitle(String candidate, String fallback) {
+    final cleaned = candidate.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleaned.isEmpty) return fallback;
+    if (cleaned.length > 48 || cleaned.contains('.')) return fallback;
+    if (cleaned.split(' ').length > 6) return fallback;
+    return cleaned;
   }
 
   List<Map<String, dynamic>> _buildMessagesPayload({
@@ -781,4 +841,48 @@ class CanvasNotifier extends Notifier<CanvasState> {
   void _appendMessage(CanvasMessage message) {
     state = state.copyWith(messages: [...state.messages, message]);
   }
+}
+
+/// Deteksi viewport yang diminta user dari teks prompt. Top-level (bukan
+/// method) agar bisa diuji langsung tanpa ProviderContainer.
+///
+/// Prioritas:
+///  1. Pola eksplisit `viewport: desktop` / `viewport=mobile`.
+///  2. Kemunculan device/lebar px yang PALING AKHIR di prompt menang, sehingga
+///     "build desktop and mobile version" mengikuti device terakhir.
+///
+/// Mengembalikan null bila user tidak menyebut apa pun — di situlah tombol
+/// viewport dipakai sebagai default/fallback.
+ViewportMode? detectViewportOverride(String prompt) {
+  final lower = prompt.toLowerCase();
+
+  // 1. Pola paling eksplisit.
+  final explicit = RegExp(
+    r'viewport\s*[:=]\s*(mobile|tablet|desktop)',
+  ).firstMatch(lower);
+  if (explicit != null) {
+    return ViewportMode.values.byName(explicit.group(1)!);
+  }
+
+  // 2. Nama device yang disebut.
+  final hits = <int, ViewportMode>{};
+  for (final mode in ViewportMode.values) {
+    final index = lower.lastIndexOf(mode.name);
+    if (index >= 0) hits[index] = mode;
+  }
+
+  // 3. Lebar px yang disebut (spesifik).
+  void scanPx(String pattern, ViewportMode mode) {
+    for (final m in RegExp(pattern).allMatches(lower)) {
+      hits[m.start] = mode;
+    }
+  }
+
+  scanPx(r'\b(1280|1440|1920)(\s*px|p)?\b', ViewportMode.desktop);
+  scanPx(r'\b768(\s*px|p)?\b', ViewportMode.tablet);
+  scanPx(r'\b(390|375|414|844)(\s*px|p)?\b', ViewportMode.mobile);
+
+  if (hits.isEmpty) return null;
+  final lastIndex = hits.keys.reduce((a, b) => a > b ? a : b);
+  return hits[lastIndex];
 }

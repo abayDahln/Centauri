@@ -16,6 +16,8 @@ class BoardSurface extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(canvasProvider);
+    final scale = state.scale;
+    final pan = state.panOffset;
 
     return KeyedSubtree(
       key: boardViewportKey,
@@ -24,16 +26,17 @@ class BoardSurface extends ConsumerWidget {
           clipBehavior: Clip.none,
           children: [
             if (state.frames.isEmpty)
-              const Positioned(
-                left: 80,
-                top: 120,
+              Positioned(
+                left: pan.dx + 80 * scale,
+                top: pan.dy + 120 * scale,
                 child: _BoardHint(),
               ),
             for (final frame in state.frames)
               BoardFrameView(
                 key: ValueKey(frame.id),
                 frame: frame,
-                scale: state.scale,
+                scale: scale,
+                pan: pan,
               ),
           ],
         ),

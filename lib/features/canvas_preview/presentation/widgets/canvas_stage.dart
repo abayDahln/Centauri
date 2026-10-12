@@ -11,17 +11,25 @@ import '../provider/canvas_provider.dart';
 
 /// Satu frame di board: kartu mengambang berisi WebView yang merender HTML
 /// frame tersebut. Setiap frame punya service WebView sendiri.
+///
+/// Frame diposisikan dan diukur di **ruang layar** (memakai `pan` + `scale`),
+/// bukan lewat Transform. Dengan begitu WebView dirender pada ukuran piksel
+/// akhirnya sehingga tetap tajam di semua tingkat zoom.
 class BoardFrameView extends ConsumerStatefulWidget {
   const BoardFrameView({
     super.key,
     required this.frame,
     required this.scale,
+    required this.pan,
   });
 
   final BoardFrame frame;
 
-  /// Skala board saat ini (dipakai untuk drag frame yang akurat).
+  /// Skala board saat ini.
   final double scale;
+
+  /// Pergeseran board saat ini.
+  final Offset pan;
 
   @override
   ConsumerState<BoardFrameView> createState() => _BoardFrameViewState();
@@ -41,10 +49,10 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
   Future<void> _initialize() async {
     try {
       await _service.init();
-      // Konten dirender tepat selebar frame dan tanpa zoom internal.
-      // Skala visual ditangani oleh Transform board, bukan oleh WebView.
+      // Konten dirender pada ukuran CSS asli frame (lebar tetap), lalu
+      // WebView di-zoom agar ukuran piksel mengikuti skala board -> tajam.
       await _service.setViewportWidth(widget.frame.size.width);
-      await _service.setZoom(1);
+      await _service.setZoom(widget.scale);
       await _service.renderHtml(
         widget.frame.html.isEmpty ? null : widget.frame.html,
       );
@@ -64,7 +72,13 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       }
       return;
     }
-    if (widget.frame.id != ref.read(canvasProvider).activeFrameId) return;
+
+    // Interaksi dari canvas: aktifkan frame ini lebih dulu, baru teruskan.
+    final activeId = ref.read(canvasProvider).activeFrameId;
+    if (widget.frame.id != activeId) {
+      notifier.selectFrame(widget.frame.id);
+    }
+
     if (event.type == 'select') {
       notifier.selectNodeFromCanvas(event.id);
     } else if (event.type == 'hover') {
@@ -82,6 +96,9 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
     }
     if (oldWidget.frame.size.width != widget.frame.size.width) {
       _service.setViewportWidth(widget.frame.size.width);
+    }
+    if (oldWidget.scale != widget.scale) {
+      _service.setZoom(widget.scale);
     }
   }
 
@@ -111,6 +128,7 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       frame: widget.frame,
       isActive: isActive,
       scale: widget.scale,
+      pan: widget.pan,
       onSelect: () =>
           ref.read(canvasProvider.notifier).selectFrame(widget.frame.id),
       onDelete: () =>
@@ -147,11 +165,16 @@ class _WebviewLoading extends StatelessWidget {
 
 
 /// Kartu frame: judul + area konten + ring aksen saat aktif.
+///
+/// Ukuran & posisi dihitung di ruang layar: `pan + offset*scale`, dengan
+/// lebar/tinggi `size*scale`. WebView di dalamnya di-zoom via `setZoomFactor`
+/// sehingga tajam.
 class _FrameCard extends StatelessWidget {
   const _FrameCard({
     required this.frame,
     required this.isActive,
     required this.scale,
+    required this.pan,
     required this.onSelect,
     required this.onDelete,
     required this.onDrag,
@@ -161,6 +184,7 @@ class _FrameCard extends StatelessWidget {
   final BoardFrame frame;
   final bool isActive;
   final double scale;
+  final Offset pan;
   final VoidCallback onSelect;
   final VoidCallback onDelete;
   final ValueChanged<Offset> onDrag;
@@ -168,26 +192,43 @@ class _FrameCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenLeft = pan.dx + frame.offset.dx * scale;
+    final screenTop = pan.dy + frame.offset.dy * scale;
+    final screenWidth = frame.size.width * scale;
+    final screenHeight = frame.size.height * scale;
+
+    // Skala label agar tetap terbaca (tidak ikut mengecil ekstrem).
+    final labelScale = scale.clamp(0.5, 1.0);
+
     return Positioned(
-      left: frame.offset.dx,
-      top: frame.offset.dy,
-      width: frame.size.width,
-      height: frame.size.height,
-      child: GestureDetector(
-        behavior: HitTestBehavior.deferToChild,
-        onTap: onSelect,
-        onPanUpdate: (details) => onDrag(details.delta / scale),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _FrameLabel(
-              frame: frame,
-              isActive: isActive,
-              onSelect: onSelect,
-              onDelete: onDelete,
+      left: screenLeft,
+      top: screenTop,
+      width: screenWidth,
+      height: screenHeight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 20 * labelScale,
+            child: Transform.scale(
+              scale: labelScale,
+              alignment: Alignment.centerLeft,
+              child: _FrameLabel(
+                frame: frame,
+                isActive: isActive,
+                onSelect: onSelect,
+                onDelete: onDelete,
+              ),
             ),
-            const SizedBox(height: 6),
-            Expanded(
+          ),
+          SizedBox(height: 6 * labelScale),
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.deferToChild,
+              onTap: onSelect,
+              // Delta drag dari gesture sudah dalam piksel layar; konversi ke
+              // koordinat board dengan membagi scale.
+              onPanUpdate: (details) => onDrag(details.delta / scale),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 decoration: BoxDecoration(
@@ -205,8 +246,8 @@ class _FrameCard extends StatelessWidget {
                 child: child,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

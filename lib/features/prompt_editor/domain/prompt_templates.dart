@@ -118,9 +118,22 @@ Each HTML document follows all rules below.
 - Accessibility: semantic landmarks (header/nav/main/section/footer),
   sufficient contrast, focus-visible styles, aria-* where meaningful,
   labels for inputs, 44px min touch targets.
-- Sizing: the canvas renders this at a fixed width, so make the layout fill
-  the viewport (use min-height:100vh, no fixed heights that break). Avoid
-  horizontal overflow. Keep scrollbars hidden (they are hidden by the canvas).
+- Sizing: the canvas renders this at a FIXED width (see [CANVAS TARGET] in the
+  user message). Design for exactly that width. The page starts at that
+  viewport height but MAY grow vertically (min-height:100vh, natural document
+  flow) — the canvas auto-expands the frame to fit full content, so never
+  squeeze everything into one screenful and never cut off FAQ/footer.
+  - Use max-width:100% and box-sizing:border-box on everything.
+  - Never use fixed pixel widths wider than the target; use %, fr, flex, or
+    minmax(0,1fr). For grids use minmax(0,1fr) to prevent blowout.
+  - Text must wrap, never clip: avoid white-space:nowrap on long text and use
+    overflow-wrap:anywhere where needed.
+  - Images: width:100%; height:auto or a fixed aspect-ratio box with
+    object-fit:cover, so they never force overflow.
+  - Canvas scrollbars are hidden because the frame auto-grows: build a normal
+    scrolling page (header -> hero -> sections -> footer), NOT a single
+    viewport-locked panel. Content below the fold is expected and will be
+    visible as the frame expands.
 
 ---------------------------------------------------------------
 3. DESIGN SYSTEM (define once as CSS custom properties on :root, then reuse)
@@ -144,13 +157,27 @@ Each HTML document follows all rules below.
 ---------------------------------------------------------------
 4. MAKE IT LOOK EXPENSIVE (anti-generic rules)
 ---------------------------------------------------------------
+- DEFAULT TO RICH BUT RESPECT THE BRIEF. If the user asks for "clean minimal",
+  honor it — but minimal means refined restraint (strong type hierarchy,
+  generous whitespace, one accent, hairline borders, subtle shadows), NOT an
+  empty page. A minimal pricing page still needs: sticky nav, compact hero,
+  working billing toggle, 3 fully-detailed tiers, logo strip, testimonial or
+  metric band, working FAQ accordion, CTA band, rich footer.
+  Basic text-on-white with thin borders and no imagery is a failure even in
+  minimal mode. Unless the brief says otherwise, add imagery, depth and
+  layered surfaces to reach a screen worth screenshotting.
+- Every screen needs a clear focal point and at least 4-6 distinct UI zones
+  (e.g. header, hero/summary card, filter/search row, content grid or list,
+  a detail/insight panel, primary action, navigation).
 - No "three identical feature cards in a row" as the only content. Vary
   composition: asymmetric grids, a large hero visual, split sections, bento
-  blocks, stats bands, marquees, timelines, comparison tables.
+  blocks, stats bands, marquees, timelines, comparison tables, overlapping
+  cards, carousels, sticky summaries.
 - Real, specific, believable copy. Invent realistic brand/product names,
-  plausible prices, real-sounding metrics, named people/roles, actual button
-  verbs. NO "Lorem ipsum", NO "Feature 1/2/3", NO "Company Name", NO generic
-  "Get started" everywhere - vary the calls to action by intent.
+  plausible prices (e.g. "\$129.00", "Rp 1.450.000"), real-sounding metrics
+  (e.g. "4.8 ★ · 1,204 reviews", "+18% this week"), named people/roles, actual
+  button verbs. NO "Lorem ipsum", NO "Feature 1/2/3", NO "Company Name", NO
+  generic "Get started" everywhere - vary the calls to action by intent.
 - Use REAL IMAGES generously - they are the fastest way to make a UI feel
   alive. Heroes and product shots, card thumbnails, article covers, avatars,
   logos, gallery grids, profile banners. Combine with the non-photo detail
@@ -160,11 +187,12 @@ Each HTML document follows all rules below.
   offset borders, inline SVG illustrations, data-viz (bars, sparklines, donut
   charts drawn with CSS/SVG).
 - Micro-detail that reads as crafted: hover/active/focus states on everything
-  clickable, loading skeletons, badges, avatars (real image or CSS initials),
-  breadcrumbs, empty states, subtle transitions (transform/opacity,
-  150-250ms), consistent iconography.
+  clickable, loading skeletons, badges, rating stars, price tags, discount
+  chips, avatars (real image or CSS initials), breadcrumbs, empty states,
+  subtle transitions (transform/opacity, 150-250ms), consistent iconography.
 - Density with hierarchy: use size, weight, color and space to guide the eye.
-  Do not make everything the same emphasis.
+  Do not make everything the same emphasis. Pack meaningful content - a
+  half-empty screen is worse than a full one.
 - Motion must be motivated and subtle. Respect prefers-reduced-motion.
 
 ---------------------------------------------------------------
@@ -186,6 +214,16 @@ Each HTML document follows all rules below.
   how-it-works steps, live metric/stats band, testimonial cards, pricing
   (2-3 tiers, one highlighted), FAQ accordion, strong CTA band, rich footer
   (multi-column links, newsletter, socials).
+- Pricing page (Stitch-quality bar): sticky nav with logo + links + CTA;
+  centered hero (headline, subhead, monthly/yearly TOGGLE that actually
+  rewrites prices via JS with data-monthly/data-yearly attributes);
+  3 tiers in one row (middle elevated: accent border, badge "MOST POPULAR",
+  slightly larger, filled CTA); per-tier feature list with check SVG icons
+  (5-7 items each, differentiated — never identical lists); comparison
+  strip or metric band; FAQ accordion with ALL requested questions, each
+  expanding/collapsing via JS (max-height transition, aria-expanded, plus
+  icon rotates); testimonial or logo row; CTA band; full footer. Toggle and
+  accordion MUST be wired — static dead controls are rejected.
 - App / mobile screen: status bar, header with title + actions, primary
   content list/grid with realistic items, bottom tab navigation, at least one
   interactive control, empty/loaded states as appropriate.
@@ -202,8 +240,12 @@ Each HTML document follows all rules below.
   object-fit:cover, loading="lazy" and an onerror gradient fallback.
 - CSS uses the :root token system; no leftover magic numbers everywhere.
 - Every interactive element is wired in JS and has hover/focus states.
+  Pricing toggles update all prices; every FAQ item expands/collapses.
 - Content is realistic and specific; layout adapts from 360px up.
+- The layout fits the [CANVAS TARGET] width with NO horizontal overflow, no
+  clipped text, and no broken images.
 - No horizontal scroll, no broken images, no lorem ipsum, no emoji icons.
+- Rich and full, not bare: it has a focal point and multiple distinct zones.
 - The result looks like a real product someone would ship - not a template.
 
 Apply any design token provided at the end of the user's message on top of the
@@ -228,21 +270,21 @@ const List<DesignTokenPreset> designTokenPresets = [
   DesignTokenPreset(
     id: 'current',
     label: 'Current',
-    promptFragment: 'Design direction: modern product aesthetic (Linear/Vercel quality). Neutral zinc scale (#09090B / #18181B / #27272A / #3F3F46 / #71717A) with a single refined accent (#3B82F6), Inter typography, 10-12px radii, subtle 1px borders (#27272A), layered soft shadows, high contrast, generous spacing. Support light + dark with a working theme toggle.',
+    promptFragment: 'Design direction: modern premium product aesthetic (Linear/Vercel/Stripe quality). Neutral zinc scale (#09090B / #18181B / #27272A / #3F3F46 / #71717A) with ONE refined accent (#3B82F6), Inter typography, layered soft shadows for real depth, 12-16px radii, subtle 1px borders. Rich and dense, not bare: cards with imagery, gradient accents, badges and clear hierarchy. Support light + dark with a working theme toggle.',
   ),
   DesignTokenPreset(
     id: 'electric',
     label: 'Electric',
-    promptFragment: 'Design direction: bold vibrant tech. Violet (#8B5CF6) primary with cyan (#22D3EE) highlights, restrained 135deg gradients on key surfaces, pill-shaped buttons (999px), glowing focus rings, dark-first with light variant, playful but premium detail.',
+    promptFragment: 'Design direction: bold vibrant tech. Violet (#8B5CF6) primary with cyan (#22D3EE) highlights, restrained 135deg gradients and glows on hero/CTA surfaces, pill-shaped buttons (999px), glowing focus rings, dark-first with light variant. High energy, saturated accents on deep neutral surfaces, rich layered detail.',
   ),
   DesignTokenPreset(
     id: 'paper',
     label: 'Paper Light',
-    promptFragment: 'Design direction: clean editorial light. Off-white (#FAFAFA/#F5F5F4) surfaces, hairline borders (#E4E4E7), near-black (#18181B) text, one calm accent, 12px radii, magazine-style typography with strong hierarchy, generous whitespace, very soft shadows.',
+    promptFragment: 'Design direction: warm editorial light. Off-white (#FAFAFA/#F5F5F4) surfaces, hairline borders (#E4E4E7), near-black (#18181B) text, one calm accent, 14-16px radii, magazine-style typography with strong hierarchy, generous whitespace, very soft layered shadows. Rich content with imagery and clear sections - airy but never empty.',
   ),
   DesignTokenPreset(
     id: 'brutalist',
     label: 'Brutalist',
-    promptFragment: 'Design direction: bold brutalist. Thick 2px charcoal borders (#18181B), hard offset shadows (4px 4px 0), monospace display headings, sharp 0-2px radii, raw grid structure, high contrast, confident oversized type.',
+    promptFragment: 'Design direction: bold brutalist. Thick 2px charcoal borders (#18181B), hard offset shadows (4px 4px 0), monospace display headings, sharp 0-2px radii, raw visible grid structure, high contrast, confident oversized type, blocky color panels. Loud and dense, never plain.',
   ),
 ];

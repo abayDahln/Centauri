@@ -352,7 +352,10 @@ class _AttachButton extends StatelessWidget {
   }
 }
 
-/// Pemilih viewport sebagai toggle kecil (checkbox) di dalam prompt bar.
+/// Pemilih viewport sebagai toggle kecil di dalam prompt bar.
+/// Murni hint untuk generate BERIKUTNYA — tidak mengubah frame yang sudah ada.
+/// Bila user menyebut viewport eksplisit di teks prompt ("...viewport: desktop"),
+/// teks tersebut menang atas tombol ini.
 class _ViewportSelector extends StatelessWidget {
   const _ViewportSelector({required this.selected, required this.onChanged});
 
@@ -378,7 +381,7 @@ class _ViewportSelector extends StatelessWidget {
         children: ViewportMode.values.map((mode) {
           final active = mode == selected;
           return Tooltip(
-            message: '${mode.label} - ${mode.widthLabel}',
+            message: '${mode.label} - ${mode.widthLabel} (target generate)',
             child: GestureDetector(
               onTap: () => onChanged(mode),
               child: AnimatedContainer(
