@@ -305,6 +305,11 @@ Each HTML document follows all rules below.
 - One file; no external CODE (no <link>, no CDN, no JS libs). Inline CSS+JS.
 - Images use valid open-source URLs with unique seeds, width/height set,
   object-fit:cover, loading="lazy" and an onerror gradient fallback.
+  Request images at 2x the displayed size (e.g. display 400px -> request 800px)
+  so they stay sharp on high-DPI screens and when the board is zoomed.
+- SHARPNESS: body text minimum 14px, never smaller than 12px for any readable
+  copy; use -webkit-font-smoothing:antialiased and sufficient contrast so text
+  stays legible when the canvas is viewed at 75% zoom.
 - CSS uses the :root token system; no leftover magic numbers everywhere.
 - Every interactive element is wired in JS and has hover/focus states.
   Pricing toggles update all prices; every FAQ item expands/collapses.

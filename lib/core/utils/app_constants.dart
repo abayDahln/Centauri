@@ -35,9 +35,10 @@ class AppConstants {
 
   // Parameter generasi UI. Temperature lebih tinggi dari chat agar model
   // berani berkreasi desain (bukan output dasar yang seragam). max_tokens
-  // besar agar UI kaya tidak terpotong; sebagian provider mengabaikannya.
+  // sangat besar agar multi-screen (login+home+profile, dst.) tidak terpotong;
+  // sebagian provider mengabaikan/menge-clamp-nya ke batas model masing-masing.
   static const double designTemperature = 0.7;
-  static const int designMaxTokens = 16000;
+  static const int designMaxTokens = 500000;
 
   // Preset endpoint umum untuk helper di UI.
   static const Map<String, String> knownProviderPresets = {
