@@ -70,7 +70,7 @@ void main() {
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });
 
-  testWidgets('Side panel with Chat/History/Layers opens when board empty', (
+  testWidgets('Side panel with Chat/History opens when board empty', (
     tester,
   ) async {
     tester.view
@@ -79,31 +79,21 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    // Panel tertutup: belum ada tab "History"/"Layers" di panel samping.
+    // Panel tertutup: belum ada tab "History" di panel samping.
     expect(find.text('History'), findsNothing);
-    expect(find.text('Layers'), findsNothing);
 
     // Klik tombol menu di kiri atas.
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
 
-    // Panel samping muncul dengan tiga tab: Chat, History, Layers.
+    // Panel samping muncul dengan dua tab: Chat, History.
     expect(find.text('Chat'), findsOneWidget);
     expect(find.text('History'), findsOneWidget);
-    expect(find.text('Layers'), findsOneWidget);
 
     // Buka tab History -> tombol "Chat baru" tampil.
     await tester.tap(find.text('History'));
     await tester.pumpAndSettle();
     expect(find.text('Chat baru'), findsOneWidget);
-
-    // Buka tab Layers -> tampil placeholder saat belum ada frame aktif.
-    await tester.tap(find.text('Layers'));
-    await tester.pumpAndSettle();
-    expect(
-      find.textContaining('Klik komponen di canvas'),
-      findsOneWidget,
-    );
 
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });

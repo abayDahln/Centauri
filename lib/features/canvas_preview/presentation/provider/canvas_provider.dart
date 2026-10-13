@@ -18,7 +18,7 @@ enum ChatRole { user, assistant, error }
 enum OutputMode { design, dev }
 
 /// Alat aktif di board (mirip toolbar Figma/Stitch).
-enum BoardTool { select, hand, comment }
+enum BoardTool { select, hand }
 
 class CanvasMessage {
   const CanvasMessage({
@@ -258,9 +258,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
   CanvasSnapshot? _lastRecorded;
   bool _applyingHistory = false;
 
-  /// Clipboard internal untuk copy/paste node (single node).
-  NodeGeometry? _clipboard;
-
   bool get canUndo => _undoStack.isNotEmpty;
   bool get canRedo => _redoStack.isNotEmpty;
   int get undoDepth => _undoStack.length;
@@ -342,23 +339,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
     _redoStack.clear();
     _lastRecorded = CanvasSnapshot.of(state);
   }
-
-  // ------------------------------------------------------- clipboard (5a) --
-
-  /// Salin geometri node terpilih ke clipboard internal.
-  bool copySelectedNode() {
-    final geometry = state.selectedNodeGeometry;
-    if (geometry == null) return false;
-    _clipboard = geometry;
-    return true;
-  }
-
-  bool get hasClipboard => _clipboard != null;
-
-  /// Tempel node yang disalin sebagai duplikat via HTML (perlu service JS).
-  /// Mengembalikan id node sumber + patch gaya untuk ditempel bila ada.
-  NodeGeometry? get clipboard => _clipboard;
-
 
   /// Board kini tak terbatas, jadi frame tidak dibatasi posisinya.
   /// Dibiarkan sebagai hook agar mudah menambah aturan bila perlu.

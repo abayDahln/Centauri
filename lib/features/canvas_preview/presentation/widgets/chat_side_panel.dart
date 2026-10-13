@@ -5,13 +5,11 @@ import '../../../../app/config/theme.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../../../history/presentation/history_panel.dart';
 import '../../../prompt_editor/presentation/prompt_chat_panel.dart';
-import '../provider/canvas_provider.dart';
-import 'layers_panel.dart';
 
-/// Tab yang sedang aktif di [ChatSidePanel]: 0 Chat, 1 History, 2 Layers.
+/// Tab yang sedang aktif di [ChatSidePanel]: 0 Chat, 1 History.
 /// Dipakai bersama agar bagian lain (mis. [PromptBar]) bisa memaksa panel
 /// berpindah ke tab Chat saat user mengirim prompt.
-enum PanelTab { chat, history, layers }
+enum PanelTab { chat, history }
 
 final panelTabProvider = NotifierProvider<PanelTabNotifier, PanelTab>(
   PanelTabNotifier.new,
@@ -42,7 +40,7 @@ class PanelVisibleNotifier extends Notifier<bool> {
   void show() => state = true;
 }
 
-/// Panel kiri saat board aktif: tiga tab, **Chat**, **History**, **Layers**.
+/// Panel kiri saat board aktif: dua tab, **Chat** dan **History**.
 /// Bisa disembunyikan lewat tombol menu di top bar.
 class ChatSidePanel extends ConsumerWidget {
   const ChatSidePanel({super.key});
@@ -65,38 +63,11 @@ class ChatSidePanel extends ConsumerWidget {
             child: switch (tab) {
               PanelTab.chat => const PromptChatPanel(),
               PanelTab.history => const HistoryPanel(),
-              PanelTab.layers => const _LayersTab(),
             },
           ),
         ],
       ),
     );
-  }
-}
-
-/// Konten tab Layers: tree DOM frame aktif.
-class _LayersTab extends ConsumerWidget {
-  const _LayersTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hasTree = ref.watch(
-      canvasProvider.select((s) => s.activeFrame?.domTree != null),
-    );
-    if (!hasTree) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Pilih frame yang sudah dirender untuk melihat layers.\n\n'
-            'Klik komponen di canvas untuk memilihnya.',
-            textAlign: TextAlign.center,
-            style: AppText.caption,
-          ),
-        ),
-      );
-    }
-    return const LayersPanel();
   }
 }
 
@@ -131,15 +102,6 @@ class _TabBar extends StatelessWidget {
               icon: Icons.history,
               active: index == 1,
               onTap: () => onChanged(1),
-            ),
-          ),
-          const SizedBox(width: 2),
-          Expanded(
-            child: _TabButton(
-              label: 'Layers',
-              icon: Icons.layers_outlined,
-              active: index == 2,
-              onTap: () => onChanged(2),
             ),
           ),
         ],
