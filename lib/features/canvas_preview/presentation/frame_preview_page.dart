@@ -3,10 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../../app/config/theme.dart';
+import '../data/services/canvas_shell.dart';
 
 /// Layar pratinjau/prototype mode (Fase 5): menampilkan frame aktif di dalam
 /// WebView penuh tanpa overlay board, sehingga interaksi UI (tap, toggle,
 /// accordion) bisa dicoba seperti aplikasi sungguhan.
+///
+/// Bridge metrik (dipakai board) sengaja TIDAK diaktifkan di sini: preview
+/// murni menampilkan dokumen apa adanya, tanpa listener seleksi.
 class FramePreviewPage extends ConsumerStatefulWidget {
   const FramePreviewPage({
     super.key,
@@ -25,7 +29,6 @@ class FramePreviewPage extends ConsumerStatefulWidget {
 
 class _FramePreviewPageState extends ConsumerState<FramePreviewPage> {
   late final WebViewController _controller;
-  bool _ready = false;
 
   @override
   void initState() {
@@ -33,8 +36,9 @@ class _FramePreviewPageState extends ConsumerState<FramePreviewPage> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFFFFFFFF));
-    _controller.loadHtmlString(widget.html);
-    _ready = true;
+    // Dokumen konten dimuat langsung. `nativeZoom: false` = tanpa transform
+    // CSS, karena preview tampil pada ukuran aslinya di layar penuh.
+    _controller.loadHtmlString(injectBridge(widget.html, nativeZoom: false));
   }
 
   @override
@@ -57,11 +61,7 @@ class _FramePreviewPageState extends ConsumerState<FramePreviewPage> {
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: _ready
-              ? WebViewWidget(controller: _controller)
-              : const CircularProgressIndicator(),
-        ),
+        child: Center(child: WebViewWidget(controller: _controller)),
       ),
     );
   }
