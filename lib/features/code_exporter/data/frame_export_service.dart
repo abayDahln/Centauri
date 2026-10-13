@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:html/dom.dart' as dom;
+import 'package:html/parser.dart' as html_parser;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -23,8 +25,12 @@ class FrameExportException implements Exception {
 /// - PDF: bungkus PNG dalam satu halaman PDF (paket `pdf`, murni Dart).
 class FrameExportService {
   /// Bungkus HTML frame menjadi SVG standalone.
-  /// Catatan: gambar eksternal tetap berupa URL (butuh internet saat
-  /// dilihat); konten HTML/CSS sendiri sepenuhnya offline.
+  /// HTML di-parse lalu diserialisasi sebagai XHTML yang well-formed di
+  /// dalam `foreignObject`, sehingga file .svg yang dibuka langsung di
+  /// browser menampilkan desain aslinya (bukan teks keterangan).
+  /// `<script>` dibuang (tidak dieksekusi di konteks SVG).
+  /// Catatan: gambar/stylesheet eksternal tetap berupa URL (butuh internet
+  /// saat dilihat).
   String buildStandaloneSvg({
     required String html,
     required double width,
@@ -32,18 +38,112 @@ class FrameExportService {
   }) {
     final w = width.isFinite && width > 0 ? width.round() : 390;
     final h = height.isFinite && height > 0 ? height.round() : 844;
-    final escaped = html
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
+
+    final document = html_parser.parse(html);
+    for (final script in document.querySelectorAll('script')) {
+      script.remove();
+    }
+    // Serializer `html` menulis isi komentar apa adanya; komentar yang
+    // memuat '<', '--', atau ']]>' bisa merusak dokumen SVG. Buang saja.
+    _removeComments(document.documentElement);
+    final root = document.documentElement;
+    String xhtml;
+    if (root != null) {
+      root.attributes['xmlns'] = 'http://www.w3.org/1999/xhtml';
+      xhtml = root.outerHtml;
+    } else {
+      xhtml = '<div xmlns="http://www.w3.org/1999/xhtml">'
+          '${document.body?.innerHtml ?? html}'
+          '</div>';
+    }
+    // Jangan sertakan doctype HTML; tidak valid dalam dokumen SVG.
+    xhtml = xhtml.replaceFirst(
+      RegExp(r'<!DOCTYPE[^>]*>', caseSensitive: false),
+      '',
+    );
+    xhtml = _toStrictXhtml(xhtml);
+
     return '''<svg xmlns="http://www.w3.org/2000/svg" width="$w" height="$h" viewBox="0 0 $w $h">
   <foreignObject width="100%" height="100%">
-    <div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;margin:0;padding:0;overflow:hidden;font-family:Inter,system-ui,sans-serif;font-size:14px;color:#18181B;background:#FFFFFF;">HTML frame Centauri (lihat file .html untuk konten penuh):</div>
+    $xhtml
   </foreignObject>
-  <!-- sumber:
-$escaped
--->
 </svg>''';
+  }
+
+  static void _removeComments(dom.Element? root) {
+    if (root == null) return;
+    final toRemove =
+        root.nodes.whereType<dom.Comment>().toList(growable: false);
+    for (final comment in toRemove) {
+      root.nodes.remove(comment);
+    }
+    for (final child in root.children) {
+      _removeComments(child);
+    }
+  }
+
+  /// Serialized HTML belum tentu XHTML valid. Untuk `<foreignObject>` di
+  /// dokumen SVG (diparse sebagai XML): element tanpa penutup harus
+  /// self-close dan `<style>` butuh namespace xhtml agar CSS ikut diterapkan.
+  static const _voidElements = {
+    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+    'link', 'meta', 'param', 'source', 'track', 'wbr',
+    // Bentuk SVG yang lazim ditulis tanpa penutup di HTML.
+    'circle', 'ellipse', 'line', 'path', 'polygon', 'polyline', 'rect', 'stop',
+    'use',
+  };
+
+  /// Isi tag pembuka (tanpa '>' penutup): bagian quoted/unquoted bergantian,
+  /// tanpa '>' telanjang, dan tidak memakan '/' penanda self-closing.
+  static String _openTagBody({bool stopBeforeClose = false}) {
+    const dq = '"';
+    const sq = "'";
+    final slash = stopBeforeClose
+        ? '|/(?![>$dq$sq])'
+        : '|/';
+    return '(?:'
+        '$dq[^$dq]*$dq'
+        '|$sq[^$sq]*$sq'
+        '|[^>$dq$sq/]'
+        '$slash'
+        ')*';
+  }
+
+  static final _voidTagPattern = () {
+    final names = _voidElements.join('|');
+    // Tag yang sudah punya penutup sesuai dilewati.
+    return RegExp(
+      '<($names)(${_openTagBody(stopBeforeClose: true)})>'
+      '(?!\\s*</(?:$names)>)',
+      caseSensitive: false,
+    );
+  }();
+
+  static final _styleTagPattern = RegExp(
+    '<style(${_openTagBody()})>',
+    caseSensitive: false,
+  );
+
+  static final _svgTagPattern = RegExp(
+    '<svg(${_openTagBody()})>',
+    caseSensitive: false,
+  );
+
+  String _toStrictXhtml(String xhtml) {
+    final closed = xhtml.replaceAllMapped(
+      _voidTagPattern,
+      (m) => '<${m.group(1)}${m.group(2)}/>',
+    );
+    final styled = closed.replaceAllMapped(
+      _styleTagPattern,
+      (m) => '<style xmlns="http://www.w3.org/1999/xhtml"${m.group(1)}>',
+    );
+    return styled.replaceAllMapped(
+      _svgTagPattern,
+      (m) => m.group(1)!.contains('xmlns')
+          ? m.group(0)!
+          : '<svg xmlns="http://www.w3.org/2000/svg"${m.group(1)}>',
+    );
   }
 
   /// Minta frame aktif merender PNG. Tunggu event `png`/`pngError`
