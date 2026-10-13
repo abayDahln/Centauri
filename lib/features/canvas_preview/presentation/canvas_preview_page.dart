@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/config/theme.dart';
 import '../../../app/widgets/stitch_widgets.dart';
+import '../../../core/storage/local_storage_service.dart';
 import '../../history/data/project_repository.dart';
 import '../../history/presentation/history_provider.dart';
 import '../../mcp/data/mcp_bridge.dart';
@@ -404,6 +405,7 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
             codeVisible: showCode,
             layersVisible: _showLayers,
           ),
+          const StorageBanner(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -1161,4 +1163,75 @@ Size boardViewportSize(BuildContext context) {
       as RenderBox?;
   if (box != null && box.hasSize) return box.size;
   return const Size(900, 600);
+}
+
+/// Peringatan bila penyimpanan lokal gagal dibuka (mis. box Hive di-lock
+/// instance app lain). App tetap jalan penuh; tanpa ini kegagalan storage
+/// hanya terlihat sebagai data hilang tanpa sebab.
+class StorageBanner extends ConsumerStatefulWidget {
+  const StorageBanner({super.key});
+
+  @override
+  ConsumerState<StorageBanner> createState() => _StorageBannerState();
+}
+
+class _StorageBannerState extends ConsumerState<StorageBanner> {
+  bool _busy = false;
+  bool _dismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = ref.watch(storageStatusProvider);
+    if (_dismissed || status.isHealthy) return const SizedBox.shrink();
+
+    return Material(
+      color: AppColors.statusWarning.withValues(alpha: 0.12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.storage_rounded,
+              size: 16,
+              color: AppColors.statusWarning,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Penyimpanan lokal tidak bisa dibuka (${status.error}). '
+                'Riwayat & pengaturan tidak akan tersimpan. '
+                'Tutup instance Centauri lain lalu coba lagi.',
+                style: const TextStyle(fontSize: 12, height: 1.4),
+              ),
+            ),
+            if (_busy)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
+              TextButton(
+                onPressed: _retry,
+                child: const Text('Coba lagi'),
+              ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.close_rounded, size: 16),
+              onPressed: () => setState(() => _dismissed = true),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _retry() async {
+    setState(() => _busy = true);
+    await ref.read(storageStatusProvider.notifier).retry();
+    if (mounted) setState(() => _busy = false);
+  }
 }
