@@ -41,6 +41,34 @@ void main() {
     });
   });
 
+  group('detectScreenRequest', () {
+    test('range with comma list detects all screens in order', () {
+      final req = detectScreenRequest(
+        'buatkan aku ui aplikasi media sosial seperti instagram dan facebook, '
+        'lengkap dengan semua screen dari login, home sampai profile',
+      );
+      expect(req.count, 3);
+      expect(req.names, ['login', 'home', 'profile']);
+    });
+
+    test('explicit count without names', () {
+      final req = detectScreenRequest('buatkan 5 screen onboarding');
+      expect(req.count, 5);
+      expect(req.names, contains('onboarding'));
+    });
+
+    test('single screen stays single', () {
+      final req = detectScreenRequest('buatkan landing page');
+      expect(req.count, 1);
+      expect(req.names, isEmpty);
+    });
+
+    test('ID spelling canonicalized to EN', () {
+      final req = detectScreenRequest('buatkan profil dan pengaturan');
+      expect(req.names, ['profile', 'settings']);
+    });
+  });
+
   group('Submit guard', () {
     test('empty prompt does nothing', () async {
       final container = makeContainer();
