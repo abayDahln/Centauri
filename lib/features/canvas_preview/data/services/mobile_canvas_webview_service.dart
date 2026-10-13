@@ -9,6 +9,10 @@ import 'canvas_webview_service.dart';
 
 /// Implementasi canvas WebView untuk Android (dan iOS) memakai
 /// `webview_flutter`.
+///
+/// Arsitektur render: dokumen konten dimuat LANGSUNG via `loadHtmlString`
+/// dengan bridge JS di-inject ke dalam HTML (lihat [injectBridge]). Tidak ada
+/// iframe — menghilangkan kelas bug "frame kosong + bridge mati".
 class MobileCanvasWebviewService implements CanvasWebviewService {
   late final WebViewController _controller;
   final StreamController<CanvasSelectEvent> _selectionEvents =
@@ -38,16 +42,9 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
         },
       );
 
-    await _controller.loadHtmlString(canvasShellHtml);
     _ready = true;
 
     // Push state yang mungkin sudah berubah sebelum init selesai.
-    if (_pendingViewportWidth != null) {
-      await setViewportWidth(_pendingViewportWidth);
-    }
-    if (_pendingZoom != 1) {
-      await setZoom(_pendingZoom);
-    }
     if (_pendingHtml != null) {
       final html = _pendingHtml;
       _pendingHtml = null;
@@ -59,31 +56,39 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   Future<void> renderHtml(String? html) async {
     _pendingHtml = html;
     if (!_ready || _disposed) return;
-    if (html == null) {
-      await _controller.runJavaScript('window.clearCanvas()');
+
+    if (html == null || html.isEmpty) {
+      await _controller.loadHtmlString(_emptyDocument);
       return;
     }
-    await _controller.runJavaScript('window.renderCanvas(${jsonEncode(html)})');
+
+    // Inject bridge (mobile TIDAK pakai native zoom → transform CSS).
+    final document = injectBridge(html, nativeZoom: false);
+    await _controller.loadHtmlString(document);
+
+    // Terapkan state tampilan yang mungkin sudah berubah sebelum dokumen siap.
+    await setViewportWidth(_pendingViewportWidth);
+    await setZoom(_pendingZoom);
   }
 
   @override
   Future<void> setViewportWidth(double? widthPx) async {
     _pendingViewportWidth = widthPx;
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript('window.setViewport(${widthPx ?? 'null'})');
+    await _safeRun('window.setViewport(${widthPx ?? 'null'})');
   }
 
   @override
   Future<void> setZoom(double factor) async {
     _pendingZoom = factor;
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript('window.setZoom($factor)');
+    await _safeRun('window.setZoom($factor)');
   }
 
   @override
   Future<void> selectNode(String? id) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript(
+    await _safeRun(
       'window.centauriSelect(${id == null ? 'null' : jsonEncode(id)})',
     );
   }
@@ -91,15 +96,13 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   @override
   Future<void> requestNodeGeometry(String id) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript(
-      'window.centauriInspect(${jsonEncode(id)})',
-    );
+    await _safeRun('window.centauriInspect(${jsonEncode(id)})');
   }
 
   @override
   Future<void> applyNodeStyle(String id, Map<String, String> patch) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript(
+    await _safeRun(
       'window.centauriApplyStyle(${jsonEncode(id)}, ${jsonEncode(patch)})',
     );
   }
@@ -119,7 +122,7 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
       if (width != null) 'w': width,
       if (height != null) 'h': height,
     };
-    await _controller.runJavaScript(
+    await _safeRun(
       'window.centauriMoveResize(${jsonEncode(id)}, ${jsonEncode(box)})',
     );
   }
@@ -127,13 +130,13 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   @override
   Future<void> requestFramePng({double pixelRatio = 2}) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript('window.centauriExportPng($pixelRatio)');
+    await _safeRun('window.centauriExportPng($pixelRatio)');
   }
 
   @override
   Future<void> addNode(String? parentId, String html, {String? position}) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript(
+    await _safeRun(
       'window.centauriAddNode('
       '${parentId == null ? 'null' : jsonEncode(parentId)}, '
       '${jsonEncode(html)}, '
@@ -144,7 +147,7 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   @override
   Future<void> setNodeText(String id, String text) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript(
+    await _safeRun(
       'window.centauriSetText(${jsonEncode(id)}, ${jsonEncode(text)})',
     );
   }
@@ -152,29 +155,25 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   @override
   Future<void> deleteNode(String id) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript(
-      'window.centauriDeleteNode(${jsonEncode(id)})',
-    );
+    await _safeRun('window.centauriDeleteNode(${jsonEncode(id)})');
   }
 
   @override
   Future<void> requestHtml() async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript('window.centauriGetHtml()');
+    await _safeRun('window.centauriGetHtml()');
   }
 
   @override
   Future<void> requestOuterHtml(String id) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript(
-      'window.centauriGetOuterHtml(${jsonEncode(id)})',
-    );
+    await _safeRun('window.centauriGetOuterHtml(${jsonEncode(id)})');
   }
 
   @override
   Future<void> hoverNode(String? id) async {
     if (!_ready || _disposed) return;
-    await _controller.runJavaScript(
+    await _safeRun(
       'window.centauriHover(${id == null ? 'null' : jsonEncode(id)})',
     );
   }
@@ -187,4 +186,19 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
     _disposed = true;
     await _selectionEvents.close();
   }
+
+  /// `runJavaScript` yang aman: kegagalan JS (mis. bridge belum ada karena
+  /// dokumen belum siap) dilaporkan, bukan jadi unhandled error.
+  Future<void> _safeRun(String script) async {
+    try {
+      await _controller.runJavaScript(script);
+    } catch (e) {
+      debugPrint('[canvas] runJavaScript gagal: $e');
+    }
+  }
+
+  static const String _emptyDocument =
+      '<!DOCTYPE html><html><body style="margin:0;height:100vh;'
+      'display:flex;align-items:center;justify-content:center;'
+      'background:#FFFFFF"></body></html>';
 }

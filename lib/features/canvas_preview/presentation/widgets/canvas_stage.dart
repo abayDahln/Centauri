@@ -103,6 +103,22 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
         event.type == 'outerHtmlError') {
       return;
     }
+
+    // Kegagalan render/bridge dari JS atau WebView: tampilkan sebagai pesan
+    // agar frame tidak tampil putih kosong tanpa penjelasan (hardening).
+    if (event.type == 'error') {
+      final message = event.errorMessage ?? 'Terjadi kesalahan di canvas.';
+      debugPrint('[canvas] bridge error: $message');
+      if (mounted) setState(() => _error = message);
+      return;
+    }
+
+    // Dokumen selesai dirender: bersihkan error lama bila ada.
+    if (event.type == 'ready') {
+      if (mounted && _error != null) setState(() => _error = null);
+      return;
+    }
+
     final notifier = ref.read(canvasProvider.notifier);
     if (event.type == 'resize') {
       final height = event.contentHeight;
