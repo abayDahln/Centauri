@@ -1099,40 +1099,48 @@ class _MobileShell extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: Stack(
-          children: [
-            if (hasUi) const BoardSurface() else const ChatLanding(),
-            // Toolbar mengambang (Fase 5): undo/redo + preview.
-            if (hasUi)
-              const Positioned(
-                right: 8,
-                top: 8,
-                child: _MobileFloatingToolbar(),
-              ),
-            if (hasUi && hasSelection)
-              Positioned(
-                right: 8,
-                top: 56,
-                child: _FloatIconButton(
-                  icon: Icons.tune_outlined,
-                  tooltip: 'Inspector',
-                  onTap: () => _openSheet(
-                    context,
-                    const InspectorPanel(),
-                    heightFactor: 0.7,
+      body: Column(
+        children: [
+          // Peringatan storage (sama seperti desktop): app tetap jalan penuh.
+          const StorageBanner(),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Stack(
+                children: [
+                  if (hasUi) const BoardSurface() else const ChatLanding(),
+                  // Toolbar mengambang (Fase 5): undo/redo + preview.
+                  if (hasUi)
+                    const Positioned(
+                      right: 8,
+                      top: 8,
+                      child: _MobileFloatingToolbar(),
+                    ),
+                  if (hasUi && hasSelection)
+                    Positioned(
+                      right: 8,
+                      top: 56,
+                      child: _FloatIconButton(
+                        icon: Icons.tune_outlined,
+                        tooltip: 'Inspector',
+                        onTap: () => _openSheet(
+                          context,
+                          const InspectorPanel(),
+                          heightFactor: 0.7,
+                        ),
+                      ),
+                    ),
+                  const Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: PromptBar(),
                   ),
-                ),
+                ],
               ),
-            const Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: PromptBar(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
