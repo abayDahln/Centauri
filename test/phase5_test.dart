@@ -87,12 +87,5 @@ void main() {
       expect(notifier.undo(), isFalse);
       expect(notifier.redo(), isFalse);
     });
-
-    test('copySelectedNode requires a selection', () {
-      final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
-      expect(notifier.copySelectedNode(), isFalse);
-      expect(notifier.hasClipboard, isFalse);
-    });
   });
 }

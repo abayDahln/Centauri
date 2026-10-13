@@ -194,12 +194,6 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
     final isActive = ref.watch(
       canvasProvider.select((s) => s.activeFrameId == widget.frame.id),
     );
-    // Overlay native hanya untuk frame aktif agar tidak dobel antar frame.
-    final geometry = ref.watch(
-      canvasProvider.select(
-        (s) => isActive ? s.selectedNodeGeometry : null,
-      ),
-    );
 
     ref.listen<String?>(
       canvasProvider.select((s) => s.selectedNodeId),
@@ -215,7 +209,6 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       isActive: isActive,
       scale: widget.scale,
       pan: widget.pan,
-      nodeGeometry: geometry,
       // Saat tool hand (Space/pan) aktif, boardlah yang menangani drag —
       // frame tidak boleh ikut bergerak agar tidak dobel dengan pan board.
       boardPanning:
@@ -227,16 +220,6 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       onDrag: (delta) =>
           ref.read(canvasProvider.notifier).moveFrame(widget.frame.id, delta),
       onDragEnd: () => ref.read(canvasProvider.notifier).endFrameDrag(),
-      onNodeMove: (dx, dy) {
-        final id = ref.read(canvasProvider).selectedNodeId;
-        if (id == null) return;
-        _service.moveResizeNode(id, dx: dx, dy: dy);
-      },
-      onNodeResize: (w, h) {
-        final id = ref.read(canvasProvider).selectedNodeId;
-        if (id == null) return;
-        _service.moveResizeNode(id, width: w, height: h);
-      },
       onClearSelection: () =>
           ref.read(canvasProvider.notifier).selectNode(null),
       child: !_ready
@@ -349,9 +332,6 @@ class _FrameCard extends StatelessWidget {
     required this.onDrag,
     required this.child,
     this.boardPanning = false,
-    this.nodeGeometry,
-    this.onNodeMove,
-    this.onNodeResize,
     this.onClearSelection,
     this.onDragEnd,
   });
@@ -369,12 +349,6 @@ class _FrameCard extends StatelessWidget {
   /// drag di atas frame diteruskan ke board, bukan memindahkan frame.
   final bool boardPanning;
 
-  /// Geometri CSS node terpilih (null = tidak ada overlay).
-  final NodeGeometry? nodeGeometry;
-
-  /// Delta CSS px (dx/dy) untuk move, ukuran absolut untuk resize.
-  final void Function(double dx, double dy)? onNodeMove;
-  final void Function(double width, double height)? onNodeResize;
   final VoidCallback? onClearSelection;
   final VoidCallback? onDragEnd;
 
@@ -436,222 +410,14 @@ class _FrameCard extends StatelessWidget {
                   boxShadow: AppColors.shadowRaised,
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: child),
-                    // Klik area kosong (di luar overlay node) melepas seleksi.
-                    // Ditaruh di bawah overlay node agar drag node tidak lepas.
-                    if (isActive && nodeGeometry == null)
-                      Positioned.fill(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onTap: onClearSelection,
-                        ),
-                      ),
-                    if (isActive && nodeGeometry != null)
-                      _NativeSelectionOverlay(
-                        geometry: nodeGeometry!,
-                        scale: scale,
-                        onMove: onNodeMove,
-                        onResize: onNodeResize,
-                      ),
-                  ],
-                ),
+                // WebView (Texture) menangani klik elemen sendiri: klik node
+                // mengirim event `select` lewat bridge JS→Dart. Tidak ada
+                // overlay Flutter di atasnya agar klik tidak tertelan.
+                child: child,
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Overlay seleksi NATIVE di atas WebView (Fase 1).
-/// Box diposisikan dari `NodeGeometry` (CSS px → layar via `scale`).
-/// Drag badan = move (delta), drag handle sudut = resize (absolut w/h).
-/// Tulis balik selalu via `moveResizeNode` → inline style di DOM.
-class _NativeSelectionOverlay extends StatelessWidget {
-  const _NativeSelectionOverlay({
-    required this.geometry,
-    required this.scale,
-    this.onMove,
-    this.onResize,
-  });
-
-  final NodeGeometry geometry;
-  final double scale;
-  final void Function(double dx, double dy)? onMove;
-  final void Function(double width, double height)? onResize;
-
-  @override
-  Widget build(BuildContext context) {
-    if (geometry.width <= 0 || geometry.height <= 0) {
-      return const SizedBox.shrink();
-    }
-    final left = geometry.x * scale;
-    final top = geometry.y * scale;
-    final width = geometry.width * scale;
-    final height = geometry.height * scale;
-
-    return Stack(
-      children: [
-        Positioned(
-          left: left,
-          top: top,
-          width: width,
-          height: height,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            // Badan box = move. Delta layar → CSS px.
-            onPanUpdate: (details) {
-              if (onMove == null) return;
-              onMove!(
-                details.delta.dx / scale,
-                details.delta.dy / scale,
-              );
-            },
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: AppColors.accentPrimary,
-                  width: 1.5,
-                ),
-                color: AppColors.accentPrimary.withValues(alpha: 0.08),
-              ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Label tag + ukuran kecil di atas box (spacing readout).
-                  Positioned(
-                    top: -18,
-                    left: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentPrimary,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${geometry.tag.isEmpty ? 'node' : geometry.tag}'
-                        '  ${geometry.width.toStringAsFixed(0)}×'
-                        '${geometry.height.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // 4 handle sudut (resize). Kirim ukuran absolut CSS px.
-                  _ResizeHandle(
-                    alignment: Alignment.topLeft,
-                    cursor: SystemMouseCursors.resizeUpLeft,
-                    onDrag: (dx, dy) => _resizeFrom(
-                      dx,
-                      dy,
-                      anchorX: geometry.x + geometry.width,
-                      anchorY: geometry.y + geometry.height,
-                    ),
-                  ),
-                  _ResizeHandle(
-                    alignment: Alignment.topRight,
-                    cursor: SystemMouseCursors.resizeUpRight,
-                    onDrag: (dx, dy) => _resizeFrom(
-                      dx,
-                      dy,
-                      anchorX: geometry.x,
-                      anchorY: geometry.y + geometry.height,
-                    ),
-                  ),
-                  _ResizeHandle(
-                    alignment: Alignment.bottomLeft,
-                    cursor: SystemMouseCursors.resizeDownLeft,
-                    onDrag: (dx, dy) => _resizeFrom(
-                      dx,
-                      dy,
-                      anchorX: geometry.x + geometry.width,
-                      anchorY: geometry.y,
-                    ),
-                  ),
-                  _ResizeHandle(
-                    alignment: Alignment.bottomRight,
-                    cursor: SystemMouseCursors.resizeDownRight,
-                    onDrag: (dx, dy) => _resizeFrom(
-                      dx,
-                      dy,
-                      anchorX: geometry.x,
-                      anchorY: geometry.y,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _resizeFrom(
-    double dxScreen,
-    double dyScreen, {
-    required double anchorX,
-    required double anchorY,
-  }) {
-    if (onResize == null) return;
-    // Titik drag saat ini dalam CSS px.
-    final cursorX = geometry.x + dxScreen / scale;
-    final cursorY = geometry.y + dyScreen / scale;
-    final w = (cursorX - anchorX).abs().clamp(24.0, 4000.0);
-    final h = (cursorY - anchorY).abs().clamp(16.0, 6000.0);
-    onResize!(w, h);
-  }
-}
-
-class _ResizeHandle extends StatelessWidget {
-  const _ResizeHandle({
-    required this.alignment,
-    required this.cursor,
-    required this.onDrag,
-  });
-
-  final Alignment alignment;
-  final MouseCursor cursor;
-  final void Function(double dx, double dy) onDrag;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Transform.translate(
-        offset: Offset(
-          alignment.x * 5,
-          alignment.y * 5,
-        ),
-        child: MouseRegion(
-          cursor: cursor,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onPanUpdate: (details) =>
-                onDrag(details.delta.dx, details.delta.dy),
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(
-                  color: AppColors.accentPrimary,
-                  width: 1.5,
-                ),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

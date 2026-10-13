@@ -23,8 +23,6 @@ import 'widgets/chat_landing.dart';
 import 'widgets/chat_side_panel.dart';
 import 'widgets/code_panel.dart';
 import 'widgets/frame_export_button.dart';
-import 'widgets/inspector_panel.dart';
-import 'widgets/layers_panel.dart';
 import 'widgets/prompt_bar.dart';
 
 /// Halaman utama board. Menangani:
@@ -134,14 +132,14 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     ref.read(canvasProvider.notifier).recordHistory(previous);
   }
 
-  /// Hotkey global desktop (Fase 5):
+  /// Hotkey global desktop:
   /// Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z / Ctrl+Y redo, Delete/Backspace hapus
-  /// frame aktif, Ctrl+C/V copy/paste node, Space (tahan) pan sementara.
+  /// node terpilih (atau frame aktif), Space (tahan) pan sementara, Ctrl +/-/0
+  /// zoom. Edit visual (move/resize/style) TIDAK disediakan — itu tugas AI.
   ///
   /// PENTING: hotkey ini TIDAK BOLEH menelan input saat pengguna sedang
   /// mengetik di TextField (prompt bar, dsb). Kita lepas kendali begitu ada
-  /// field teks yang fokus, kecuali untuk tombol yang jelas milik board
-  /// (mis. Escape). Tanpa ini, Backspace/Space/Ctrl+V tak sampai ke field.
+  /// field teks yang fokus. Tanpa ini, Backspace/Space tak sampai ke field.
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (_textFieldHasFocus()) {
       // Beri field teks kendali penuh atas keyboard.
@@ -202,26 +200,11 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
       notifier.resetView();
       return KeyEventResult.handled;
     }
-    if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyC) {
-      // Hanya "curi" Ctrl+C bila memang ada node terpilih (copy komponen).
-      // Jika tidak, biarkan sistem menangani (mis. copy teks lain).
-      if (notifier.copySelectedNode()) return KeyEventResult.handled;
-      return KeyEventResult.ignored;
-    }
-    if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyV) {
-      // Hanya tempel-komponen bila ada node terpilih & clipboard node terisi.
-      final state = ref.read(canvasProvider);
-      if (state.selectedNodeId != null && notifier.hasClipboard) {
-        _pasteNode();
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    }
     if (event.logicalKey == LogicalKeyboardKey.delete ||
         event.logicalKey == LogicalKeyboardKey.backspace) {
       final state = ref.read(canvasProvider);
       // Prioritas: hapus node terpilih; bila tidak ada, hapus frame aktif.
-      if (state.selectedNodeGeometry != null) {
+      if (state.selectedNodeId != null) {
         _deleteSelectedNode();
         return KeyEventResult.handled;
       } else if (state.activeFrameId != null) {
@@ -270,34 +253,6 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     if (service == null) return;
     await service.deleteNode(nodeId);
     await service.requestHtml();
-  }
-
-  /// Tempel node yang disalin: ambil outerHTML node sumber, sisipkan sebagai
-  /// saudara (afterend), lalu geser sedikit agar terlihat menumpuk.
-  Future<void> _pasteNode() async {
-    final notifier = ref.read(canvasProvider.notifier);
-    final source = notifier.clipboard;
-    final state = ref.read(canvasProvider);
-    final frameId = state.activeFrameId;
-    final sourceId = state.selectedNodeId;
-    if (source == null || frameId == null || sourceId == null) return;
-    final service = CanvasServiceRegistry.forFrame(frameId);
-    if (service == null) return;
-
-    try {
-      final outer = await service.selectionEvents
-          .firstWhere(
-            (e) => e.type == 'outerHtml' || e.type == 'outerHtmlError',
-          )
-          .timeout(const Duration(seconds: 10));
-      if (outer.type != 'outerHtml' || outer.html == null) return;
-      // Sisipkan duplikat setelah node sumber, lalu geser sedikit.
-      await service.addNode(sourceId, outer.html!, position: 'afterend');
-      await service.moveResizeNode(sourceId, dx: 12, dy: 12);
-      await service.requestHtml();
-    } catch (_) {
-      // Clipboard/JS gagal: abaikan, tidak ada yang rusak.
-    }
   }
 }
 
@@ -366,7 +321,6 @@ class _DesktopShell extends ConsumerStatefulWidget {
 
 class _DesktopShellState extends ConsumerState<_DesktopShell> {
   bool _showCode = false;
-  bool _showLayers = true;
   bool _autoShownChat = false;
 
   @override
@@ -375,10 +329,6 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
     final showChat = ref.watch(panelVisibleProvider);
     final hasUi = ref.watch(
       canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
-    );
-    // Inspector kanan otomatis saat ada node terpilih (Fase 2).
-    final hasSelection = ref.watch(
-      canvasProvider.select((s) => s.selectedNodeId != null),
     );
 
     // Saat board pertama kali muncul, tampilkan panel chat otomatis.
@@ -400,10 +350,8 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
             onTogglePrompt: () =>
                 ref.read(panelVisibleProvider.notifier).toggle(),
             onToggleCode: () => setState(() => _showCode = !_showCode),
-            onToggleLayers: () => setState(() => _showLayers = !_showLayers),
             promptVisible: showChat,
             codeVisible: showCode,
-            layersVisible: _showLayers,
           ),
           const StorageBanner(),
           Expanded(
@@ -412,21 +360,9 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Panel obrolan (Chat · History · Layers) di pojok kiri.
+                  // Panel obrolan (Chat · History) di pojok kiri.
                   if (showChat) ...[
                     const SizedBox(width: 320, child: ChatSidePanel()),
-                    const SizedBox(width: 12),
-                  ],
-                  // Layers tree frame aktif (menuju tengah, setelah chat).
-                  if (hasUi && _showLayers) ...[
-                    const SizedBox(
-                      width: 260,
-                      child: SoftPanel(
-                        padding: EdgeInsets.zero,
-                        clip: true,
-                        child: LayersPanel(),
-                      ),
-                    ),
                     const SizedBox(width: 12),
                   ],
                   Expanded(
@@ -475,18 +411,6 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                       ),
                     ),
                   ],
-                  // Inspector Fase 2: kanan, berdampingan dengan Code bila ada.
-                  if (hasUi && hasSelection) ...[
-                    const SizedBox(width: 12),
-                    const SizedBox(
-                      width: 280,
-                      child: SoftPanel(
-                        padding: EdgeInsets.zero,
-                        clip: true,
-                        child: InspectorPanel(),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -502,19 +426,15 @@ class _TopBar extends ConsumerWidget {
     required this.boardActive,
     required this.onTogglePrompt,
     required this.onToggleCode,
-    required this.onToggleLayers,
     required this.promptVisible,
     required this.codeVisible,
-    required this.layersVisible,
   });
 
   final bool boardActive;
   final VoidCallback onTogglePrompt;
   final VoidCallback onToggleCode;
-  final VoidCallback onToggleLayers;
   final bool promptVisible;
   final bool codeVisible;
-  final bool layersVisible;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -526,10 +446,10 @@ class _TopBar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: [
-            // Menu: buka/tutup panel kiri (Chat · History · Layers).
+            // Menu: buka/tutup panel kiri (Chat · History).
             SoftIconButton(
               icon: Icons.menu,
-              tooltip: 'Panel (Chat · History · Layers)',
+              tooltip: 'Panel (Chat · History)',
               active: promptVisible,
               onPressed: onTogglePrompt,
             ),
@@ -543,13 +463,6 @@ class _TopBar extends ConsumerWidget {
             const SizedBox(width: 12),
             // Toggle panel Code (hanya relevan setelah ada UI).
             if (boardActive) ...[
-              SoftIconButton(
-                icon: Icons.layers_outlined,
-                tooltip: 'Layers (kiri)',
-                active: layersVisible,
-                onPressed: onToggleLayers,
-              ),
-              const SizedBox(width: 4),
               SoftIconButton(
                 icon: Icons.code_outlined,
                 tooltip: 'Code',
@@ -1052,9 +965,6 @@ class _MobileShell extends ConsumerWidget {
     final hasUi = ref.watch(
       canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
     );
-    final hasSelection = ref.watch(
-      canvasProvider.select((s) => s.selectedNodeId != null),
-    );
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -1064,7 +974,7 @@ class _MobileShell extends ConsumerWidget {
         actions: [
           SoftIconButton(
             icon: Icons.menu,
-            tooltip: 'Panel (Chat · History · Layers)',
+            tooltip: 'Panel (Chat · History)',
             onPressed: () => _openSheet(
               context,
               const ChatSidePanel(),
@@ -1084,16 +994,6 @@ class _MobileShell extends ConsumerWidget {
                   _openSheet(context, const CodePanel(), heightFactor: 0.8),
             ),
             // Ekspor frame (PNG/SVG/PDF, Fase 3) via bottom sheet menu.
-            if (hasSelection)
-              SoftIconButton(
-                icon: Icons.tune_outlined,
-                tooltip: 'Inspector',
-                onPressed: () => _openSheet(
-                  context,
-                  const InspectorPanel(),
-                  heightFactor: 0.7,
-                ),
-              ),
             const FrameExportButton(compact: true),
           ],
           const SizedBox(width: 8),
@@ -1115,20 +1015,6 @@ class _MobileShell extends ConsumerWidget {
                       right: 8,
                       top: 8,
                       child: _MobileFloatingToolbar(),
-                    ),
-                  if (hasUi && hasSelection)
-                    Positioned(
-                      right: 8,
-                      top: 56,
-                      child: _FloatIconButton(
-                        icon: Icons.tune_outlined,
-                        tooltip: 'Inspector',
-                        onTap: () => _openSheet(
-                          context,
-                          const InspectorPanel(),
-                          heightFactor: 0.7,
-                        ),
-                      ),
                     ),
                   const Positioned(
                     left: 0,
