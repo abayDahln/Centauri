@@ -101,9 +101,22 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
 
     setState(() => _isTesting = true);
     try {
+      var provider = _providerFromForm();
+      // Bug fix: saat mengedit provider tanpa mengisi ulang API Key, field
+      // kosong (apiKey=null) membuat Test Connection selalu gagal. Pakai key
+      // yang tersimpan di secure storage bila form tidak mengisi key baru.
+      final editingId = _editingProviderId;
+      if (provider.apiKey == null && editingId != null) {
+        final existing = await ref
+            .read(apiProviderRepositoryProvider)
+            .getProviderById(editingId);
+        if (existing?.apiKey != null) {
+          provider = provider.copyWith(apiKey: existing!.apiKey);
+        }
+      }
       await ref
           .read(providerConfigProvider.notifier)
-          .testConnection(_providerFromForm());
+          .testConnection(provider);
       if (mounted) _showSnackBar('Koneksi berhasil.', isError: false);
     } on ApiConnectionException catch (e) {
       if (mounted) _showSnackBar(e.message, isError: true);

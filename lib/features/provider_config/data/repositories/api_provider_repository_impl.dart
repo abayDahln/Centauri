@@ -41,6 +41,18 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
   }
 
   @override
+  Future<ApiProvider?> getProviderById(String id) async {
+    final providers = await getProviders();
+    ApiProvider? provider;
+    for (final p in providers) {
+      if (p.id == id) provider = p;
+    }
+    if (provider == null) return null;
+    final apiKey = await _secureStorage.readApiKey(provider.id);
+    return provider.copyWith(apiKey: apiKey);
+  }
+
+  @override
   Future<void> saveProvider(ApiProvider provider) async {
     if (provider.apiKey != null) {
       await _secureStorage.saveApiKey(provider.id, provider.apiKey!);
