@@ -683,19 +683,23 @@ class CanvasNotifier extends Notifier<CanvasState> {
   }
 
   /// Sesuaikan tinggi frame agar kontennya utuh (tanpa scrollbar).
-  /// Lebar tetap (FIXED sesuai viewport); tinggi hanya TUMBUH mengikuti konten
-  /// agar layout tidak "melompat" saat zoom atau saat gambar/font selesai load.
-  /// Penyusutan diabaikan supaya frame stabil di semua tingkat zoom board.
+  /// Lebar tetap (FIXED sesuai viewport); tinggi mengikuti tinggi dokumen
+  /// konten agar frame PAS dengan UI (tidak ada ruang kosong di bawah).
+  ///
+  /// Boleh tumbuh DAN menyusut. Histeresis 4px meredam perubahan kecil supaya
+  /// frame tidak "bergetar" saat font/gambar selesai dimuat. Dulu grow-only,
+  /// yang membuat frame selalu setinggi viewport (mis. 844px) walau kontennya
+  /// lebih pendek → terlihat ada area kosong di bawah (bug laporan user).
   void setFrameContentHeight(String id, double contentHeight) {
-    const minHeight = 200.0;
+    const minHeight = 120.0;
     const maxHeight = 6000.0;
+    const hysteresis = 4.0;
     final height = contentHeight.clamp(minHeight, maxHeight);
     final frames = state.frames.map((f) {
       if (f.id != id) return f;
       // Beri sedikit ruang ekstra agar tepi konten tidak mepet.
       final target = height + 2;
-      // Histeresis 4px + grow-only: abaikan perubahan kecil & penyusutan.
-      if (target <= f.size.height + 4) return f;
+      if ((target - f.size.height).abs() <= hysteresis) return f;
       return f.copyWith(size: Size(f.size.width, target));
     }).toList();
     state = state.copyWith(frames: frames);

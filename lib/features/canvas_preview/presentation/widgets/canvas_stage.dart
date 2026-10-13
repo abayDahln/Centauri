@@ -13,9 +13,12 @@ import '../provider/canvas_provider.dart';
 /// Satu frame di board: kartu mengambang berisi WebView yang merender HTML
 /// frame tersebut. Setiap frame punya service WebView sendiri.
 ///
-/// Frame diposisikan dan diukur di **ruang layar** (memakai `pan` + `scale`),
-/// bukan lewat Transform. Dengan begitu WebView dirender pada ukuran piksel
-/// akhirnya sehingga tetap tajam di semua tingkat zoom.
+/// **Skala tunggal (anti zoom-ganda).** WebView SELALU dirender pada skala
+/// 1.0 (viewport CSS = lebar desain asli, mis. 390px) sehingga konten tidak
+/// pernah "pecah". Seluruh kartu kemudian di-`Transform.scale(scale)` oleh
+/// Flutter dari sudut kiri-atas, dan diposisikan di `pan + offset*scale`.
+/// Dengan satu sumber skala saja, border/radius/label ikut membesar-mengecil
+/// seragam dan ukuran frame selalu konsisten dengan skala board.
 class BoardFrameView extends ConsumerStatefulWidget {
   const BoardFrameView({
     super.key,
@@ -62,10 +65,11 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
         _onEvent,
         onError: (Object e) => debugPrint('[canvas] bridge error: $e'),
       );
-      // Konten dirender pada ukuran CSS asli frame (lebar tetap), lalu
-      // WebView di-zoom agar ukuran piksel mengikuti skala board -> tajam.
+      // Konten dirender pada lebar CSS asli frame (mis. 390px) dengan skala
+      // WebView = 1.0. Skala board ditangani oleh Transform Flutter, bukan
+      // zoomFactor, sehingga tidak ada zoom ganda (penyebab UI "pecah").
       await _service.setViewportWidth(widget.frame.size.width);
-      await _service.setZoom(widget.scale);
+      await _service.setZoom(1.0);
       await _service.renderHtml(
         widget.frame.html.isEmpty ? null : widget.frame.html,
       );
@@ -83,7 +87,7 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
     if (mounted) setState(() => _error = null);
     try {
       await _service.setViewportWidth(widget.frame.size.width);
-      await _service.setZoom(widget.scale);
+      await _service.setZoom(1.0);
       await _service.renderHtml(
         widget.frame.html.isEmpty ? null : widget.frame.html,
       );
@@ -174,11 +178,8 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
         debugPrint('[canvas] setViewportWidth gagal: $e');
       });
     }
-    if (oldWidget.scale != widget.scale) {
-      _service.setZoom(widget.scale).catchError((Object e) {
-        debugPrint('[canvas] setZoom gagal: $e');
-      });
-    }
+    // Skala board ditangani Transform Flutter (bukan WebView), jadi tidak ada
+    // re-setZoom saat `scale` berubah.
   }
 
   @override
@@ -318,9 +319,10 @@ class _WebviewLoading extends StatelessWidget {
 
 /// Kartu frame: judul + area konten + ring aksen saat aktif.
 ///
-/// Ukuran & posisi dihitung di ruang layar: `pan + offset*scale`, dengan
-/// lebar/tinggi `size*scale`. WebView di dalamnya di-zoom via `setZoomFactor`
-/// sehingga tajam.
+/// Kartu digambar pada **ukuran logis** frame (mis. 390×844), lalu seluruh
+/// kartu di-`Transform.scale(scale)` dari sudut kiri-atas dan diposisikan di
+/// `pan + offset*scale`. WebView di dalamnya selalu skala 1.0 → konten tidak
+/// pecah dan border/radius/label membesar-mengecil seragam.
 class _FrameCard extends StatelessWidget {
   const _FrameCard({
     required this.frame,
@@ -354,70 +356,72 @@ class _FrameCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Posisi di ruang layar (sudut kiri-atas kartu setelah di-scale).
     final screenLeft = pan.dx + frame.offset.dx * scale;
     final screenTop = pan.dy + frame.offset.dy * scale;
-    final screenWidth = frame.size.width * scale;
-    final screenHeight = frame.size.height * scale;
 
-    // Skala label agar tetap terbaca (tidak ikut mengecil ekstrem).
-    final labelScale = scale.clamp(0.5, 1.0);
+    // Kartu digambar pada ukuran logisnya, lalu di-scale oleh Transform.
+    // `Transform.scale` tidak mengubah layout, jadi kita bungkus dengan
+    // SizedBox berukuran hasil-skala agar hit-test & posisi benar.
+    final scaledWidth = frame.size.width * scale;
+    final scaledHeight = frame.size.height * scale;
 
     return Positioned(
       left: screenLeft,
       top: screenTop,
-      width: screenWidth,
-      height: screenHeight,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 20 * labelScale,
-            child: Transform.scale(
-              scale: labelScale,
-              alignment: Alignment.centerLeft,
-              child: _FrameLabel(
-                frame: frame,
-                isActive: isActive,
-                onSelect: onSelect,
-                onDelete: onDelete,
-              ),
-            ),
-          ),
-          SizedBox(height: 6 * labelScale),
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.deferToChild,
-              onTap: onSelect,
-              // Delta drag dari gesture sudah dalam piksel layar; konversi ke
-              // koordinat board dengan membagi scale.
-              // Saat board panning (hand tool), drag TIDAK memindah frame:
-              // gesture dibiarkan lolos ke Listener board.
-              onPanUpdate: boardPanning
-                  ? null
-                  : (details) => onDrag(details.delta / scale),
-              onPanEnd: boardPanning ? null : (_) => onDragEnd?.call(),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                decoration: BoxDecoration(
-                  color: AppColors.bgSurface,
-                  borderRadius: AppRadius.md,
-                  border: Border.all(
-                    color: isActive
-                        ? AppColors.accentPrimary
-                        : AppColors.borderSubtle,
-                    width: isActive ? 1.8 : 1,
-                  ),
-                  boxShadow: AppColors.shadowRaised,
+      width: scaledWidth,
+      height: scaledHeight,
+      child: Transform.scale(
+        scale: scale,
+        alignment: Alignment.topLeft,
+        // Kartu berukuran logis; Transform menskalakannya ke ruang layar.
+        child: SizedBox(
+          width: frame.size.width,
+          height: frame.size.height,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              // Label frame (ikut skala bersama kartu).
+              SizedBox(
+                height: 22,
+                child: _FrameLabel(
+                  frame: frame,
+                  isActive: isActive,
+                  onSelect: onSelect,
+                  onDelete: onDelete,
                 ),
-                clipBehavior: Clip.antiAlias,
-                // WebView (Texture) menangani klik elemen sendiri: klik node
-                // mengirim event `select` lewat bridge JS→Dart. Tidak ada
-                // overlay Flutter di atasnya agar klik tidak tertelan.
-                child: child,
               ),
-            ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.deferToChild,
+                  onTap: onSelect,
+                  // Delta drag dalam piksel layar → koordinat board (bagi scale).
+                  onPanUpdate: boardPanning
+                      ? null
+                      : (details) => onDrag(details.delta / scale),
+                  onPanEnd: boardPanning ? null : (_) => onDragEnd?.call(),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.bgSurface,
+                      border: Border.all(
+                        color: isActive
+                            ? AppColors.accentPrimary
+                            : AppColors.borderSubtle,
+                        width: isActive ? 1.5 : 1,
+                      ),
+                    ),
+                    // Tanpa clip: border tetap utuh di semua skala (dulu
+                    // `Clip.antiAlias` + radius memotong corner → terlihat
+                    // "terpotong" saat zoom).
+                    child: child,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
