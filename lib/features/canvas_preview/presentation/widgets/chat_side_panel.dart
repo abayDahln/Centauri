@@ -8,20 +8,48 @@ import '../../../prompt_editor/presentation/prompt_chat_panel.dart';
 import '../provider/canvas_provider.dart';
 import 'layers_panel.dart';
 
+/// Tab yang sedang aktif di [ChatSidePanel]: 0 Chat, 1 History, 2 Layers.
+/// Dipakai bersama agar bagian lain (mis. [PromptBar]) bisa memaksa panel
+/// berpindah ke tab Chat saat user mengirim prompt.
+enum PanelTab { chat, history, layers }
+
+final panelTabProvider = NotifierProvider<PanelTabNotifier, PanelTab>(
+  PanelTabNotifier.new,
+);
+
+class PanelTabNotifier extends Notifier<PanelTab> {
+  @override
+  PanelTab build() => PanelTab.chat;
+
+  void select(PanelTab tab) => state = tab;
+}
+
+/// Visibilitas panel (Chat · History · Layers). Dipakai bersama agar PromptBar
+/// bisa membuka panel ke tab Chat saat user mengirim prompt.
+final panelVisibleProvider = NotifierProvider<PanelVisibleNotifier, bool>(
+  PanelVisibleNotifier.new,
+);
+
+class PanelVisibleNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+
+  void toggle() => state = !state;
+
+  /// Tampilkan panel (tidak menutup bila sudah terbuka).
+  void show() => state = true;
+}
+
 /// Panel kiri saat board aktif: tiga tab, **Chat**, **History**, **Layers**.
 /// Bisa disembunyikan lewat tombol menu di top bar.
-class ChatSidePanel extends ConsumerStatefulWidget {
+class ChatSidePanel extends ConsumerWidget {
   const ChatSidePanel({super.key});
 
   @override
-  ConsumerState<ChatSidePanel> createState() => _ChatSidePanelState();
-}
-
-class _ChatSidePanelState extends ConsumerState<ChatSidePanel> {
-  int _tab = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tab = ref.watch(panelTabProvider);
     return SoftPanel(
       padding: EdgeInsets.zero,
       clip: true,
@@ -29,14 +57,15 @@ class _ChatSidePanelState extends ConsumerState<ChatSidePanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _TabBar(
-            index: _tab,
-            onChanged: (value) => setState(() => _tab = value),
+            index: tab.index,
+            onChanged: (value) =>
+                ref.read(panelTabProvider.notifier).select(PanelTab.values[value]),
           ),
           Expanded(
-            child: switch (_tab) {
-              0 => const PromptChatPanel(),
-              1 => const HistoryPanel(),
-              _ => const _LayersTab(),
+            child: switch (tab) {
+              PanelTab.chat => const PromptChatPanel(),
+              PanelTab.history => const HistoryPanel(),
+              PanelTab.layers => const _LayersTab(),
             },
           ),
         ],

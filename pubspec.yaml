@@ -50,6 +50,7 @@ dependencies:
   flutter_markdown: ^0.7.7+1
   desktop_drop: ^0.8.4
   super_clipboard: ^0.9.1
+  pdf: ^3.13.1
 
 dev_dependencies:
   flutter_test:

@@ -2,7 +2,8 @@
 enum CodeFormat {
   html('HTML', 'html', 'html'),
   reactJsx('React (JSX)', 'javascript', 'jsx'),
-  flutterDart('Flutter (Dart)', 'dart', 'dart');
+  flutterDart('Flutter (Dart)', 'dart', 'dart'),
+  tailwind('Tailwind', 'html', 'tailwind.html');
 
   const CodeFormat(this.label, this.highlightLanguage, this.fileExtension);
 

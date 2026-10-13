@@ -188,7 +188,7 @@ AiResponse classifyAiResponse(String rawResponse) {
   }
 
   // 4. Fallback: teks percakapan.
-  return AiResponse.chat(_stripMarkdownFences(raw));
+  return AiResponse.chat(_sanitizeChatText(raw));
 }
 
 /// Versi isolate (NFR-02).
@@ -267,6 +267,24 @@ String _stripMarkdownFences(String text) {
   final fence = RegExp(r'```[\w]*\s*([\s\S]*?)```');
   if (!fence.hasMatch(text)) return text;
   return text.replaceAllMapped(fence, (m) => m.group(1) ?? '').trim();
+}
+
+/// Bersihkan teks chat dari sisa tag HTML inline yang bocor dari model.
+///
+/// Kasus nyata: model kecil menjawab sapaan dengan
+/// `Hello! How can <a href="#main">Skip to content</a> I can help...`
+/// Renderer markdown membuang tag tanpa menyisip spasi sehingga tampil
+/// rusak: "How canSkip to contentI can...". Di sini tag diganti satu spasi.
+///
+/// Hanya dipakai untuk prosa murni (tanpa fenced block) agar contoh kode
+/// ```html <div>...``` tidak ikut rusak.
+String _sanitizeChatText(String text) {
+  var out = _stripMarkdownFences(text);
+  // Ada fenced block (contoh kode): jangan sentuh isi tag-nya.
+  if (text.contains('```')) return out;
+  out = out.replaceAll(RegExp(r'<[^<>\n]+>'), ' ');
+  out = out.replaceAll(RegExp(r'[ \t]+'), ' ');
+  return out.trim();
 }
 
 Map<String, dynamic>? _tryDecodeJson(String source) {

@@ -65,4 +65,26 @@ class LocalStorageService {
 
   Future<void> clearActiveProjectId() async =>
       _metaBox?.delete(AppConstants.activeProjectIdKey);
+
+  // ------------------------------------------------- presets & prompting --
+
+  static const _customPresetsKey = 'custom_presets_json';
+  static const _systemPromptKey = 'system_prompt_override';
+
+  /// JSON array preset kustom (Fase 4: Custom Bebas). Kosong bila belum ada.
+  String? readCustomPresetsJson() => _metaBox?.get(_customPresetsKey);
+
+  void writeCustomPresetsJson(String json) =>
+      _metaBox?.put(_customPresetsKey, json);
+
+  /// Override system prompt (null/empty = pakai bawaan `uiSystemPrompt`).
+  String? readSystemPromptOverride() => _metaBox?.get(_systemPromptKey);
+
+  Future<void> writeSystemPromptOverride(String? value) async {
+    if (value == null || value.trim().isEmpty) {
+      await _metaBox?.delete(_systemPromptKey);
+    } else {
+      await _metaBox?.put(_systemPromptKey, value);
+    }
+  }
 }

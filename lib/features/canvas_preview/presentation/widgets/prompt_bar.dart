@@ -11,10 +11,12 @@ import '../../../../app/config/theme.dart';
 import '../../../history/presentation/history_provider.dart';
 import '../../../prompt_editor/data/attachment_service.dart';
 import '../../../prompt_editor/domain/attachment.dart';
-import '../../../prompt_editor/domain/prompt_templates.dart';
+import '../../../prompt_editor/presentation/preset_manager_sheet.dart';
+import '../../../prompt_editor/presentation/preset_provider.dart';
 import '../../domain/viewport_mode.dart';
 import '../provider/canvas_provider.dart';
 import 'attachment_strip.dart';
+import 'chat_side_panel.dart';
 
 /// Bar prompt mengambang di bawah board (gaya Stitch):
 /// input besar membulat, chip design token, dan tombol kirim.
@@ -50,6 +52,9 @@ class _PromptBarState extends ConsumerState<PromptBar> {
     final hasAttachments = ref.read(canvasProvider).attachments.isNotEmpty;
     if (text.isEmpty && !hasAttachments) return;
     _controller.clear();
+    // Pastikan user melihat percakapan: buka panel & pindah ke tab Chat.
+    ref.read(panelTabProvider.notifier).select(PanelTab.chat);
+    ref.read(panelVisibleProvider.notifier).show();
     await ref
         .read(canvasProvider.notifier)
         .submitPrompt(
@@ -60,6 +65,9 @@ class _PromptBarState extends ConsumerState<PromptBar> {
     // Auto-save percakapan + board ke riwayat.
     ref.read(historyProvider.notifier).persistCurrent();
   }
+
+  /// Hentikan generate yang sedang berjalan (tombol Stop).
+  void _stop() => ref.read(canvasProvider.notifier).cancelGeneration();
 
   // ------------------------------------------------------- attachment adds --
 
@@ -162,6 +170,8 @@ class _PromptBarState extends ConsumerState<PromptBar> {
   Widget build(BuildContext context) {
     final state = ref.watch(canvasProvider);
     final selectedTokenId = state.selectedToken?.id;
+    // Fase 4: daftar preset gabungan bawaan + kustom (Custom Bebas).
+    final presets = ref.watch(presetProvider.select((s) => s.all));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -226,11 +236,11 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                             height: 26,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
-                              itemCount: designTokenPresets.length,
+                              itemCount: presets.length,
                               separatorBuilder: (_, _) =>
                                   const SizedBox(width: 6),
                               itemBuilder: (context, index) {
-                                final preset = designTokenPresets[index];
+                                final preset = presets[index];
                                 final selected = preset.id == selectedTokenId;
                                 return _TokenChip(
                                   label: preset.label,
@@ -244,6 +254,10 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                               },
                             ),
                           ),
+                        ),
+                        // Manajer preset + system prompt (Fase 4).
+                        _PresetManagerButton(
+                          onPressed: () => showPresetManagerSheet(context),
                         ),
                       ],
                     ),
@@ -309,7 +323,8 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                         const SizedBox(width: 8),
                         _SendButton(
                           busy: state.isGenerating,
-                          onPressed: state.isGenerating ? null : _send,
+                          onPressed: state.isGenerating ? _stop : _send,
+                          onStop: _stop,
                         ),
                       ],
                     ),
@@ -411,6 +426,38 @@ class _ViewportSelector extends StatelessWidget {
   }
 }
 
+/// Tombol gear pembuka manajer preset + system prompt.
+class _PresetManagerButton extends StatelessWidget {
+  const _PresetManagerButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Kelola gaya & system prompt',
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: AppRadius.pill,
+        child: Container(
+          height: 26,
+          width: 26,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.bgSunken,
+            borderRadius: AppRadius.pill,
+          ),
+          child: const Icon(
+            Icons.tune_outlined,
+            size: 14,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TokenChip extends StatelessWidget {
   const _TokenChip({
     required this.label,
@@ -453,13 +500,39 @@ class _TokenChip extends StatelessWidget {
 }
 
 class _SendButton extends StatelessWidget {
-  const _SendButton({required this.busy, required this.onPressed});
+  const _SendButton({
+    required this.busy,
+    required this.onPressed,
+    required this.onStop,
+  });
 
   final bool busy;
   final VoidCallback? onPressed;
+  final VoidCallback onStop;
 
   @override
   Widget build(BuildContext context) {
+    // Saat generating, tombol berubah menjadi Stop (kotak) agar jelas bisa
+    // dibatalkan — bukan spinner mati yang membingungkan.
+    if (busy) {
+      return Tooltip(
+        message: 'Hentikan generate',
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: FilledButton(
+            onPressed: onStop,
+            style: FilledButton.styleFrom(
+              padding: EdgeInsets.zero,
+              shape: const CircleBorder(),
+              backgroundColor: AppColors.statusError,
+            ),
+            child: const Icon(Icons.stop_rounded, size: 20),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       width: 40,
       height: 40,
@@ -470,16 +543,7 @@ class _SendButton extends StatelessWidget {
           shape: const CircleBorder(),
           backgroundColor: AppColors.accentPrimary,
         ),
-        child: busy
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.arrow_upward, size: 18),
+        child: const Icon(Icons.arrow_upward, size: 18),
       ),
     );
   }

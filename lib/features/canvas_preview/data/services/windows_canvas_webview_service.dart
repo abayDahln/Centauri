@@ -37,6 +37,12 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
       }
     });
 
+    // Gagal navigasi shell (mis. WebView2 rusak) jangan diam: catat ke log
+    // agar terlihat di `flutter run` saat frame tampil putih/error.
+    _controller.onLoadError.listen((status) {
+      debugPrint('[canvas] WebView load error: $status');
+    });
+
     await _controller.loadStringContent(canvasShellHtml);
 
     // Pastikan DOM shell sudah siap sebelum executeScript.
@@ -107,6 +113,89 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
     if (!_ready || _disposed) return;
     await _controller.executeScript(
       'window.centauriSelect(${id == null ? 'null' : jsonEncode(id)})',
+    );
+  }
+
+  @override
+  Future<void> requestNodeGeometry(String id) async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript(
+      'window.centauriInspect(${jsonEncode(id)})',
+    );
+  }
+
+  @override
+  Future<void> applyNodeStyle(String id, Map<String, String> patch) async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript(
+      'window.centauriApplyStyle(${jsonEncode(id)}, ${jsonEncode(patch)})',
+    );
+  }
+
+  @override
+  Future<void> moveResizeNode(
+    String id, {
+    double? dx,
+    double? dy,
+    double? width,
+    double? height,
+  }) async {
+    if (!_ready || _disposed) return;
+    final box = <String, Object?>{
+      if (dx != null) 'dx': dx,
+      if (dy != null) 'dy': dy,
+      if (width != null) 'w': width,
+      if (height != null) 'h': height,
+    };
+    await _controller.executeScript(
+      'window.centauriMoveResize(${jsonEncode(id)}, ${jsonEncode(box)})',
+    );
+  }
+
+  @override
+  Future<void> requestFramePng({double pixelRatio = 2}) async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript('window.centauriExportPng($pixelRatio)');
+  }
+
+  @override
+  Future<void> addNode(String? parentId, String html, {String? position}) async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript(
+      'window.centauriAddNode('
+      '${parentId == null ? 'null' : jsonEncode(parentId)}, '
+      '${jsonEncode(html)}, '
+      '${jsonEncode(position ?? 'beforeend')})',
+    );
+  }
+
+  @override
+  Future<void> setNodeText(String id, String text) async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript(
+      'window.centauriSetText(${jsonEncode(id)}, ${jsonEncode(text)})',
+    );
+  }
+
+  @override
+  Future<void> deleteNode(String id) async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript(
+      'window.centauriDeleteNode(${jsonEncode(id)})',
+    );
+  }
+
+  @override
+  Future<void> requestHtml() async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript('window.centauriGetHtml()');
+  }
+
+  @override
+  Future<void> requestOuterHtml(String id) async {
+    if (!_ready || _disposed) return;
+    await _controller.executeScript(
+      'window.centauriGetOuterHtml(${jsonEncode(id)})',
     );
   }
 

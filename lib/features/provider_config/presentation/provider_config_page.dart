@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/config/theme.dart';
 import '../../../core/utils/app_constants.dart';
 import '../../canvas_preview/presentation/widgets/skeleton.dart';
+import '../../mcp/presentation/mcp_status_section.dart';
 import '../data/datasources/ai_api_service.dart';
 import '../domain/entities/api_provider.dart';
 import 'providers/provider_config_provider.dart';
@@ -227,6 +228,10 @@ class _ProviderConfigPageState extends ConsumerState<ProviderConfigPage> {
                 _buildForm(),
                 const SizedBox(height: 32),
                 _buildProviderList(providers, activeProviderId, asyncState),
+                // MCP bridge agar agent eksternal bisa membaca/mengubah canvas.
+                const SizedBox(height: 32),
+                const McpStatusSection(),
+                const SizedBox(height: 24),
               ],
             ),
           ),

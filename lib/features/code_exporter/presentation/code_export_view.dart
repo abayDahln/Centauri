@@ -229,6 +229,8 @@ class _CodeExportViewState extends State<CodeExportView> {
         return 'Konversi bonus (heuristik): atribut className dan style object. Pindahkan isi tag <style> dokumen asli ke file CSS terpisah - class mengacu ke CSS hand-written, bukan Tailwind. Periksa kembali sebelum produksi.';
       case CodeFormat.flutterDart:
         return 'Konversi bonus (heuristik): HTML menjadi widget Flutter. Hanya inline style yang diterjemahkan; CSS di dalam <style> tidak dipetakan. Periksa kembali sebelum produksi.';
+      case CodeFormat.tailwind:
+        return 'Konversi bonus (heuristik): inline style menjadi arbitrary property Tailwind ([prop:value], butuh v3.2+). Class asli dipertahankan; isi <style> pindahkan ke CSS. Periksa kembali sebelum produksi.';
     }
   }
 }

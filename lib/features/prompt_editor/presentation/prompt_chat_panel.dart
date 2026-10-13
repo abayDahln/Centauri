@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/config/theme.dart';
 import '../../canvas_preview/presentation/provider/canvas_provider.dart';
+import '../../canvas_preview/presentation/widgets/ai_status_indicator.dart';
 import '../../canvas_preview/presentation/widgets/attachment_preview_dialog.dart';
 import '../../canvas_preview/presentation/widgets/markdown_message.dart';
 
@@ -43,34 +44,56 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
 
     return Column(
       children: [
-        _buildHeader(canvasState),
+        _buildHeader(),
         Expanded(
           child: canvasState.messages.isEmpty
-              ? _buildEmptyState()
+              ? (canvasState.isGenerating
+                    ? _buildThinkingState()
+                    : _buildEmptyState())
               : _buildMessageList(canvasState),
         ),
       ],
     );
   }
 
-  Widget _buildHeader(CanvasState state) {
+  /// Saat AI sedang memproses dan belum ada pesan: tampilkan indikator
+  /// "thinking" agar jelas ada aktivitas, bukan layar kosong.
+  Widget _buildThinkingState() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AiStatusIndicator(),
+            SizedBox(height: 12),
+            Text(
+              'Sedang memproses...',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.uiFamily,
+                fontFamilyFallback: AppFonts.uiFallback,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Text('Riwayat', style: AppText.sectionTitle),
-          const Spacer(),
-          if (state.messages.isNotEmpty)
-            TextButton(
-              onPressed: state.isGenerating
-                  ? null
-                  : () => ref.read(canvasProvider.notifier).clearBoard(),
-              child: const Text('Reset'),
-            ),
+          Text('Riwayat', style: AppText.sectionTitle),
         ],
       ),
     );
@@ -120,14 +143,22 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   }
 
   Widget _buildMessageList(CanvasState state) {
+    final extra = state.isGenerating ? 1 : 0;
     return SelectionArea(
       child: ListView.separated(
         controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        itemCount: state.messages.length,
+        itemCount: state.messages.length + extra,
         separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) =>
-            _buildMessageBubble(state.messages[index], index),
+        itemBuilder: (context, index) {
+          if (index >= state.messages.length) {
+            return const Align(
+              alignment: Alignment.centerLeft,
+              child: AiStatusIndicator(),
+            );
+          }
+          return _buildMessageBubble(state.messages[index], index);
+        },
       ),
     );
   }

@@ -38,6 +38,24 @@ class BoardSurface extends ConsumerWidget {
                 scale: scale,
                 pan: pan,
               ),
+            // Garis panduan snapping (Fase 2): merah tipis, koordinat board
+            // → layar via pan + scale.
+            for (final gx in state.snapGuidesX)
+              Positioned(
+                left: pan.dx + gx * scale - 0.5,
+                top: -2000,
+                bottom: -2000,
+                width: 1,
+                child: const ColoredBox(color: Color(0xFFEF4444)),
+              ),
+            for (final gy in state.snapGuidesY)
+              Positioned(
+                top: pan.dy + gy * scale - 0.5,
+                left: -2000,
+                right: -2000,
+                height: 1,
+                child: const ColoredBox(color: Color(0xFFEF4444)),
+              ),
           ],
         ),
       ),

@@ -89,6 +89,89 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
+  Future<void> requestNodeGeometry(String id) async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript(
+      'window.centauriInspect(${jsonEncode(id)})',
+    );
+  }
+
+  @override
+  Future<void> applyNodeStyle(String id, Map<String, String> patch) async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript(
+      'window.centauriApplyStyle(${jsonEncode(id)}, ${jsonEncode(patch)})',
+    );
+  }
+
+  @override
+  Future<void> moveResizeNode(
+    String id, {
+    double? dx,
+    double? dy,
+    double? width,
+    double? height,
+  }) async {
+    if (!_ready || _disposed) return;
+    final box = <String, Object?>{
+      if (dx != null) 'dx': dx,
+      if (dy != null) 'dy': dy,
+      if (width != null) 'w': width,
+      if (height != null) 'h': height,
+    };
+    await _controller.runJavaScript(
+      'window.centauriMoveResize(${jsonEncode(id)}, ${jsonEncode(box)})',
+    );
+  }
+
+  @override
+  Future<void> requestFramePng({double pixelRatio = 2}) async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript('window.centauriExportPng($pixelRatio)');
+  }
+
+  @override
+  Future<void> addNode(String? parentId, String html, {String? position}) async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript(
+      'window.centauriAddNode('
+      '${parentId == null ? 'null' : jsonEncode(parentId)}, '
+      '${jsonEncode(html)}, '
+      '${jsonEncode(position ?? 'beforeend')})',
+    );
+  }
+
+  @override
+  Future<void> setNodeText(String id, String text) async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript(
+      'window.centauriSetText(${jsonEncode(id)}, ${jsonEncode(text)})',
+    );
+  }
+
+  @override
+  Future<void> deleteNode(String id) async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript(
+      'window.centauriDeleteNode(${jsonEncode(id)})',
+    );
+  }
+
+  @override
+  Future<void> requestHtml() async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript('window.centauriGetHtml()');
+  }
+
+  @override
+  Future<void> requestOuterHtml(String id) async {
+    if (!_ready || _disposed) return;
+    await _controller.runJavaScript(
+      'window.centauriGetOuterHtml(${jsonEncode(id)})',
+    );
+  }
+
+  @override
   Future<void> hoverNode(String? id) async {
     if (!_ready || _disposed) return;
     await _controller.runJavaScript(

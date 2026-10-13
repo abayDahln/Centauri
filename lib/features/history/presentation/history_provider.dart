@@ -120,11 +120,14 @@ class HistoryNotifier extends Notifier<HistoryState> {
 
   String _deriveTitle(CanvasState canvas) {
     // Judul dari prompt user pertama; fallback judul frame pertama.
+    // PENTING: pakai `displayText` (teks asli user) agar konteks internal
+    // seperti `[CANVAS TARGET]` / design token tidak bocor ke nama sesi.
     for (final message in canvas.messages) {
-      if (message.role == ChatRole.user && message.text.trim().isNotEmpty) {
-        final cleaned = message.text.replaceAll(RegExp(r'\s+'), ' ').trim();
-        return cleaned.length > 48 ? '${cleaned.substring(0, 48)}...' : cleaned;
-      }
+      if (message.role != ChatRole.user) continue;
+      final raw = (message.displayText ?? message.text).trim();
+      if (raw.isEmpty) continue;
+      final cleaned = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+      return cleaned.length > 48 ? '${cleaned.substring(0, 48)}...' : cleaned;
     }
     if (canvas.frames.isNotEmpty) return canvas.frames.first.title;
     return 'Percakapan baru';
@@ -200,8 +203,37 @@ class HistoryNotifier extends Notifier<HistoryState> {
     }
   }
 
-  Future<void> rename(String id, String title) async {
+  /// Simpan proyek hasil impor file `.mydesign` lalu buka di board.
+  /// Id dipertahankan bila belum dipakai; bila bentrok, dibuat id baru.
+  Future<void> importProject(Project project) async {
     final repo = ref.read(projectRepositoryProvider);
+    final exists = state.projects.any((p) => p.id == project.id);
+    final effective = exists
+        ? project.copyWith(updatedAt: DateTime.now())
+        : project;
+    final id = exists ? _uuid.v4() : effective.id;
+    final stamped = Project(
+      id: id,
+      title: effective.title,
+      messages: effective.messages,
+      frames: effective.frames,
+      activeFrameId: effective.activeFrameId,
+      createdAt: effective.createdAt,
+      updatedAt: DateTime.now(),
+    );
+
+    repo.save(stamped);
+    await repo.setActiveProjectId(id);
+    _createdAt = stamped.createdAt;
+    final updated = _sorted([
+      ...state.projects.where((p) => p.id != id),
+      stamped,
+    ]);
+    state = state.copyWith(projects: updated, activeProjectId: id);
+    await open(id);
+  }
+
+  Future<void> rename(String id, String title) async {    final repo = ref.read(projectRepositoryProvider);
     final updatedProjects = <Project>[];
     for (final project in state.projects) {
       if (project.id == id) {

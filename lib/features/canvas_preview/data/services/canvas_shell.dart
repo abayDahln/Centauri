@@ -146,6 +146,7 @@ const String canvasShellHtml = '''
       selectedId = id;
       placeBox(selectBox, rectOf(doc, id), doc);
       sendToHost({ type: 'select', id: id });
+      setTimeout(function () { centauriInspect(id); }, 30);
     }, true);
 
     doc.addEventListener('scroll', function () {
@@ -245,6 +246,7 @@ const String canvasShellHtml = '''
       el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
     placeBox(selectBox, rectOf(doc, id), doc);
+    setTimeout(function () { centauriInspect(id); }, 30);
   }
 
   function centauriHover(id) {
@@ -252,6 +254,100 @@ const String canvasShellHtml = '''
     if (!doc) return;
     if (!id) { if (hoverBox) hoverBox.style.display = 'none'; return; }
     placeBox(hoverBox, rectOf(doc, id), doc);
+  }
+
+  // Fase 1+2 — JS bridge metadata (HTML tetap source of truth).
+  // id stabil dari Dart via data-centauri-id; JS tidak boleh generate id.
+  // Daftar props dibaca via getComputedStyle untuk inspector (Fase 2).
+  // Selalu sertakan juga inline style bila computed kosong.
+  var __centauriWatchedProps = ['display', 'position', 'left', 'top',
+    'width', 'height', 'margin', 'marginTop', 'marginRight', 'marginBottom',
+    'marginLeft', 'padding', 'paddingTop', 'paddingRight', 'paddingBottom',
+    'paddingLeft', 'color', 'backgroundColor', 'fontSize', 'fontWeight',
+    'fontFamily', 'lineHeight', 'textAlign', 'border', 'borderWidth',
+    'borderStyle', 'borderColor', 'borderRadius', 'boxShadow', 'opacity',
+    'transform', 'gap', 'flexDirection', 'justifyContent', 'alignItems'];
+
+  function centauriInspect(id) {
+    var doc = frameDoc();
+    if (!doc || !id) return null;
+    var el = doc.querySelector('[data-centauri-id="' + id + '"]');
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    var cs = doc.defaultView ? doc.defaultView.getComputedStyle(el) : null;
+    var styles = {};
+    if (cs) {
+      for (var i = 0; i < __centauriWatchedProps.length; i++) {
+        var k = __centauriWatchedProps[i];
+        try { styles[k] = cs[k] || ''; } catch (e) { styles[k] = ''; }
+      }
+      try { styles['tag'] = el.tagName ? el.tagName.toLowerCase() : ''; }
+      catch (e) {}
+    }
+    // Inline style menang: lebih akurat untuk apa yang akan diedit inspector
+    // (computed bisa normalisasi warna/font menjadi bentuk lain).
+    try {
+      for (var i = 0; i < __centauriWatchedProps.length; i++) {
+        var k = __centauriWatchedProps[i];
+        var inline = el.style[k];
+        if (inline !== undefined && inline !== null && inline !== '') {
+          styles[k] = inline;
+        }
+      }
+      // Sediakan juga cssText mentah untuk debugging.
+      styles['cssText'] = el.style.cssText || '';
+    } catch (e) {}
+    var payload = { type: 'geometry', id: id,
+      tag: el.tagName ? el.tagName.toLowerCase() : '',
+      rect: { x: r.left, y: r.top, w: r.width, h: r.height },
+      styles: styles };
+    sendToHost(payload);
+    // Jaga box seleksi tetap sinkron setelah inspect dari layers panel.
+    placeBox(selectBox, { x: r.left, y: r.top, w: r.width, h: r.height }, doc);
+    return payload;
+  }
+
+  // Satu-satunya jalur tulis Fase 1: set inline style, bukan scene graph.
+  function centauriApplyStyle(id, patch) {
+    var doc = frameDoc();
+    if (!doc || !id || !patch) return false;
+    var el = doc.querySelector('[data-centauri-id="' + id + '"]');
+    if (!el) return false;
+    for (var k in patch) {
+      try { el.style[k] = patch[k]; } catch (e) {}
+    }
+    placeBox(selectBox, rectOf(doc, id), doc);
+    reportContentSize(doc);
+    return true;
+  }
+
+  function centauriMoveResize(id, box) {
+    var doc = frameDoc();
+    if (!doc || !id || !box) return false;
+    var el = doc.querySelector('[data-centauri-id="' + id + '"]');
+    if (!el) return false;
+    try {
+      var cs = doc.defaultView ? doc.defaultView.getComputedStyle(el) : null;
+      var pos = cs ? cs.position : '';
+      if (pos === 'static') el.style.position = 'relative';
+      // Move sebagai DELTA (aman untuk flow layout): left/top adalah offset
+      // dari posisi normal, jadi tambah, jangan set absolut.
+      if (box.dx) {
+        var cur = parseFloat(el.style.left) || 0;
+        el.style.left = (cur + box.dx) + 'px';
+      }
+      if (box.dy) {
+        var cur = parseFloat(el.style.top) || 0;
+        el.style.top = (cur + box.dy) + 'px';
+      }
+      if (box.w !== undefined && box.w !== null) el.style.width = box.w + 'px';
+      if (box.h !== undefined && box.h !== null) el.style.height = box.h + 'px';
+    } catch (e) { return false; }
+    placeBox(selectBox, rectOf(doc, id), doc);
+    reportContentSize(doc);
+    // Konfirmasi balik agar overlay native akurat.
+    setTimeout(function () { centauriInspect(id); }, 60);
+    return true;
   }
 
   // Lebar CSS desain (mis. 390px). Lebar ini FIXED dan tidak boleh berubah
@@ -289,6 +385,177 @@ const String canvasShellHtml = '''
   // Ditandai oleh host Windows yang memakai zoomFactor native WebView2.
   function centauriSetNativeZoom(enabled) {
     window.__centauriNativeZoom = !!enabled;
+  }
+
+  // Fase 4 — mutasi DOM untuk MCP bridge (external agent).
+  // Semua tulis tetap inline di DOM; Dart sinkron ulang via centauriGetHtml.
+  function __centauriQuery(id) {
+    var doc = frameDoc();
+    if (!doc || !id) return null;
+    var el = doc.querySelector('[data-centauri-id="' + id + '"]');
+    return el ? { doc: doc, el: el } : null;
+  }
+
+  function __centauriSync(reason) {
+    var doc = frameDoc();
+    if (!doc) return false;
+    placeBox(selectBox, selectedId ? rectOf(doc, selectedId) : null, doc);
+    reportContentSize(doc);
+    return true;
+  }
+
+  function centauriAddNode(parentId, html, position) {
+    var doc = frameDoc();
+    if (!doc || !doc.body || !html) return false;
+    try {
+      var parent = parentId
+        ? doc.querySelector('[data-centauri-id="' + parentId + '"]')
+        : doc.body;
+      if (!parent) return false;
+      // Stamp id unik sisi-JS untuk node baru (prefix m agar tak bentrok
+      // dengan counter Dart n*); Dart me-rebuild tree dari HTML hasil.
+      var stamp = 'm' + Date.now().toString(36);
+      var tpl = doc.createElement('template');
+      tpl.innerHTML = html.trim();
+      var added = null;
+      var nodes = tpl.content.childNodes;
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].nodeType === 1) {
+          nodes[i].setAttribute('data-centauri-id', stamp + '_' + i);
+          if (!added) added = nodes[i];
+        }
+      }
+      var pos = position || 'beforeend';
+      parent.insertAdjacentHTML(pos, tpl.innerHTML);
+      __centauriSync('add');
+      if (added && added.scrollIntoView) {
+        added.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function centauriSetText(id, text) {
+    var found = __centauriQuery(id);
+    if (!found) return false;
+    try {
+      found.el.textContent = text;
+      __centauriSync('text');
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function centauriDeleteNode(id) {
+    var found = __centauriQuery(id);
+    if (!found) return false;
+    try {
+      if (selectedId === id) {
+        selectedId = null;
+        if (selectBox) selectBox.style.display = 'none';
+        sendToHost({ type: 'select', id: null });
+      }
+      found.el.remove();
+      __centauriSync('delete');
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // Kirim HTML dokumen penuh (untuk sinkronisasi Dart pasca-mutasi).
+  function centauriGetHtml() {
+    var doc = frameDoc();
+    if (!doc || !doc.documentElement) return null;
+    try {
+      var html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+      sendToHost({ type: 'html', html: html });
+      return html;
+    } catch (e) { return null; }
+  }
+
+  function centauriGetOuterHtml(id) {
+    var found = __centauriQuery(id);
+    if (!found) {
+      sendToHost({ type: 'outerHtmlError', id: id });
+      return null;
+    }
+    try {
+      var payload = { type: 'outerHtml', id: id,
+        tag: found.el.tagName ? found.el.tagName.toLowerCase() : '',
+        html: found.el.outerHTML };
+      sendToHost(payload);
+      return payload.html;
+    } catch (e) {
+      sendToHost({ type: 'outerHtmlError', id: id });
+      return null;
+    }
+  }
+
+  // Fase 3 — ekspor PNG frame via SVG foreignObject → canvas.
+  // Dijalankan di konteks shell agar bisa akses dokumen iframe.
+  // Gambar eksternal (http) dapat menodai canvas (CORS) → kirim pngError.
+  function centauriExportPng(pixelRatio) {
+    var doc = frameDoc();
+    if (!doc || !doc.documentElement) {
+      sendToHost({ type: 'pngError', message: 'Dokumen frame belum siap.' });
+      return;
+    }
+    try {
+      var scale = pixelRatio || 2;
+      if (scale < 1) scale = 1;
+      if (scale > 3) scale = 3;
+      var w = Math.max(doc.body ? doc.body.scrollWidth : 0,
+        doc.documentElement.scrollWidth || 0);
+      var h = Math.max(doc.body ? doc.body.scrollHeight : 0,
+        doc.documentElement.scrollHeight || 0);
+      if (!w || !h) {
+        sendToHost({ type: 'pngError', message: 'Ukuran dokumen nol.' });
+        return;
+      }
+      // Batasi piksel agar tidak OOM pada dokumen sangat panjang.
+      var maxPixels = 4096 * 4096;
+      while (w * scale * h * scale > maxPixels && scale > 1) scale -= 0.25;
+
+      var serializer = new XMLSerializer();
+      var clone = doc.documentElement.cloneNode(true);
+      // Buang overlay seleksi internal agar tidak ikut tercetak.
+      var overlays = clone.querySelectorAll('[data-centauri-overlay]');
+      for (var i = 0; i < overlays.length; i++) {
+        if (overlays[i].parentNode) overlays[i].parentNode.removeChild(overlays[i]);
+      }
+      var xhtml = serializer.serializeToString(clone);
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w +
+        '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
+        '<foreignObject width="100%" height="100%">' + xhtml +
+        '</foreignObject></svg>';
+      var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(h * scale);
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          var dataUrl = canvas.toDataURL('image/png');
+          sendToHost({ type: 'png', dataUrl: dataUrl });
+        } catch (e) {
+          URL.revokeObjectURL(url);
+          sendToHost({ type: 'pngError',
+            message: 'Gagal merender PNG (kemungkinan gambar eksternal memblokir ekspor).' });
+        }
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        sendToHost({ type: 'pngError', message: 'Gagal memuat SVG frame.' });
+      };
+      img.src = url;
+    } catch (e) {
+      sendToHost({ type: 'pngError',
+        message: 'Ekspor PNG gagal: ' + (e && e.message ? e.message : e) });
+    }
   }
 
   function clearCanvas() {

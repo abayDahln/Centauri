@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../prompt_editor/domain/ai_response.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 import '../../../prompt_editor/domain/prompt_templates.dart';
+import '../../../prompt_editor/presentation/preset_provider.dart';
 import '../../../provider_config/data/datasources/ai_api_service.dart';
 import '../../../provider_config/presentation/providers/provider_config_provider.dart';
+import '../../data/services/canvas_webview_service.dart';
 import '../../domain/board_frame.dart';
 import '../../domain/dom_tree.dart';
 import '../../domain/viewport_mode.dart';
@@ -82,10 +84,14 @@ class CanvasState {
     this.selectedToken,
     this.selectedNodeId,
     this.hoveredNodeId,
+    this.selectedNodeGeometry,
     this.outputMode = OutputMode.design,
     this.tool = BoardTool.select,
     this.generationStartedAt,
     this.showGrid = true,
+    this.snapEnabled = true,
+    this.snapGuidesX = const [],
+    this.snapGuidesY = const [],
     this.status = AiStatus.idle,
     this.attachments = const [],
   });
@@ -110,10 +116,19 @@ class CanvasState {
   final DesignTokenPreset? selectedToken;
   final String? selectedNodeId;
   final String? hoveredNodeId;
+  /// Cache tampilan untuk overlay native (bbox CSS + computed style).
+  /// HTML di WebView tetap source of truth.
+  final NodeGeometry? selectedNodeGeometry;
   final OutputMode outputMode;
   final BoardTool tool;
   final DateTime? generationStartedAt;
   final bool showGrid;
+
+  /// Smart snapping (Fase 2, board-level): snap frame ke grid + tepi frame
+  /// lain. Guide digambar sebagai garis merah di board (koordinat board).
+  final bool snapEnabled;
+  final List<double> snapGuidesX;
+  final List<double> snapGuidesY;
 
   /// Status proses AI saat ini (untuk indikator live).
   final AiStatus status;
@@ -154,11 +169,16 @@ class CanvasState {
     bool clearSelection = false,
     String? hoveredNodeId,
     bool clearHover = false,
+    NodeGeometry? selectedNodeGeometry,
+    bool clearGeometry = false,
     OutputMode? outputMode,
     BoardTool? tool,
     DateTime? generationStartedAt,
     bool clearGenerationStart = false,
     bool? showGrid,
+    bool? snapEnabled,
+    List<double>? snapGuidesX,
+    List<double>? snapGuidesY,
     AiStatus? status,
     List<Attachment>? attachments,
   }) {
@@ -177,12 +197,18 @@ class CanvasState {
           ? null
           : (selectedNodeId ?? this.selectedNodeId),
       hoveredNodeId: clearHover ? null : (hoveredNodeId ?? this.hoveredNodeId),
+      selectedNodeGeometry: clearGeometry
+          ? null
+          : (selectedNodeGeometry ?? this.selectedNodeGeometry),
       outputMode: outputMode ?? this.outputMode,
       tool: tool ?? this.tool,
       generationStartedAt: clearGenerationStart
           ? null
           : (generationStartedAt ?? this.generationStartedAt),
       showGrid: showGrid ?? this.showGrid,
+      snapEnabled: snapEnabled ?? this.snapEnabled,
+      snapGuidesX: snapGuidesX ?? this.snapGuidesX,
+      snapGuidesY: snapGuidesY ?? this.snapGuidesY,
       status: status ?? this.status,
       attachments: attachments ?? this.attachments,
     );
@@ -193,14 +219,146 @@ final canvasProvider = NotifierProvider<CanvasNotifier, CanvasState>(
   CanvasNotifier.new,
 );
 
+/// Snapshot immutable untuk undo/redo (Fase 5).
+/// Hanya menyimpan referensi list (copy-on-write), jadi murah.
+@immutable
+class CanvasSnapshot {
+  const CanvasSnapshot({
+    required this.frames,
+    required this.messages,
+    required this.activeFrameId,
+  });
+
+  final List<BoardFrame> frames;
+  final List<CanvasMessage> messages;
+  final String? activeFrameId;
+
+  static CanvasSnapshot of(CanvasState state) => CanvasSnapshot(
+    frames: state.frames,
+    messages: state.messages,
+    activeFrameId: state.activeFrameId,
+  );
+
+  bool contentEquals(CanvasSnapshot other) =>
+      identical(frames, other.frames) &&
+      identical(messages, other.messages) &&
+      activeFrameId == other.activeFrameId;
+}
+
 class CanvasNotifier extends Notifier<CanvasState> {
   static const double _gap = 80;
   /// frame terakhir (agar "ruang kosong" untuk frame berikutnya).
 
   int _frameCounter = 0;
 
+  // ------------------------------------------------------- undo / redo (5a) --
+  static const int _historyLimit = 60;
+  final List<CanvasSnapshot> _undoStack = [];
+  final List<CanvasSnapshot> _redoStack = [];
+  CanvasSnapshot? _lastRecorded;
+  bool _applyingHistory = false;
+
+  /// Clipboard internal untuk copy/paste node (single node).
+  NodeGeometry? _clipboard;
+
+  bool get canUndo => _undoStack.isNotEmpty;
+  bool get canRedo => _redoStack.isNotEmpty;
+  int get undoDepth => _undoStack.length;
+  int get redoDepth => _redoStack.length;
+
   @override
-  CanvasState build() => const CanvasState();
+  CanvasState build() {
+    // Baseline awal belum "tercatat" (null) agar perubahan pertama dari
+    // board kosong tetap bisa di-undo/di-record.
+    _lastRecorded = null;
+    return const CanvasState();
+  }
+
+  /// Dipanggil dari UI setelah ada perubahan board: dorong snapshot SEBELUM
+  /// perubahan ([previous]) ke stack undo bila kontennya berbeda dari
+  /// snapshot terakhir yang tercatat.
+  void recordHistory(CanvasState previous) {
+    if (_applyingHistory) return;
+    final snapshot = CanvasSnapshot.of(previous);
+    if (_lastRecorded != null && _lastRecorded!.contentEquals(snapshot)) {
+      // Konten sebelumnya sudah jadi baseline; perbarui baseline ke state
+      // sekarang agar perubahan berikutnya tetap terdeteksi.
+      _lastRecorded = CanvasSnapshot.of(state);
+      return;
+    }
+    _undoStack.add(snapshot);
+    if (_undoStack.length > _historyLimit) _undoStack.removeAt(0);
+    _redoStack.clear();
+    _lastRecorded = CanvasSnapshot.of(state);
+  }
+
+  /// Simpan snapshot saat ini secara eksplisit (mis. sebelum edit inline yang
+  /// tidak lewat provider). [snapshot] biasanya diambil dari state sekarang.
+  void pushUndoSnapshot() {
+    final snapshot = CanvasSnapshot.of(state);
+    if (_lastRecorded != null && _lastRecorded!.contentEquals(snapshot)) {
+      return;
+    }
+    _undoStack.add(snapshot);
+    if (_undoStack.length > _historyLimit) _undoStack.removeAt(0);
+    _redoStack.clear();
+    _lastRecorded = snapshot;
+  }
+
+  bool undo() {
+    if (_undoStack.isEmpty) return false;
+    final target = _undoStack.removeLast();
+    _redoStack.add(CanvasSnapshot.of(state));
+    _applySnapshot(target);
+    return true;
+  }
+
+  bool redo() {
+    if (_redoStack.isEmpty) return false;
+    final target = _redoStack.removeLast();
+    _undoStack.add(CanvasSnapshot.of(state));
+    _applySnapshot(target);
+    return true;
+  }
+
+  void _applySnapshot(CanvasSnapshot snapshot) {
+    _applyingHistory = true;
+    state = state.copyWith(
+      frames: snapshot.frames,
+      messages: snapshot.messages,
+      activeFrameId: snapshot.activeFrameId,
+      clearActiveFrame: snapshot.activeFrameId == null,
+      clearSelection: true,
+      clearGeometry: true,
+      snapGuidesX: const [],
+      snapGuidesY: const [],
+    );
+    _lastRecorded = snapshot;
+    _applyingHistory = false;
+  }
+
+  void clearHistory() {
+    _undoStack.clear();
+    _redoStack.clear();
+    _lastRecorded = CanvasSnapshot.of(state);
+  }
+
+  // ------------------------------------------------------- clipboard (5a) --
+
+  /// Salin geometri node terpilih ke clipboard internal.
+  bool copySelectedNode() {
+    final geometry = state.selectedNodeGeometry;
+    if (geometry == null) return false;
+    _clipboard = geometry;
+    return true;
+  }
+
+  bool get hasClipboard => _clipboard != null;
+
+  /// Tempel node yang disalin sebagai duplikat via HTML (perlu service JS).
+  /// Mengembalikan id node sumber + patch gaya untuk ditempel bila ada.
+  NodeGeometry? get clipboard => _clipboard;
+
 
   /// Board kini tak terbatas, jadi frame tidak dibatasi posisinya.
   /// Dibiarkan sebagai hook agar mudah menambah aturan bila perlu.
@@ -241,6 +399,14 @@ class CanvasNotifier extends Notifier<CanvasState> {
   }
 
   void toggleGrid() => state = state.copyWith(showGrid: !state.showGrid);
+
+  void toggleSnap() => state = state.copyWith(snapEnabled: !state.snapEnabled);
+
+  /// Dipanggil saat drag frame selesai: bersihkan garis panduan.
+  void endFrameDrag() {
+    if (state.snapGuidesX.isEmpty && state.snapGuidesY.isEmpty) return;
+    state = state.copyWith(snapGuidesX: const [], snapGuidesY: const []);
+  }
 
   // ------------------------------------------------------------- board view --
 
@@ -376,22 +542,105 @@ class CanvasNotifier extends Notifier<CanvasState> {
   void selectFrame(String? id) {
     if (id == null) {
       if (state.activeFrameId == null) return;
-      state = state.copyWith(clearActiveFrame: true, clearSelection: true);
+      state = state.copyWith(
+        clearActiveFrame: true,
+        clearSelection: true,
+        clearGeometry: true,
+      );
       return;
     }
     final frames = state.frames
         .map((f) => f.copyWith(isActive: f.id == id))
         .toList();
-    state = state.copyWith(frames: frames, activeFrameId: id);
+    state = state.copyWith(
+      frames: frames,
+      activeFrameId: id,
+      clearGeometry: state.activeFrameId != id,
+    );
   }
 
   void moveFrame(String id, Offset delta) {
+    final target = state.frames.where((f) => f.id == id).firstOrNull;
+    if (target == null) return;
+    var next = target.offset + delta;
+    List<double> guidesX = const [];
+    List<double> guidesY = const [];
+
+    // Smart snapping board-level (Fase 2): grid 8px + tepi/tengah frame lain.
+    // Murni hitungan Dart dari offset/size frame — tanpa layout engine.
+    if (state.snapEnabled) {
+      const threshold = 10.0;
+      const grid = 8.0;
+      var nx = next.dx;
+      var ny = next.dy;
+
+      // 1. Snap ke grid.
+      final gridX = (nx / grid).round() * grid;
+      final gridY = (ny / grid).round() * grid;
+      if ((gridX - nx).abs() <= threshold) {
+        nx = gridX;
+      }
+      if ((gridY - ny).abs() <= threshold) {
+        ny = gridY;
+      }
+
+      // 2. Snap ke frame lain (kiri/tengah/kanan, atas/tengah/bawah).
+      final w = target.size.width;
+      final h = target.size.height;
+      final candX = [nx, nx + w / 2, nx + w];
+      final candY = [ny, ny + h / 2, ny + h];
+      double? bestDx;
+      double? bestGuideX;
+      double? bestDy;
+      double? bestGuideY;
+
+      for (final other in state.frames) {
+        if (other.id == id) continue;
+        final ox = [other.offset.dx, other.offset.dx + other.size.width / 2,
+          other.offset.dx + other.size.width];
+        final oy = [other.offset.dy, other.offset.dy + other.size.height / 2,
+          other.offset.dy + other.size.height];
+        for (final c in candX) {
+          for (final o in ox) {
+            final d = o - c;
+            if (d.abs() <= threshold &&
+                (bestDx == null || d.abs() < bestDx.abs())) {
+              bestDx = d;
+              bestGuideX = o;
+            }
+          }
+        }
+        for (final c in candY) {
+          for (final o in oy) {
+            final d = o - c;
+            if (d.abs() <= threshold &&
+                (bestDy == null || d.abs() < bestDy.abs())) {
+              bestDy = d;
+              bestGuideY = o;
+            }
+          }
+        }
+      }
+
+      if (bestDx != null) {
+        nx += bestDx;
+        guidesX = [bestGuideX!];
+      }
+      if (bestDy != null) {
+        ny += bestDy;
+        guidesY = [bestGuideY!];
+      }
+      next = Offset(nx, ny);
+    }
+
     final moved = state.frames
-        .map((f) => f.id == id ? f.copyWith(offset: f.offset + delta) : f)
+        .map((f) => f.id == id ? f.copyWith(offset: next) : f)
         .toList();
     final frames = _normalizeFrames(moved);
     state = state.copyWith(
       frames: frames,
+      snapGuidesX: guidesX,
+      snapGuidesY: guidesY,
     );
   }
 
@@ -437,6 +686,28 @@ class CanvasNotifier extends Notifier<CanvasState> {
       clearGenerationStart: true,
       panOffset: Offset.zero,
       scale: 0.6,
+    );
+  }
+
+  /// Sinkronisasi ulang HTML frame pasca-mutasi eksternal (MCP bridge, Fase 4).
+  /// [stampedHtml] harus sudah melalui `buildDomTreeInIsolate` agar id stabil.
+  /// Meminta geometri ulang node terpilih bila masih ada di tree baru.
+  void updateFrameHtml({
+    required String frameId,
+    required String stampedHtml,
+    required DomTreeResult tree,
+  }) {
+    final frames = state.frames.map((f) {
+      if (f.id != frameId) return f;
+      return f.copyWith(html: stampedHtml, domTree: tree);
+    }).toList();
+    // Seleksi yang hilang dari tree baru dibersihkan.
+    final selectedId = state.selectedNodeId;
+    final keepSelection = selectedId != null && tree.findById(selectedId) != null;
+    state = state.copyWith(
+      frames: frames,
+      clearSelection: !keepSelection && selectedId != null,
+      clearGeometry: true,
     );
   }
 
@@ -505,6 +776,21 @@ class CanvasNotifier extends Notifier<CanvasState> {
     state = state.copyWith(selectedToken: token);
   }
 
+  /// Konteks node terpilih untuk inline edit (Fase 4).
+  /// Disisipkan ke prompt internal (tidak tampil di bubble chat) agar AI tahu
+  /// elemen mana yang dimaksud ("ubah tombol ini...").
+  /// Memakai cache Dart (tag, bbox, computed style) — tanpa round-trip JS.
+  String _selectedNodeContext() {
+    final nodeId = state.selectedNodeId;
+    final geometry = state.selectedNodeGeometry;
+    final frame = state.activeFrame;
+    if (nodeId == null || geometry == null || frame == null) return '';
+    return buildSelectedNodeContext(
+      geometry: geometry,
+      frameTitle: frame.title,
+    );
+  }
+
   // ---------------------------------------------------------- attachments --
 
   /// Tambah lampiran (abaikan duplikat berdasarkan nama + ukuran).
@@ -537,13 +823,23 @@ class CanvasNotifier extends Notifier<CanvasState> {
   void selectNode(String? id) {
     if (id == null) {
       if (state.selectedNodeId == null) return;
-      state = state.copyWith(clearSelection: true);
+      state = state.copyWith(clearSelection: true, clearGeometry: true);
       return;
     }
-    state = state.copyWith(selectedNodeId: id);
+    // Node baru: geometri lama dibuang agar overlay tidak gambar box basi
+    // sebelum event `geometry` dari JS tiba.
+    if (id == state.selectedNodeId) return;
+    state = state.copyWith(selectedNodeId: id, clearGeometry: true);
   }
 
   void selectNodeFromCanvas(String? id) => selectNode(id);
+
+  /// Update cache geometri dari event `geometry` JS bridge.
+  /// Diabaikan bila id tidak cocok dengan seleksi aktif (race antar frame).
+  void updateNodeGeometry(NodeGeometry geometry) {
+    if (state.selectedNodeId != geometry.id) return;
+    state = state.copyWith(selectedNodeGeometry: geometry);
+  }
 
   void hoverNode(String? id) {
     if (id == null) {
@@ -582,6 +878,21 @@ class CanvasNotifier extends Notifier<CanvasState> {
       return;
     }
 
+    // Lampiran yang dikirim bersama prompt ini.
+    final pendingAttachments = state.attachments;
+
+    // Sapaan / obrolan biasa JANGAN ditempeli [CANVAS TARGET] + design token.
+    // Konteks itu ("Design for a FIXED viewport...", "Every affordance MUST
+    // work...") terbaca model sebagai instruksi UI dan mengalahkan MODE GATE
+    // di system prompt, sehingga "hello" pun dibalas dengan ```html + frame.
+    // Hanya permintaan UI eksplisit yang boleh membawa konteks canvas.
+    final wantsUi = isUiRequestPrompt(
+      trimmed,
+      hasAttachments: pendingAttachments.isNotEmpty,
+      hasSelectedNode:
+          state.selectedNodeId != null && state.selectedNodeGeometry != null,
+    );
+
     // User text menang atas tombol: bila prompt menyebut viewport eksplisit,
     // pakai itu sebagai target (dan sinkronkan tombol agar tidak membingungkan).
     final effectiveViewport = _detectViewportOverride(trimmed) ?? viewport;
@@ -599,14 +910,13 @@ class CanvasNotifier extends Notifier<CanvasState> {
         '(toggles, accordions, tabs, menus). Use real imagery with unique '
         'seeds so the page feels alive.';
 
-    final baseText = designToken == null
+    final baseText = designToken == null || !wantsUi
         ? trimmed
         : '$trimmed\n\n[Design Token: ${designToken.label}] ${designToken.promptFragment}';
 
-    final userText = '$baseText$viewportContext';
-
-    // Lampiran yang dikirim bersama prompt ini.
-    final pendingAttachments = state.attachments;
+    final userText = wantsUi
+        ? '$baseText$viewportContext${_selectedNodeContext()}'
+        : baseText;
 
     // Jangan buat frame dulu: kita belum tahu apakah AI akan menjawab teks
     // (chat) atau membuat UI. Frame hanya dibuat setelah balasan terdeteksi UI,
@@ -636,8 +946,13 @@ class CanvasNotifier extends Notifier<CanvasState> {
       final raw = await ref
           .read(aiApiServiceProvider)
           .generateUI(provider: activeProvider, messages: payload);
+      // Bila user menekan Stop saat menunggu, hasil yang telat diabaikan.
+      if (!state.isGenerating) return;
       _setStatus(AiStatus.responding);
       final response = await classifyAiResponseInIsolate(raw);
+
+      // Bila dibatalkan saat parsing/klasifikasi, jangan lanjut render.
+      if (!state.isGenerating) return;
 
       // Lampiran sudah terpakai; kosongkan setelah permintaan dikirim.
       state = state.copyWith(attachments: const []);
@@ -725,9 +1040,43 @@ class CanvasNotifier extends Notifier<CanvasState> {
         messages: messages,
       );
     } on ApiConnectionException catch (e) {
+      // Force-stop via cancel dianggap normal, bukan error yang ditampilkan.
+      if (e.message == '__CANCELLED__') {
+        _cancelGeneration(promptWasDiscarded: true);
+        return;
+      }
+      // Jangan timpa pesan error bila generate sudah dibatalkan user.
+      if (!state.isGenerating) return;
       _failGeneration(e.message);
     } catch (e) {
+      if (!state.isGenerating) return;
       _failGeneration('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Hentikan generate yang sedang berjalan (tombol Stop).
+  /// Membatalkan request HTTP + baca body, dan menandai status idle.
+  void cancelGeneration() {
+    if (!state.isGenerating) return;
+    AiApiService.cancelAll();
+    _cancelGeneration(promptWasDiscarded: true);
+  }
+
+  /// Bersihkan status generate tanpa menampilkan error (dipakai cancel).
+  void _cancelGeneration({bool promptWasDiscarded = false}) {
+    state = state.copyWith(
+      isGenerating: false,
+      clearGenerationStart: true,
+      status: AiStatus.idle,
+    );
+    if (promptWasDiscarded) {
+      _appendMessage(
+        const CanvasMessage(
+          role: ChatRole.assistant,
+          kind: ChatMessageKind.chat,
+          text: 'Generasi dihentikan.',
+        ),
+      );
     }
   }
 
@@ -783,8 +1132,11 @@ class CanvasNotifier extends Notifier<CanvasState> {
         .where((m) => m.role != ChatRole.error)
         .toList();
 
+    // Fase 4: system prompt bisa di-override pengguna (Custom Bebas).
+    final systemPrompt = ref.read(presetProvider).effectiveSystemPrompt;
+
     final payload = <Map<String, dynamic>>[
-      {'role': 'system', 'content': uiSystemPrompt},
+      {'role': 'system', 'content': systemPrompt},
     ];
 
     for (var i = 0; i < history.length; i++) {
@@ -843,6 +1195,38 @@ class CanvasNotifier extends Notifier<CanvasState> {
   }
 }
 
+/// Blok konteks node terpilih untuk inline edit (Fase 4, top-level agar
+/// bisa diuji langsung tanpa ProviderContainer).
+/// Mengembalikan string kosong bila tidak ada seleksi valid.
+String buildSelectedNodeContext({
+  required NodeGeometry geometry,
+  required String frameTitle,
+}) {
+  String pick(String key) => geometry.styles[key]?.trim() ?? '';
+  final styleBits = [
+    if (pick('display').isNotEmpty) 'display:${pick('display')}',
+    if (pick('color').isNotEmpty) 'color:${pick('color')}',
+    if (pick('backgroundColor').isNotEmpty)
+      'background:${pick('backgroundColor')}',
+    if (pick('fontSize').isNotEmpty) 'font-size:${pick('fontSize')}',
+    if (pick('fontWeight').isNotEmpty) 'font-weight:${pick('fontWeight')}',
+    if (pick('borderRadius').isNotEmpty)
+      'border-radius:${pick('borderRadius')}',
+    if (pick('border').isNotEmpty) 'border:${pick('border')}',
+    if (pick('opacity').isNotEmpty) 'opacity:${pick('opacity')}',
+    if (pick('padding').isNotEmpty) 'padding:${pick('padding')}',
+  ].join('; ');
+  return '\n\n[SELECTED NODE] The user has selected an element in frame '
+      '"$frameTitle". Target primarily THIS element (keep the rest of the page '
+      'consistent unless the request says otherwise). '
+      'tag=<${geometry.tag}> '
+      'box=${geometry.width.toStringAsFixed(0)}x'
+      '${geometry.height.toStringAsFixed(0)}px '
+      'at (${geometry.x.toStringAsFixed(0)},'
+      '${geometry.y.toStringAsFixed(0)})'
+      '${styleBits.isEmpty ? '' : ' styles=[$styleBits]'}.';
+}
+
 /// Deteksi viewport yang diminta user dari teks prompt. Top-level (bukan
 /// method) agar bisa diuji langsung tanpa ProviderContainer.
 ///
@@ -885,4 +1269,164 @@ ViewportMode? detectViewportOverride(String prompt) {
   if (hits.isEmpty) return null;
   final lastIndex = hits.keys.reduce((a, b) => a > b ? a : b);
   return hits[lastIndex];
+}
+
+/// Heuristik MODE GATE sisi klien: apakah prompt user benar-benar meminta UI?
+/// Top-level agar bisa diuji langsung tanpa ProviderContainer.
+///
+/// Aturan:
+/// - Sapaan / small talk / pertanyaan singkat TANPA kata kerja UI
+///   ("hello", "halo", "makasih", "apa kabar?") -> false.
+/// - Mengandung kata kerja / kata benda UI eksplisit ("buatkan landing page",
+///   "redesign dashboard", "ubah tombol ini", "tambah form login") -> true.
+/// - Menyebut viewport/px ("mobile", "390px") atau melampirkan file dengan
+///   instruksi rebuild ("replicate screenshot ini") -> true.
+/// - Node terpilih saja TIDAK cukup; harus ada kata edit ("ubah", "ganti",
+///   "pindah", "perbesar", dst.) agar "hello" dengan seleksi tidak jadi UI.
+bool isUiRequestPrompt(
+  String prompt, {
+  bool hasAttachments = false,
+  bool hasSelectedNode = false,
+}) {
+  final lower = prompt.trim().toLowerCase();
+  if (lower.isEmpty) return false;
+
+  // 1. Sapaan / small talk persis -> selalu chat, apa pun konteks lain.
+  const greetings = {
+    'hello',
+    'hi',
+    'hey',
+    'halo',
+    'hallo',
+    'hai',
+    'pagi',
+    'siang',
+    'sore',
+    'malam',
+    'test',
+    'tes',
+    'testing',
+    'bisa?',
+    'tolong',
+    'makasih',
+    'terima kasih',
+    'thanks',
+    'thank you',
+    'apa kabar',
+    'siapa kamu',
+    'kamu siapa',
+  };
+  final compact = lower.replaceAll(RegExp(r'[!.,?~\s]+$'), '').trim();
+  if (greetings.contains(compact)) return false;
+  // "selamat pagi/siang/sore/malam" + variasi pendek (< 24 char, tanpa kata UI).
+  if (compact.length <= 24 &&
+      RegExp(r'^(selamat\s+)?(pagi|siang|sore|malam)\b').hasMatch(compact)) {
+    return false;
+  }
+
+  // 2. Kata kerja / kata benda UI eksplisit (ID + EN).
+  const uiVerbs = [
+    'buat',
+    'buatkan',
+    'bikin',
+    'bikinin',
+    'buatlah',
+    'design',
+    'desain',
+    'generate',
+    'build',
+    'create',
+    'scaffold',
+    'redesign',
+    'restyle',
+    'revamp',
+    'convert',
+    'clone',
+    'replicate',
+    'replikasi',
+    'tirukan',
+    'tambah',
+    'tambahkan',
+    'edit',
+    'ubah',
+    'rubah',
+    'ganti',
+    'revisi',
+    'perbaiki',
+    'betulkan',
+    'modif',
+    'update',
+    'tampilkan',
+    'tunjuk',
+  ];
+  const uiNouns = [
+    'landing page',
+    'landingpage',
+    'website',
+    'situs',
+    'halaman',
+    'page',
+    'screen',
+    'layar',
+    'layout',
+    'tampilan',
+    'dashboard',
+    'login',
+    'register',
+    'signup',
+    'profil',
+    'profile',
+    'navbar',
+    'hero',
+    'footer',
+    'formulir',
+    'form',
+    'tombol',
+    'button',
+    'kartu',
+    'card',
+    'modal',
+    'dialog',
+    'tabel',
+    'table',
+    'chart',
+    'grafik',
+    'menu',
+    'tab',
+    'aplikasi',
+    'app',
+    'web',
+    '\bui\b',
+    'mockup',
+    'wireframe',
+    'komponen',
+    'component',
+    'html',
+    'css',
+  ];
+  bool containsWord(String src, String word) {
+    if (word.startsWith(r'\b')) {
+      return RegExp(word).hasMatch(src);
+    }
+    // Kata kerja: cocok sebagai awalan kata (buat, buatkan, buatin...).
+    return RegExp('\\b${RegExp.escape(word)}\\w*').hasMatch(src);
+  }
+
+  final hasVerb = uiVerbs.any((w) => containsWord(lower, w));
+  final hasNoun = uiNouns.any((w) => containsWord(lower, w));
+  if (hasVerb || hasNoun) return true;
+
+  // 3. Menyebut target kanvas eksplisit -> hampir pasti ingin UI.
+  if (detectViewportOverride(prompt) != null) return true;
+
+  // 4. Lampiran + instruksi visual ("screenshot ini", "gambar ini" + kata kerja
+  // di atas sudah true). Lampiran saja tanpa kata UI -> chat (analisa/feedback).
+  if (hasAttachments) return false;
+
+  // 5. Node terpilih saja tanpa kata edit -> chat.
+  if (hasSelectedNode) return false;
+
+  // 6. Default: pesan pendek tanpa sinyal UI -> chat (sesuai MODE GATE:
+  // "when in doubt, choose MODE A").
+  return false;
 }

@@ -38,6 +38,18 @@ class AiApiService {
     );
   }
 
+  /// Daftar token pembatalan aktif, dipakai [cancelAll] agar UI bisa
+  /// menghentikan generate yang sedang berjalan (Fase 5: UX cancel).
+  static final Set<CancelToken> _activeTokens = {};
+
+  /// Batalkan semua request generate yang sedang berjalan.
+  static void cancelAll() {
+    for (final token in _activeTokens.toList()) {
+      if (!token.isCancelled) token.cancel('Dibatalkan oleh pengguna.');
+    }
+    _activeTokens.clear();
+  }
+
   /// Membangun URL endpoint lengkap dari Base URL pengguna.
   ///
   /// Menangani kesalahan penulisan Base URL yang umum:
@@ -104,11 +116,16 @@ class AiApiService {
   Future<String> generateUI({
     required ApiProvider provider,
     required List<Map<String, dynamic>> messages,
+    CancelToken? cancelToken,
   }) async {
     final url = resolveEndpoint(
       provider.normalizedBaseUrl,
       AppConstants.chatCompletionsPath,
     );
+
+    // Daftarkan token agar bisa dibatalkan dari UI (cancel generate).
+    final token = cancelToken ?? CancelToken();
+    _activeTokens.add(token);
 
     final Response<ResponseBody> response;
     try {
@@ -124,8 +141,10 @@ class AiApiService {
           'stream': false,
         },
         options: Options(responseType: ResponseType.stream),
+        cancelToken: token,
       );
     } on DioException catch (e) {
+      _activeTokens.remove(token);
       throw ApiConnectionException(_mapDioError(e));
     }
 
@@ -136,12 +155,19 @@ class AiApiService {
     // generate panjang / gateway lambat tidak kena "connection timeout".
     final body = response.data;
     if (body == null) {
+      _activeTokens.remove(token);
       throw ApiConnectionException('Provider membalas body kosong.\nURL: $url');
     }
-    final raw = await _readBodyWithTimeout(
-      body,
-      timeout: AppConstants.receiveTimeout,
-    );
+    String raw;
+    try {
+      raw = await _readBodyWithTimeout(
+        body,
+        timeout: AppConstants.receiveTimeout,
+        cancelToken: token,
+      );
+    } finally {
+      _activeTokens.remove(token);
+    }
 
     if (raw.isEmpty) {
       throw ApiConnectionException(
@@ -190,20 +216,39 @@ class AiApiService {
   Future<String> _readBodyWithTimeout(
     ResponseBody body, {
     required Duration timeout,
+    CancelToken? cancelToken,
   }) {
     final buffer = StringBuffer();
     final completer = Completer<String>();
     Timer? inactivity;
     Timer? total;
+    StreamSubscription<List<int>>? subscription;
+    Completer<void>? cancelWatch;
 
     void finish([Object? error]) {
       if (completer.isCompleted) return;
       inactivity?.cancel();
       total?.cancel();
+      cancelWatch?.complete();
+      subscription?.cancel();
       if (error != null) {
         completer.completeError(error);
       } else {
         completer.complete(buffer.toString());
+      }
+    }
+
+    // Pembatalan dari UI: hentikan baca & lempar penanda khusus cancel.
+    if (cancelToken != null) {
+      cancelWatch = Completer<void>();
+      cancelToken.whenCancel.then((_) {
+        if (!cancelWatch!.isCompleted) {
+          finish(ApiConnectionException('__CANCELLED__'));
+        }
+      });
+      if (cancelToken.isCancelled) {
+        finish(ApiConnectionException('__CANCELLED__'));
+        return completer.future;
       }
     }
 
@@ -234,7 +279,7 @@ class AiApiService {
       resetInactivity();
     }
 
-    body.stream.listen(
+    subscription = body.stream.listen(
       onChunk,
       onDone: () => finish(),
       onError: (Object error, StackTrace stack) {
@@ -245,7 +290,6 @@ class AiApiService {
 
     return completer.future;
   }
-
   String _mapStreamError(Object error) {
     if (error is DioException) return _mapDioError(error);
     return 'Koneksi ke provider terputus saat menerima data: $error';

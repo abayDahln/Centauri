@@ -1,31 +1,336 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/config/theme.dart';
 import '../../../app/widgets/stitch_widgets.dart';
+import '../../history/data/project_repository.dart';
+import '../../history/presentation/history_provider.dart';
+import '../../mcp/data/mcp_bridge.dart';
+import '../../mcp/data/mcp_server.dart';
 import '../../provider_config/presentation/providers/provider_config_provider.dart';
+import '../data/services/canvas_service_registry.dart';
+import 'frame_preview_page.dart';
 import 'provider/canvas_provider.dart';
 import 'widgets/ai_status_indicator.dart';
 import 'widgets/board_canvas.dart';
 import 'widgets/chat_landing.dart';
 import 'widgets/chat_side_panel.dart';
 import 'widgets/code_panel.dart';
+import 'widgets/frame_export_button.dart';
+import 'widgets/inspector_panel.dart';
+import 'widgets/layers_panel.dart';
 import 'widgets/prompt_bar.dart';
 
-class CanvasPreviewPage extends StatelessWidget {
+/// Halaman utama board. Menangani:
+/// - layout adaptif desktop/mobile,
+/// - auto-save debounce ke penyimpanan lokal (Fase 3),
+/// - restore sesi aktif saat aplikasi dibuka (offline-first).
+class CanvasPreviewPage extends ConsumerStatefulWidget {
   const CanvasPreviewPage({super.key});
 
   @override
+  ConsumerState<CanvasPreviewPage> createState() => _CanvasPreviewPageState();
+}
+
+class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
+  bool _restored = false;
+  final FocusNode _shortcutFocus = FocusNode(debugLabel: 'canvas-shortcuts');
+  bool _spaceHeld = false;
+
+  @override
+  void dispose() {
+    _shortcutFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Restore sesi aktif (proyek terakhir) sekali saat halaman dibuka.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreSession());
+    // MCP server lokal (Fase 4): hanya desktop, background, idempoten.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startMcpServer());
+  }
+
+  Future<void> _startMcpServer() async {
+    if (!mounted) return;
+    if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
+      return;
+    }
+    // Saat flutter test, jangan nyalakan server: timer heartbeat background
+    // membuat test "pending timer" gagal dan tidak relevan di lingkungan test.
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
+    try {
+      await ref
+          .read(mcpServerProvider)
+          .start(bridge: McpBridge(ref.container));
+    } catch (_) {
+      // Server opsional: kegagalan bind tidak boleh mengganggu board.
+    }
+  }
+
+  Future<void> _restoreSession() async {
+    if (_restored || !mounted) return;
+    _restored = true;
+    final canvas = ref.read(canvasProvider);
+    // Bila board sudah berisi sesuatu (mis. hot reload), jangan sentuh.
+    if (canvas.frames.isNotEmpty || canvas.messages.isNotEmpty) return;
+    // Aplikasi harus selalu mulai dari sesi BARU yang kosong, bukan membuka
+    // kembali percakapan terakhir. Hapus proyek aktif tersimpan & kosongkan
+    // board agar riwayat tidak menyorot sesi lama.
+    try {
+      await ref.read(projectRepositoryProvider).clearActiveProjectId();
+    } catch (_) {
+      // Abaikan kegagalan storage: sesi baru tetap dibuat di bawah.
+    }
+    ref.read(historyProvider.notifier).startNew();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 900) {
-          return const _DesktopShell();
-        }
-        return const _MobileShell();
-      },
+    // Auto-save: setiap perubahan board (frames/pesan/frame aktif) disimpan
+    // ke Hive setelah jeda 2,5 detik tanpa perubahan (Fase 3).
+    // Live sync MCP (Fase 4): perubahan yang sama disiarkan ke klien SSE.
+    // Undo/redo (Fase 5): snapshot konten SEBELUM perubahan masuk stack.
+    ref.listen(canvasProvider, (previous, next) {
+      if (previous != null) {
+        _recordUndo(ref, previous, next);
+      }
+      _AutoSaveDebouncer.onChanged(ref, previous, next);
+      _McpLiveSync.onChanged(ref, previous, next);
+    });
+
+    return Focus(
+      focusNode: _shortcutFocus,
+      autofocus: true,
+      onKeyEvent: _onKeyEvent,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 900) {
+            return const _DesktopShell();
+          }
+          return const _MobileShell();
+        },
+      ),
     );
+  }
+
+  /// Catat snapshot untuk undo bila perubahan menyentuh konten board
+  /// (frames / messages / frame aktif) — bukan sekadar zoom/pan/seleksi.
+  void _recordUndo(WidgetRef ref, CanvasState previous, CanvasState next) {
+    final contentChanged =
+        !identical(previous.frames, next.frames) ||
+        !identical(previous.messages, next.messages) ||
+        previous.activeFrameId != next.activeFrameId;
+    if (!contentChanged) return;
+    // Jangan catat saat AI sedang men-delete/rewrite board di tengah proses.
+    if (next.isGenerating) return;
+    ref.read(canvasProvider.notifier).recordHistory(previous);
+  }
+
+  /// Hotkey global desktop (Fase 5):
+  /// Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z / Ctrl+Y redo, Delete/Backspace hapus
+  /// frame aktif, Ctrl+C/V copy/paste node, Space (tahan) pan sementara.
+  ///
+  /// PENTING: hotkey ini TIDAK BOLEH menelan input saat pengguna sedang
+  /// mengetik di TextField (prompt bar, dsb). Kita lepas kendali begitu ada
+  /// field teks yang fokus, kecuali untuk tombol yang jelas milik board
+  /// (mis. Escape). Tanpa ini, Backspace/Space/Ctrl+V tak sampai ke field.
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (_textFieldHasFocus()) {
+      // Beri field teks kendali penuh atas keyboard.
+      _releaseSpacePanIfHeld();
+      return KeyEventResult.ignored;
+    }
+
+    final isCtrl =
+        HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed;
+
+    // Space (tahan) = tool hand sementara (hanya saat fokus bukan di field).
+    if (event.logicalKey == LogicalKeyboardKey.space) {
+      if (event is KeyDownEvent && !_spaceHeld) {
+        _spaceHeld = true;
+        ref.read(canvasProvider.notifier).setTool(BoardTool.hand);
+      } else if (event is KeyUpEvent && _spaceHeld) {
+        _spaceHeld = false;
+        ref.read(canvasProvider.notifier).setTool(BoardTool.select);
+      }
+      return KeyEventResult.handled;
+    }
+
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final notifier = ref.read(canvasProvider.notifier);
+
+    if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyZ) {
+      if (HardwareKeyboard.instance.isShiftPressed) {
+        notifier.redo();
+      } else {
+        notifier.undo();
+      }
+      return KeyEventResult.handled;
+    }
+    if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyY) {
+      notifier.redo();
+      return KeyEventResult.handled;
+    }
+    if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyC) {
+      // Hanya "curi" Ctrl+C bila memang ada node terpilih (copy komponen).
+      // Jika tidak, biarkan sistem menangani (mis. copy teks lain).
+      if (notifier.copySelectedNode()) return KeyEventResult.handled;
+      return KeyEventResult.ignored;
+    }
+    if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyV) {
+      // Hanya tempel-komponen bila ada node terpilih & clipboard node terisi.
+      final state = ref.read(canvasProvider);
+      if (state.selectedNodeId != null && notifier.hasClipboard) {
+        _pasteNode();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.delete ||
+        event.logicalKey == LogicalKeyboardKey.backspace) {
+      final state = ref.read(canvasProvider);
+      // Prioritas: hapus node terpilih; bila tidak ada, hapus frame aktif.
+      if (state.selectedNodeGeometry != null) {
+        _deleteSelectedNode();
+        return KeyEventResult.handled;
+      } else if (state.activeFrameId != null) {
+        notifier.deleteFrame(state.activeFrameId!);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// True bila ada editable text field yang sedang fokus.
+  bool _textFieldHasFocus() {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null) return false;
+    // FocusNode milik board kita sendiri bukan field teks.
+    if (identical(focus, _shortcutFocus)) return false;
+    final context = focus.context;
+    if (context == null) return false;
+    // Cek widget di sepanjang ancestor: EditableText menandakan TextField.
+    var isEditable = false;
+    context.visitAncestorElements((element) {
+      if (element.widget is EditableText) {
+        isEditable = true;
+        return false;
+      }
+      return true;
+    });
+    return isEditable;
+  }
+
+  /// Lepas tool hand bila space sempat tertahan lalu fokus pindah ke field.
+  void _releaseSpacePanIfHeld() {
+    if (!_spaceHeld) return;
+    _spaceHeld = false;
+    ref.read(canvasProvider.notifier).setTool(BoardTool.select);
+  }
+
+  /// Hapus node terpilih via service WebView (jalur yang sama seperti MCP).
+  Future<void> _deleteSelectedNode() async {
+    final state = ref.read(canvasProvider);
+    final frameId = state.activeFrameId;
+    final nodeId = state.selectedNodeId;
+    if (frameId == null || nodeId == null) return;
+    final service = CanvasServiceRegistry.forFrame(frameId);
+    if (service == null) return;
+    await service.deleteNode(nodeId);
+    await service.requestHtml();
+  }
+
+  /// Tempel node yang disalin: ambil outerHTML node sumber, sisipkan sebagai
+  /// saudara (afterend), lalu geser sedikit agar terlihat menumpuk.
+  Future<void> _pasteNode() async {
+    final notifier = ref.read(canvasProvider.notifier);
+    final source = notifier.clipboard;
+    final state = ref.read(canvasProvider);
+    final frameId = state.activeFrameId;
+    final sourceId = state.selectedNodeId;
+    if (source == null || frameId == null || sourceId == null) return;
+    final service = CanvasServiceRegistry.forFrame(frameId);
+    if (service == null) return;
+
+    try {
+      final outer = await service.selectionEvents
+          .firstWhere(
+            (e) => e.type == 'outerHtml' || e.type == 'outerHtmlError',
+          )
+          .timeout(const Duration(seconds: 10));
+      if (outer.type != 'outerHtml' || outer.html == null) return;
+      // Sisipkan duplikat setelah node sumber, lalu geser sedikit.
+      await service.addNode(sourceId, outer.html!, position: 'afterend');
+      await service.moveResizeNode(sourceId, dx: 12, dy: 12);
+      await service.requestHtml();
+    } catch (_) {
+      // Clipboard/JS gagal: abaikan, tidak ada yang rusak.
+    }
+  }
+}
+
+/// Live sync MCP di luar widget agar tidak ter-reset oleh rebuild.
+/// Hanya menaikkan versi + broadcast ringan; no-op bila tak ada klien SSE.
+class _McpLiveSync {
+  static void onChanged(WidgetRef ref, CanvasState? previous, CanvasState next) {
+    if (previous == null) return;
+    if (identical(previous.frames, next.frames) &&
+        identical(previous.messages, next.messages) &&
+        previous.activeFrameId == next.activeFrameId &&
+        previous.selectedNodeId == next.selectedNodeId) {
+      return;
+    }
+    try {
+      ref.read(mcpServerProvider).notifyState();
+    } catch (_) {}
+  }
+}
+/// Debounce auto-save di luar widget agar tidak ter-reset oleh rebuild.
+class _AutoSaveDebouncer {
+  static final _AutoSaveDebouncer _instance = _AutoSaveDebouncer._();
+  _AutoSaveDebouncer._();
+
+  Timer? _timer;
+
+  static void onChanged(
+    WidgetRef ref,
+    CanvasState? previous,
+    CanvasState next,
+  ) {
+    _instance._schedule(ref, previous, next);
+  }
+
+  void _schedule(WidgetRef ref, CanvasState? previous, CanvasState next) {
+    // Abaikan perubahan yang tidak terkait konten board.
+    if (previous != null &&
+        identical(previous.frames, next.frames) &&
+        identical(previous.messages, next.messages) &&
+        previous.activeFrameId == next.activeFrameId) {
+      return;
+    }
+    // Jangan simpan saat AI sedang generate; state akhir akan memicu lagi.
+    if (next.isGenerating) return;
+    if (next.frames.isEmpty && next.messages.isEmpty) return;
+
+    _timer?.cancel();
+    _timer = Timer(const Duration(milliseconds: 2500), () {
+      try {
+        ref.read(historyProvider.notifier).persistCurrent();
+      } catch (_) {
+        // Penyimpanan lokal gagal: abaikan, user tetap bisa simpan manual.
+      }
+    });
   }
 }
 
@@ -39,22 +344,27 @@ class _DesktopShell extends ConsumerStatefulWidget {
 }
 
 class _DesktopShellState extends ConsumerState<_DesktopShell> {
-  bool _showChat = false;
   bool _showCode = false;
+  bool _showLayers = true;
   bool _autoShownChat = false;
 
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(canvasProvider.select((s) => s.outputMode));
+    final showChat = ref.watch(panelVisibleProvider);
     final hasUi = ref.watch(
       canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
+    );
+    // Inspector kanan otomatis saat ada node terpilih (Fase 2).
+    final hasSelection = ref.watch(
+      canvasProvider.select((s) => s.selectedNodeId != null),
     );
 
     // Saat board pertama kali muncul, tampilkan panel chat otomatis.
     if (hasUi && !_autoShownChat) {
       _autoShownChat = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _showChat = true);
+        if (mounted) ref.read(panelVisibleProvider.notifier).show();
       });
     }
 
@@ -66,10 +376,13 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
         children: [
           _TopBar(
             boardActive: hasUi,
-            onTogglePrompt: () => setState(() => _showChat = !_showChat),
+            onTogglePrompt: () =>
+                ref.read(panelVisibleProvider.notifier).toggle(),
             onToggleCode: () => setState(() => _showCode = !_showCode),
-            promptVisible: _showChat,
+            onToggleLayers: () => setState(() => _showLayers = !_showLayers),
+            promptVisible: showChat,
             codeVisible: showCode,
+            layersVisible: _showLayers,
           ),
           Expanded(
             child: Padding(
@@ -77,8 +390,21 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_showChat) ...[
+                  // Panel obrolan (Chat · History · Layers) di pojok kiri.
+                  if (showChat) ...[
                     const SizedBox(width: 320, child: ChatSidePanel()),
+                    const SizedBox(width: 12),
+                  ],
+                  // Layers tree frame aktif (menuju tengah, setelah chat).
+                  if (hasUi && _showLayers) ...[
+                    const SizedBox(
+                      width: 260,
+                      child: SoftPanel(
+                        padding: EdgeInsets.zero,
+                        clip: true,
+                        child: LayersPanel(),
+                      ),
+                    ),
                     const SizedBox(width: 12),
                   ],
                   Expanded(
@@ -86,7 +412,7 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                       children: [
                         if (hasUi)
                           const BoardSurface()
-                        else if (!_showChat)
+                        else if (!showChat)
                           // Belum ada UI & panel chat tertutup: tampilkan
                           // percakapan besar di tengah sebagai landing.
                           const ChatLanding()
@@ -127,6 +453,18 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                       ),
                     ),
                   ],
+                  // Inspector Fase 2: kanan, berdampingan dengan Code bila ada.
+                  if (hasUi && hasSelection) ...[
+                    const SizedBox(width: 12),
+                    const SizedBox(
+                      width: 280,
+                      child: SoftPanel(
+                        padding: EdgeInsets.zero,
+                        clip: true,
+                        child: InspectorPanel(),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -142,15 +480,19 @@ class _TopBar extends ConsumerWidget {
     required this.boardActive,
     required this.onTogglePrompt,
     required this.onToggleCode,
+    required this.onToggleLayers,
     required this.promptVisible,
     required this.codeVisible,
+    required this.layersVisible,
   });
 
   final bool boardActive;
   final VoidCallback onTogglePrompt;
   final VoidCallback onToggleCode;
+  final VoidCallback onToggleLayers;
   final bool promptVisible;
   final bool codeVisible;
+  final bool layersVisible;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -179,6 +521,13 @@ class _TopBar extends ConsumerWidget {
             const SizedBox(width: 12),
             // Toggle panel Code (hanya relevan setelah ada UI).
             if (boardActive) ...[
+              SoftIconButton(
+                icon: Icons.layers_outlined,
+                tooltip: 'Layers (kiri)',
+                active: layersVisible,
+                onPressed: onToggleLayers,
+              ),
+              const SizedBox(width: 4),
               SoftIconButton(
                 icon: Icons.code_outlined,
                 tooltip: 'Code',
@@ -240,14 +589,60 @@ class _BoardStatusPill extends ConsumerWidget {
     if (!active) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
       decoration: BoxDecoration(
         color: AppColors.bgSurface,
         borderRadius: AppRadius.pill,
         border: Border.all(color: AppColors.borderSubtle),
         boxShadow: AppColors.shadowRaised,
       ),
-      child: const AiStatusIndicator(compact: true),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const AiStatusIndicator(compact: true),
+          const SizedBox(width: 10),
+          // Tombol Stop: hentikan generate yang berjalan.
+          Tooltip(
+            message: 'Hentikan generate',
+            child: InkWell(
+              onTap: () =>
+                  ref.read(canvasProvider.notifier).cancelGeneration(),
+              borderRadius: AppRadius.pill,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.statusError.withValues(alpha: 0.14),
+                  borderRadius: AppRadius.pill,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.stop_rounded,
+                      size: 14,
+                      color: AppColors.statusError,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Stop',
+                      style: TextStyle(
+                        fontFamily: AppFonts.uiFamily,
+                        fontFamilyFallback: AppFonts.uiFallback,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.statusError,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -266,11 +661,22 @@ class _CanvasViewControls extends ConsumerWidget {
       children: [
         _ZoomChip(scale: state.scale),
         const SizedBox(width: 8),
+        // Ekspor frame aktif (PNG/SVG/PDF, Fase 3).
+        const FrameExportButton(),
+        const SizedBox(width: 4),
         SoftIconButton(
           icon: Icons.grid_4x4,
           tooltip: 'Dot grid',
           active: state.showGrid,
           onPressed: notifier.toggleGrid,
+        ),
+        const SizedBox(width: 4),
+        // Snap Fase 2: magnet ke grid + frame lain.
+        SoftIconButton(
+          icon: Icons.align_horizontal_center,
+          tooltip: state.snapEnabled ? 'Snap: aktif' : 'Snap: mati',
+          active: state.snapEnabled,
+          onPressed: notifier.toggleSnap,
         ),
         const SizedBox(width: 4),
         SoftIconButton(
@@ -279,6 +685,36 @@ class _CanvasViewControls extends ConsumerWidget {
           onPressed: state.frames.isEmpty
               ? null
               : () => notifier.centerOnFrames(boardViewportSize(context)),
+        ),
+        const SizedBox(width: 4),
+        // Undo/redo (Fase 5) — juga tersedia lewat Ctrl+Z / Ctrl+Y.
+        SoftIconButton(
+          icon: Icons.undo,
+          tooltip: 'Undo (Ctrl+Z)',
+          onPressed: notifier.undo,
+        ),
+        const SizedBox(width: 4),
+        SoftIconButton(
+          icon: Icons.redo,
+          tooltip: 'Redo (Ctrl+Y)',
+          onPressed: notifier.redo,
+        ),
+        const SizedBox(width: 4),
+        // Pratinjau/prototype mode (Fase 5).
+        SoftIconButton(
+          icon: Icons.play_circle_outline,
+          tooltip: 'Pratinjau (prototype)',
+          onPressed: state.activeFrame == null
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => FramePreviewPage(
+                      html: state.activeFrame!.html,
+                      title: state.activeFrame!.title,
+                      width: state.activeFrame!.size.width,
+                    ),
+                  ),
+                ),
         ),
         const SizedBox(width: 4),
         SoftIconButton(
@@ -449,7 +885,6 @@ class _ToolButtonState extends State<_ToolButton> {
 
 class _EmptyCanvasHint extends StatelessWidget {
   const _EmptyCanvasHint();
-
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
@@ -496,6 +931,97 @@ class _EmptyCanvasHint extends StatelessWidget {
 
 // ------------------------------------------------------------------ mobile --
 
+/// Toolbar vertikal mengambang di mobile (Fase 5): undo/redo + preview mode.
+class _MobileFloatingToolbar extends ConsumerWidget {
+  const _MobileFloatingToolbar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canUndo = ref.watch(canvasProvider.select((s) => s.frames.isNotEmpty));
+    final notifier = ref.read(canvasProvider.notifier);
+    final activeFrame = ref.watch(canvasProvider.select((s) => s.activeFrame));
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _FloatIconButton(
+          icon: Icons.undo,
+          tooltip: 'Undo',
+          onTap: canUndo ? notifier.undo : null,
+        ),
+        const SizedBox(height: 6),
+        _FloatIconButton(
+          icon: Icons.redo,
+          tooltip: 'Redo',
+          onTap: canUndo ? notifier.redo : null,
+        ),
+        const SizedBox(height: 6),
+        _FloatIconButton(
+          icon: Icons.play_circle_outline,
+          tooltip: 'Pratinjau (prototype)',
+          onTap: activeFrame == null
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => FramePreviewPage(
+                      html: activeFrame.html,
+                      title: activeFrame.title,
+                      width: activeFrame.size.width,
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Tombol ikon kecil bergaya kaca untuk toolbar mengambang.
+class _FloatIconButton extends StatelessWidget {
+  const _FloatIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.bgSurface,
+        borderRadius: AppRadius.sm,
+        elevation: 2,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.sm,
+          child: Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.borderSubtle),
+              borderRadius: AppRadius.sm,
+            ),
+            child: Icon(
+              icon,
+              size: 17,
+              color: enabled
+                  ? AppColors.textPrimary
+                  : AppColors.textDisabled,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _MobileShell extends ConsumerWidget {
   const _MobileShell();
 
@@ -503,6 +1029,9 @@ class _MobileShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hasUi = ref.watch(
       canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
+    );
+    final hasSelection = ref.watch(
+      canvasProvider.select((s) => s.selectedNodeId != null),
     );
 
     return Scaffold(
@@ -532,6 +1061,18 @@ class _MobileShell extends ConsumerWidget {
               onPressed: () =>
                   _openSheet(context, const CodePanel(), heightFactor: 0.8),
             ),
+            // Ekspor frame (PNG/SVG/PDF, Fase 3) via bottom sheet menu.
+            if (hasSelection)
+              SoftIconButton(
+                icon: Icons.tune_outlined,
+                tooltip: 'Inspector',
+                onPressed: () => _openSheet(
+                  context,
+                  const InspectorPanel(),
+                  heightFactor: 0.7,
+                ),
+              ),
+            const FrameExportButton(compact: true),
           ],
           const SizedBox(width: 8),
         ],
@@ -541,6 +1082,27 @@ class _MobileShell extends ConsumerWidget {
         child: Stack(
           children: [
             if (hasUi) const BoardSurface() else const ChatLanding(),
+            // Toolbar mengambang (Fase 5): undo/redo + preview.
+            if (hasUi)
+              const Positioned(
+                right: 8,
+                top: 8,
+                child: _MobileFloatingToolbar(),
+              ),
+            if (hasUi && hasSelection)
+              Positioned(
+                right: 8,
+                top: 56,
+                child: _FloatIconButton(
+                  icon: Icons.tune_outlined,
+                  tooltip: 'Inspector',
+                  onTap: () => _openSheet(
+                    context,
+                    const InspectorPanel(),
+                    heightFactor: 0.7,
+                  ),
+                ),
+              ),
             const Positioned(
               left: 0,
               right: 0,

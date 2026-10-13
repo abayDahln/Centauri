@@ -135,12 +135,15 @@ class Project {
   }
 
   /// Ringkasan untuk daftar: teks pesan user pertama, dipakai bila judul kosong.
+  /// Pakai `displayText` (teks asli user) bila ada agar konteks internal seperti
+  /// `[CANVAS TARGET]` / design token tidak ikut tampil.
   String get preview {
     for (final message in messages) {
-      if (message.role == 'user' && message.text.trim().isNotEmpty) {
-        final cleaned = message.text.replaceAll(RegExp(r'\s+'), ' ').trim();
-        return cleaned.length > 60 ? '${cleaned.substring(0, 60)}...' : cleaned;
-      }
+      if (message.role != 'user') continue;
+      final raw = (message.displayText ?? message.text).trim();
+      if (raw.isEmpty) continue;
+      final cleaned = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+      return cleaned.length > 60 ? '${cleaned.substring(0, 60)}...' : cleaned;
     }
     return 'Percakapan kosong';
   }
