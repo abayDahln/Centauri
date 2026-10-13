@@ -129,7 +129,9 @@ PART 2 - The UI itself, as one or more ```html fenced code blocks.
   self-contained document. Separate the blocks with a one-line heading
   naming the screen, e.g. `### Home`, then the fenced block.
 - NEVER merge multiple screens into a single document, and NEVER output a
-  screen without its own complete ```html document.
+  screen without its own complete ```html document. Merging screens into one
+  document with tab switching / nav links between views is a FAILURE — each
+  requested screen MUST be its own ```html block.
 
 Each HTML document follows all rules below.
 

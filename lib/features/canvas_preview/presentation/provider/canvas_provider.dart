@@ -945,13 +945,28 @@ class CanvasNotifier extends Notifier<CanvasState> {
     // blok ```html (lihat _nextFrameOffset/cascade di bawah).
     final screenReq = detectScreenRequest(trimmed);
     final multiContext = screenReq.count > 1 || screenReq.names.length > 1
-        ? '\n\n[MULTI-SCREEN] The user asked for ${screenReq.count} screens'
+        ? '\n\n[OUTPUT FORMAT — MUST FOLLOW EXACTLY] The user asked for '
+              '${screenReq.count} screens'
               '${screenReq.names.isEmpty ? '' : ' (${screenReq.names.join(', ')})'}. '
-              'Output exactly ${screenReq.count} separate ```html blocks, ONE complete '
-              'self-contained document per screen, in this order: '
-              '${screenReq.names.isEmpty ? 'as you planned' : screenReq.names.join(' -> ')}. '
-              'Separate the blocks with a one-line heading naming the screen '
-              '(e.g. `### Home`). NEVER merge multiple screens into a single document.'
+              'This is a HARD requirement, not a suggestion. Follow these steps:\n'
+              '1. Output EXACTLY ${screenReq.count} separate ```html fenced code blocks.\n'
+              '2. Each block is ONE complete self-contained HTML document for ONE screen only.\n'
+              '3. Order: ${screenReq.names.isEmpty ? 'plan the screens yourself and keep that order' : screenReq.names.join(' -> ')}.\n'
+              '4. Before each block, write a one-line heading with the screen name (e.g. `### Home`).\n'
+              '5. FORBIDDEN: merging screens into one document (e.g. one app with tab switching '
+              'between login/home/profile). FORBIDDEN: tab bars, nav links, or JS view-switching '
+              'used as a substitute for separate documents. Each screen lives in its OWN block.\n'
+              '6. If you output only ONE ```html block for this request, the task FAILS — '
+              'do not do that.\n'
+              'Example skeleton:\n'
+              '### Login\n'
+              '```html\n'
+              '<!DOCTYPE html>...login screen only...\n'
+              '```\n'
+              '### Home\n'
+              '```html\n'
+              '<!DOCTYPE html>...home screen only...\n'
+              '```'
         : '';
     // Ikon: ditegaskan per-request (bukan hanya di system prompt) karena model
     // sering mengabaikan aturan global dan memakai emoji. Inline SVG only agar
@@ -1091,6 +1106,28 @@ class CanvasNotifier extends Notifier<CanvasState> {
           text: response.screens.first.html,
         ),
       );
+      // AI menggabung layar yang diminta terpisah ke 1 dokumen: beri tahu user
+      // + sediakan teks follow-up siap kirim agar tinggal copy-paste.
+      if (screenReq.count > 1 && response.screens.length == 1) {
+        final want = screenReq.names.isEmpty
+            ? '${screenReq.count} layar'
+            : screenReq.names.join(', ');
+        final splitAsk = screenReq.names.isEmpty
+            ? 'satu per layar'
+            : screenReq.names.join(', ');
+        messages.add(
+          CanvasMessage(
+            role: ChatRole.assistant,
+            kind: ChatMessageKind.chat,
+            text: 'Catatan: kamu meminta $want, tapi AI menggabung semuanya '
+                'ke 1 dokumen sehingga hanya 1 frame yang dibuat. Untuk '
+                'memecahnya, kirim pesan berikut:\n\n"Pecah menjadi '
+                '${screenReq.count} file HTML terpisah ($splitAsk), '
+                'masing-masing dokumen lengkap sendiri di blok ```html '
+                'tersendiri."',
+          ),
+        );
+      }
 
       state = state.copyWith(
         frames: seeded,
@@ -1396,19 +1433,32 @@ ViewportMode? detectViewportOverride(String prompt) {
     if (idx >= 0) hits[idx] = kw;
   }
   // Rentang "dari X sampai/s/dan Y" / daftar koma: nama sudah tertangkap di
-  // atas lewat keywords; yang penting urutannya.
+  // atas lewat keywords; yang penting urutannya. Samakan ejaan ID/EN agar
+  // instruksi ke AI konsisten (profile, bukan profil).
+  const canonical = {
+    'profil': 'profile',
+    'beranda': 'home',
+    'jelajah': 'explore',
+    'pencarian': 'search',
+    'keranjang': 'cart',
+    'pembayaran': 'payment',
+    'pengaturan': 'settings',
+    'notifikasi': 'notifications',
+    'harga': 'pricing',
+  };
   final ordered = hits.keys.toList()..sort();
   final names = <String>[];
   for (final i in ordered) {
-    final n = hits[i]!;
+    final n = canonical[hits[i]!] ?? hits[i]!;
     if (!names.contains(n)) names.add(n);
   }
 
   // 3. Frasa multi-screen tanpa angka/nama jelas ("semua screen", "banyak
-  // halaman", "dari ... sampai ...", "lengkap dengan").
+  // halaman", "dari ... sampai ..." termasuk daftar koma
+  // "dari login, home sampai profile", "lengkap dengan").
   final multiPhrase = RegExp(
     r'(semua\s+(screen|layar|halaman|page)|banyak\s+(screen|layar|halaman|page)|'
-    r'dari\s+\w+\s+(sampai|s/d|hingga|dan|to)\s+\w+|lengkap\s+dengan|'
+    r'dari\s+[\w\s,]+\s+(sampai|s/d|hingga|dan|to)\s+\w+|lengkap\s+dengan|'
     r'setiap\s+(screen|layar|halaman|page))',
   ).hasMatch(lower);
   if (multiPhrase && count == 1 && names.length < 2) {
