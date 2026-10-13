@@ -111,6 +111,7 @@ const String canvasBridgeScript = r'''
   function attachPicker() {
     if (!document.body) return;
     hideFrameScrollbars();
+    applySharpnessDefaults();
     ensureOverlay();
     ensureImageFallback();
     scheduleContentSizeReports();
@@ -153,12 +154,42 @@ const String canvasBridgeScript = r'''
 
   // Ukur tinggi konten dokumen lalu laporkan ke Dart agar frame bisa
   // menyesuaikan tinggi (konten utuh, tanpa scrollbar).
+  // PENTING: pakai tinggi konten RIIL (tepi bawah elemen terakhir), bukan
+  // scrollHeight mentah — `min-height:100vh` membuat scrollHeight selalu ==
+  // tinggi viewport walau konten pendek (mis. form login), sehingga frame
+  // terlihat jauh lebih besar dari UI di dalamnya.
   function reportContentSize() {
     try {
-      var height = Math.max(
+      var docHeight = Math.max(
         document.body ? document.body.scrollHeight : 0,
         document.documentElement ? document.documentElement.scrollHeight : 0
       );
+      var contentBottom = 0;
+      if (document.body) {
+        var kids = document.body.children;
+        for (var i = 0; i < kids.length; i++) {
+          var el = kids[i];
+          if (!el || !el.hasAttribute) continue;
+          if (el.hasAttribute('data-centauri-overlay')) continue;
+          if (el.id === 'centauri-bridge') continue;
+          var tag = el.tagName ? el.tagName.toLowerCase() : '';
+          if (tag === 'script' || tag === 'style') continue;
+          var bottom = (el.offsetTop || 0) + (el.offsetHeight || 0);
+          try {
+            var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+            if (cs && cs.marginBottom) bottom += parseFloat(cs.marginBottom) || 0;
+          } catch (e) {}
+          if (bottom > contentBottom) contentBottom = bottom;
+        }
+        try {
+          var bcs = window.getComputedStyle ? window.getComputedStyle(document.body) : null;
+          if (bcs) {
+            contentBottom += (parseFloat(bcs.paddingBottom) || 0);
+          }
+        } catch (e) {}
+      }
+      var height = docHeight;
+      if (contentBottom > 0 && contentBottom < docHeight) height = contentBottom;
       if (height > 0) sendToHost({ type: 'resize', height: height });
     } catch (e) { /* abaikan */ }
   }
@@ -192,6 +223,25 @@ const String canvasBridgeScript = r'''
         'html{overflow:hidden;}body{overflow:hidden;}' +
         '::-webkit-scrollbar{width:0;height:0;display:none;}' +
         '*{scrollbar-width:none;-ms-overflow-style:none;}';
+    } catch (e) { /* abaikan */ }
+  }
+
+  // Default ketajaman render: font anti-alias + teks legible agar hasil
+  // tidak burik saat board di-zoom (downscale texture). Non-breaking:
+  // hanya smoothing, tidak mengubah layout/warna.
+  function applySharpnessDefaults() {
+    try {
+      var style = document.getElementById('centauri-sharp');
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'centauri-sharp';
+        (document.head || document.documentElement).appendChild(style);
+      }
+      style.textContent =
+        'body{-webkit-font-smoothing:antialiased;' +
+        '-moz-osx-font-smoothing:grayscale;' +
+        'text-rendering:optimizeLegibility;}' +
+        'img{image-rendering:auto;}';
     } catch (e) { /* abaikan */ }
   }
 
@@ -430,7 +480,7 @@ const String canvasBridgeScript = r'''
     for (var i = 0; i < junk.length; i++) {
       if (junk[i].parentNode) junk[i].parentNode.removeChild(junk[i]);
     }
-    var extras = ['#centauri-scroll-fix', '#centauri-img-fix', '#centauri-bridge'];
+    var extras = ['#centauri-scroll-fix', '#centauri-img-fix', '#centauri-sharp', '#centauri-bridge'];
     for (var j = 0; j < extras.length; j++) {
       var node = clone.querySelector(extras[j]);
       if (node && node.parentNode) node.parentNode.removeChild(node);

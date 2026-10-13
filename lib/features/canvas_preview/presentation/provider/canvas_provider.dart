@@ -939,6 +939,26 @@ class CanvasNotifier extends Notifier<CanvasState> {
     // pakai itu sebagai target (dan sinkronkan tombol agar tidak membingungkan).
     final effectiveViewport = _detectViewportOverride(trimmed) ?? viewport;
     final size = _sizeFor(effectiveViewport);
+    // Multi-screen: bila user meminta beberapa layar (mis. "login, home sampai
+    // profile", "5 screens"), tegaskan jumlah + format per-blok agar model tidak
+    // menggabung semuanya ke satu dokumen. Pipeline sudah membuat 1 frame per
+    // blok ```html (lihat _nextFrameOffset/cascade di bawah).
+    final screenReq = detectScreenRequest(trimmed);
+    final multiContext = screenReq.count > 1 || screenReq.names.length > 1
+        ? '\n\n[MULTI-SCREEN] The user asked for ${screenReq.count} screens'
+              '${screenReq.names.isEmpty ? '' : ' (${screenReq.names.join(', ')})'}. '
+              'Output exactly ${screenReq.count} separate ```html blocks, ONE complete '
+              'self-contained document per screen, in this order: '
+              '${screenReq.names.isEmpty ? 'as you planned' : screenReq.names.join(' -> ')}. '
+              'Separate the blocks with a one-line heading naming the screen '
+              '(e.g. `### Home`). NEVER merge multiple screens into a single document.'
+        : '';
+    // Ikon: ditegaskan per-request (bukan hanya di system prompt) karena model
+    // sering mengabaikan aturan global dan memakai emoji. Inline SVG only agar
+    // tetap offline-friendly (tanpa CDN/icon font).
+    const iconContext =
+        '\n\n[ICONS] NEVER use emoji as UI icons. Every icon MUST be inline SVG '
+        '(24x24, stroke-width 1.75, currentColor, round caps, Lucide-style).';
     final viewportContext =
         '\n\n[CANVAS TARGET] Design for a FIXED viewport width of exactly '
         '${size.width.round()} CSS px (${effectiveViewport.name}). '
@@ -950,7 +970,8 @@ class CanvasNotifier extends Notifier<CanvasState> {
         'never empty: keep full structure, real copy, working controls). '
         'Every interactive affordance you draw MUST work with vanilla JS '
         '(toggles, accordions, tabs, menus). Use real imagery with unique '
-        'seeds so the page feels alive.';
+        'seeds so the page feels alive.'
+        '$multiContext$iconContext';
 
     final baseText = designToken == null || !wantsUi
         ? trimmed
@@ -1311,6 +1332,93 @@ ViewportMode? detectViewportOverride(String prompt) {
   if (hits.isEmpty) return null;
   final lastIndex = hits.keys.reduce((a, b) => a > b ? a : b);
   return hits[lastIndex];
+}
+
+/// Hasil deteksi permintaan layar: jumlah blok ```html yang diharapkan + nama
+/// layar yang disebut user (urutan kemunculan). `count == 1` + `names` kosong
+/// berarti single screen. Top-level agar bisa diuji langsung.
+///
+/// Contoh:
+/// - "buatkan login, home sampai profile" -> (count: 3, names: [login, home, profile])
+/// - "buatkan 5 screen" -> (count: 5, names: [])
+/// - "buatkan landing page" -> (count: 1, names: [])
+({int count, List<String> names}) detectScreenRequest(String prompt) {
+  final lower = prompt.toLowerCase();
+
+  // 1. Jumlah eksplisit: "5 screen(s)", "3 halaman", "2 page", "4 layar".
+  var count = 1;
+  final countMatch = RegExp(
+    r'(\d+)\s*(screen|layar|halaman|page)s?\b',
+  ).firstMatch(lower);
+  if (countMatch != null) {
+    count = int.tryParse(countMatch.group(1)!) ?? 1;
+    if (count < 1) count = 1;
+    if (count > 20) count = 20; // batas waras: 1 request = max 20 frame.
+  }
+
+  // 2. Nama layar yang disebut (urutan kemunculan, tanpa duplikat).
+  const screenKeywords = [
+    'splash',
+    'onboarding',
+    'login',
+    'register',
+    'signup',
+    'sign up',
+    'home',
+    'beranda',
+    'feed',
+    'explore',
+    'jelajah',
+    'search',
+    'pencarian',
+    'detail',
+    'cart',
+    'keranjang',
+    'checkout',
+    'payment',
+    'pembayaran',
+    'profile',
+    'profil',
+    'settings',
+    'pengaturan',
+    'notifications',
+    'notifikasi',
+    'chat',
+    'message',
+    'pesan',
+    'dashboard',
+    'pricing',
+    'harga',
+  ];
+  final hits = <int, String>{};
+  for (final kw in screenKeywords) {
+    final idx = lower.indexOf(kw);
+    if (idx >= 0) hits[idx] = kw;
+  }
+  // Rentang "dari X sampai/s/dan Y" / daftar koma: nama sudah tertangkap di
+  // atas lewat keywords; yang penting urutannya.
+  final ordered = hits.keys.toList()..sort();
+  final names = <String>[];
+  for (final i in ordered) {
+    final n = hits[i]!;
+    if (!names.contains(n)) names.add(n);
+  }
+
+  // 3. Frasa multi-screen tanpa angka/nama jelas ("semua screen", "banyak
+  // halaman", "dari ... sampai ...", "lengkap dengan").
+  final multiPhrase = RegExp(
+    r'(semua\s+(screen|layar|halaman|page)|banyak\s+(screen|layar|halaman|page)|'
+    r'dari\s+\w+\s+(sampai|s/d|hingga|dan|to)\s+\w+|lengkap\s+dengan|'
+    r'setiap\s+(screen|layar|halaman|page))',
+  ).hasMatch(lower);
+  if (multiPhrase && count == 1 && names.length < 2) {
+    // Minimal 3 layar agar model tidak hanya mengembalikan 1 dokumen.
+    count = names.length > 3 ? names.length : 3;
+  }
+
+  if (names.length > count) count = names.length;
+  if (count == 1 && names.length == 1) return (count: 1, names: const []);
+  return (count: count, names: names);
 }
 
 /// Heuristik MODE GATE sisi klien: apakah prompt user benar-benar meminta UI?

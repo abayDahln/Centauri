@@ -43,6 +43,7 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
   final CanvasWebviewService _service = createCanvasWebviewService();
   StreamSubscription<CanvasSelectEvent>? _subscription;
   bool _ready = false;
+  DateTime _lastScaleChangeAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Gagal init/render WebView. Null = sehat. Ditampilkan sebagai placeholder
   /// error (bukan kartu putih kosong) agar kegagalan WebView2 terlihat.
@@ -125,6 +126,13 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
 
     final notifier = ref.read(canvasProvider.notifier);
     if (event.type == 'resize') {
+      // Abaikan laporan tinggi yang datang tepat setelah board di-zoom:
+      // tinggi CSS tidak boleh berubah karena zoom (layout sudah logis via
+      // OverflowBox). Laporan saat itu adalah transient/reflow sesaat.
+      if (DateTime.now().difference(_lastScaleChangeAt) <
+          const Duration(milliseconds: 400)) {
+        return;
+      }
       final height = event.contentHeight;
       if (height != null && height > 0) {
         notifier.setFrameContentHeight(widget.frame.id, height);
@@ -179,7 +187,11 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       });
     }
     // Skala board ditangani Transform Flutter (bukan WebView), jadi tidak ada
-    // re-setZoom saat `scale` berubah.
+    // re-setZoom saat `scale` berubah. WebView SELALU 1.0: jangan pernah
+    // teruskan `widget.scale` ke setZoom — itu penyebab double-zoom.
+    if (oldWidget.scale != widget.scale) {
+      _lastScaleChangeAt = DateTime.now();
+    }
   }
 
   @override
@@ -360,66 +372,93 @@ class _FrameCard extends StatelessWidget {
     final screenLeft = pan.dx + frame.offset.dx * scale;
     final screenTop = pan.dy + frame.offset.dy * scale;
 
-    // Kartu digambar pada ukuran logisnya, lalu di-scale oleh Transform.
-    // `Transform.scale` tidak mengubah layout, jadi kita bungkus dengan
-    // SizedBox berukuran hasil-skala agar hit-test & posisi benar.
+    // PENTING: layout vs paint dipisah.
+    // - `Positioned` berukuran HASIL-SKALA agar hit-test & posisi benar.
+    // - `OverflowBox` mengisolasi constraint: WebView di dalamnya selalu
+    //   di-layout pada ukuran LOGIS (mis. 390px) sehingga viewport CSS tetap
+    //   dan tidak reflow saat board di-zoom (anti double-zoom/geser).
+    // - `Transform.scale` hanya meng-scale paint (visual ala Figma).
     final scaledWidth = frame.size.width * scale;
     final scaledHeight = frame.size.height * scale;
+    final borderWidth = isActive ? 1.5 : 1.0;
+    // Radius dalam sedikit lebih kecil dari radius luar agar border tidak
+    // tertutup clip (penyebab kesan "terpotong" dulu).
+    final innerRadius = BorderRadius.all(
+      Radius.circular(12.0 - borderWidth),
+    );
 
     return Positioned(
       left: screenLeft,
       top: screenTop,
       width: scaledWidth,
       height: scaledHeight,
-      child: Transform.scale(
-        scale: scale,
+      child: OverflowBox(
         alignment: Alignment.topLeft,
-        // Kartu berukuran logis; Transform menskalakannya ke ruang layar.
-        child: SizedBox(
-          width: frame.size.width,
-          height: frame.size.height,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              // Label frame (ikut skala bersama kartu).
-              SizedBox(
-                height: 22,
-                child: _FrameLabel(
-                  frame: frame,
-                  isActive: isActive,
-                  onSelect: onSelect,
-                  onDelete: onDelete,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.deferToChild,
-                  onTap: onSelect,
-                  // Delta drag dalam piksel layar → koordinat board (bagi scale).
-                  onPanUpdate: boardPanning
-                      ? null
-                      : (details) => onDrag(details.delta / scale),
-                  onPanEnd: boardPanning ? null : (_) => onDragEnd?.call(),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.bgSurface,
-                      border: Border.all(
-                        color: isActive
-                            ? AppColors.accentPrimary
-                            : AppColors.borderSubtle,
-                        width: isActive ? 1.5 : 1,
-                      ),
-                    ),
-                    // Tanpa clip: border tetap utuh di semua skala (dulu
-                    // `Clip.antiAlias` + radius memotong corner → terlihat
-                    // "terpotong" saat zoom).
-                    child: child,
+        maxWidth: frame.size.width,
+        maxHeight: frame.size.height,
+        child: Transform.scale(
+          scale: scale,
+          alignment: Alignment.topLeft,
+          // Kualitas filter tinggi agar teks tidak burik saat board di-zoom
+          // (downscale texture WebView di 75% dsb).
+          filterQuality: FilterQuality.high,
+          // Kartu berukuran logis; Transform menskalakannya ke ruang layar.
+          child: SizedBox(
+            width: frame.size.width,
+            height: frame.size.height,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                // Label frame (ikut skala bersama kartu).
+                SizedBox(
+                  height: 22,
+                  child: _FrameLabel(
+                    frame: frame,
+                    isActive: isActive,
+                    onSelect: onSelect,
+                    onDelete: onDelete,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.deferToChild,
+                    onTap: onSelect,
+                    // Delta drag dalam piksel layar → koordinat board (bagi scale).
+                    onPanUpdate: boardPanning
+                        ? null
+                        : (details) => onDrag(details.delta / scale),
+                    onPanEnd: boardPanning ? null : (_) => onDragEnd?.call(),
+                    // Border + radius digambar di luar clip sehingga tetap
+                    // utuh di semua skala. Isi (WebView) di-clip ke radius
+                    // dalam + dasar putih agar sudut tajam body HTML / flash
+                    // hitam texture tidak bocor ke corner (anti corner hitam).
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.bgSurface,
+                        borderRadius: AppRadius.md,
+                        border: Border.all(
+                          color: isActive
+                              ? AppColors.accentPrimary
+                              : AppColors.borderSubtle,
+                          width: borderWidth,
+                        ),
+                        boxShadow: AppColors.shadowRaised,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: innerRadius,
+                        clipBehavior: Clip.antiAlias,
+                        child: ColoredBox(
+                          color: AppColors.bgSurface,
+                          child: RepaintBoundary(child: child),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
