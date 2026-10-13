@@ -10,8 +10,7 @@ import 'package:hive/hive.dart';
 void main() {
   setUpAll(() async {
     final dir = Directory.systemTemp.createTempSync('centauri_test');
-    Hive.init(dir.path);
-    await LocalStorageService().init();
+    await LocalStorageService().init(path: dir.path);
   });
 
   tearDownAll(() async {

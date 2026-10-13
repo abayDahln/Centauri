@@ -1,14 +1,31 @@
+import 'dart:io';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../utils/app_constants.dart';
 
+/// Hasil inisialisasi penyimpanan, dibaca UI untuk menampilkan banner.
+class StorageStatus {
+  const StorageStatus({this.directory, this.error});
+
+  final String? directory;
+
+  /// null = semua box terbuka; selain itu = daftar box yang gagal dibuka.
+  final String? error;
+
+  bool get isHealthy => error == null;
+}
+
 /// Local database (Hive) untuk metadata provider dan riwayat proyek (FR-06).
 /// Nilai disimpan sebagai JSON string agar tidak perlu Hive type adapter.
 ///
-/// Inisialisasi dilakukan lewat [init] (dipanggil di `main`). Bila belum
-/// diinisialisasi, operasi baca mengembalikan nilai kosong dan operasi tulis
-/// diabaikan, sehingga UI tidak crash pada kondisi tak terduga (mis. test atau
-/// kegagalan storage).
+/// Inisialisasi dilakukan lewat [init] (dipanggil di `main`). [init] tidak
+/// pernah melempar: kegagalan (mis. box di-lock instance app lain) dicatat di
+/// [status] sehingga UI tetap jalan dan bisa menawarkan coba lagi — dulu
+/// exception di sini menghentikan `main()` dan meninggalkan jendela kosong.
+/// Operasi baca tetap mengembalikan nilai kosong dan tulis diabaikan bila box
+/// belum terbuka.
 class LocalStorageService {
   LocalStorageService._internal();
   static final LocalStorageService _instance = LocalStorageService._internal();
@@ -18,17 +35,120 @@ class LocalStorageService {
   Box<String>? _metaBox;
   Box<String>? _projectsBox;
 
+  StorageStatus _status = const StorageStatus();
+  StorageStatus get status => _status;
+
   bool get isReady =>
       _providersBox != null && _metaBox != null && _projectsBox != null;
 
-  Future<void> init() async {
-    _providersBox ??= await Hive.openBox<String>(
+  /// Buka semua box. Panggil ulang untuk mencoba lagi setelah kegagalan.
+  ///
+  /// [path] memaksa folder data (dipakai test agar tetap terisolasi di temp
+  /// dir dan tidak menyentuh penyimpanan pengguna sungguhan).
+  Future<StorageStatus> init({String? path}) async {
+    final failures = <String>[];
+    String? directory;
+    try {
+      directory = await _prepareHive(path);
+    } catch (e) {
+      return _status = StorageStatus(error: 'Gagal menyiapkan folder data: $e');
+    }
+    await _open(AppConstants.providersBoxName, (box) => _providersBox = box,
+        failures);
+    await _open(AppConstants.metaBoxName, (box) => _metaBox = box, failures);
+    await _open(AppConstants.projectsBoxName, (box) => _projectsBox = box,
+        failures);
+
+    return _status = StorageStatus(
+      directory: directory,
+      error: failures.isEmpty ? null : failures.join(' · '),
+    );
+  }
+
+  Future<void> _open(
+    String name,
+    void Function(Box<String> box) assign,
+    List<String> failures,
+  ) async {
+    try {
+      assign(await Hive.openBox<String>(name));
+    } catch (e) {
+      failures.add('$name: $e');
+    }
+  }
+
+  /// Pilih folder data. Windows pindah ke `%LOCALAPPDATA%\Centauri\data`
+  /// (default `hive_flutter` menaruh box di root `Documents`, yang bentrok
+  /// antar instance dan bercampur dengan file aplikasi lain). Data lama
+  /// disalin ke folder baru, file asli dibiarkan sebagai cadangan.
+  Future<String?> _prepareHive(String? path) async {
+    if (path != null) {
+      Hive.init(path);
+      return path;
+    }
+    if (!Platform.isWindows) {
+      await Hive.initFlutter();
+      return null;
+    }
+
+    final target = _windowsDataDir();
+    if (target == null) {
+      await Hive.initFlutter();
+      return null;
+    }
+    await target.create(recursive: true);
+    await _migrateLegacyBoxes(target);
+    Hive.init(target.path);
+    return target.path;
+  }
+
+  static String _join(String a, String b) => '$a${Platform.pathSeparator}$b';
+
+  static Directory? _windowsDataDir() {
+    final localAppData = Platform.environment['LOCALAPPDATA'];
+    if (localAppData == null || localAppData.isEmpty) return null;
+    return Directory(_join(_join(localAppData, 'Centauri'), 'data'));
+  }
+
+  /// Salin box `.hive` lama dari folder Documents (sebelum dipindah) ke
+  /// [target] bila belum ada. Copy-only: tidak pernah menimpa file baru, jadi
+  /// tidak bisa memulihkan data bila box baru sempat dibuat kosong lebih
+  /// dulu — pilihan sadar daripada berisiko menimpa data yang lebih baru.
+  static Future<void> _migrateLegacyBoxes(Directory target) async {
+    final boxNames = [
       AppConstants.providersBoxName,
-    );
-    _metaBox ??= await Hive.openBox<String>(AppConstants.metaBoxName);
-    _projectsBox ??= await Hive.openBox<String>(
+      AppConstants.metaBoxName,
       AppConstants.projectsBoxName,
-    );
+    ];
+    File boxIn(String dir, String name) => File(_join(dir, '$name.hive'));
+    if (boxNames.every((n) => boxIn(target.path, n).existsSync())) return;
+
+    for (final legacy in _legacyDocumentsDirs()) {
+      for (final name in boxNames) {
+        final source = boxIn(legacy, name);
+        final dest = boxIn(target.path, name);
+        if (!source.existsSync() || dest.existsSync()) continue;
+        try {
+          await source.copy(dest.path);
+        } catch (_) {
+          // Copy gagal (mis. sedang dipakai): biarkan box baru mulai kosong.
+        }
+      }
+      return;
+    }
+  }
+
+  static List<String> _legacyDocumentsDirs() {
+    final env = Platform.environment;
+    final candidates = <String>[];
+    void add(String? root) {
+      if (root == null || root.isEmpty) return;
+      candidates.add(_join(root, 'Documents'));
+    }
+
+    add(env['USERPROFILE']);
+    add(env['OneDrive']);
+    return candidates;
   }
 
   // ------------------------------------------------------------- providers --
@@ -86,5 +206,20 @@ class LocalStorageService {
     } else {
       await _metaBox?.put(_systemPromptKey, value);
     }
+  }
+}
+
+/// Status penyimpanan untuk UI: banner peringatan + tombol coba lagi.
+final storageStatusProvider =
+    NotifierProvider<StorageStatusNotifier, StorageStatus>(
+        StorageStatusNotifier.new);
+
+class StorageStatusNotifier extends Notifier<StorageStatus> {
+  @override
+  StorageStatus build() => LocalStorageService().status;
+
+  /// Buka ulang box (mis. setelah instance app lain ditutup).
+  Future<void> retry() async {
+    state = await LocalStorageService().init();
   }
 }
