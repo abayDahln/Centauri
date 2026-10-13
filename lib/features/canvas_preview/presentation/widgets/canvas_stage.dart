@@ -200,6 +200,10 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       scale: widget.scale,
       pan: widget.pan,
       nodeGeometry: geometry,
+      // Saat tool hand (Space/pan) aktif, boardlah yang menangani drag —
+      // frame tidak boleh ikut bergerak agar tidak dobel dengan pan board.
+      boardPanning:
+          ref.watch(canvasProvider.select((s) => s.tool == BoardTool.hand)),
       onSelect: () =>
           ref.read(canvasProvider.notifier).selectFrame(widget.frame.id),
       onDelete: () =>
@@ -328,6 +332,7 @@ class _FrameCard extends StatelessWidget {
     required this.onDelete,
     required this.onDrag,
     required this.child,
+    this.boardPanning = false,
     this.nodeGeometry,
     this.onNodeMove,
     this.onNodeResize,
@@ -343,6 +348,10 @@ class _FrameCard extends StatelessWidget {
   final VoidCallback onDelete;
   final ValueChanged<Offset> onDrag;
   final Widget child;
+
+  /// True bila board sedang dalam mode pan (tool hand / Space). Saat true,
+  /// drag di atas frame diteruskan ke board, bukan memindahkan frame.
+  final bool boardPanning;
 
   /// Geometri CSS node terpilih (null = tidak ada overlay).
   final NodeGeometry? nodeGeometry;
@@ -391,8 +400,12 @@ class _FrameCard extends StatelessWidget {
               onTap: onSelect,
               // Delta drag dari gesture sudah dalam piksel layar; konversi ke
               // koordinat board dengan membagi scale.
-              onPanUpdate: (details) => onDrag(details.delta / scale),
-              onPanEnd: (_) => onDragEnd?.call(),
+              // Saat board panning (hand tool), drag TIDAK memindah frame:
+              // gesture dibiarkan lolos ke Listener board.
+              onPanUpdate: boardPanning
+                  ? null
+                  : (details) => onDrag(details.delta / scale),
+              onPanEnd: boardPanning ? null : (_) => onDragEnd?.call(),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 decoration: BoxDecoration(

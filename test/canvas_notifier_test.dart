@@ -204,4 +204,81 @@ void main() {
     expect(moved.size, original.size);
     expect(moved.offset, const Offset(50, 50));
   });
+
+  test('panBy ignores zero delta', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+    notifier.panBy(Offset.zero);
+    expect(container.read(canvasProvider).panOffset, Offset.zero);
+  });
+
+  test('panBy delta is applied in screen pixels at any zoom', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+    // Board kosong: tak ada clamping, pan apa adanya.
+    notifier.setScale(2.0);
+    notifier.panBy(const Offset(30, -12));
+    expect(container.read(canvasProvider).panOffset, const Offset(30, -12));
+  });
+
+  test('zoomAt ignores non-positive / non-finite factors', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.setScale(1.0);
+    notifier.zoomAt(const Offset(100, 100), 0);
+    notifier.zoomAt(const Offset(100, 100), -1);
+    notifier.zoomAt(const Offset(100, 100), double.nan);
+    notifier.zoomAt(const Offset(100, 100), double.infinity);
+    expect(container.read(canvasProvider).scale, 1.0);
+  });
+
+  test('zoomBy zooms around the viewport centre', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+    notifier.setScale(0.6);
+    notifier.zoomBy(1.5);
+    expect(
+      container.read(canvasProvider).scale,
+      closeTo(0.9, 0.0001),
+    );
+  });
+
+  test('panAndZoomAt applies pan and zoom in a single update', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+    notifier.setScale(1.0);
+
+    const focal = Offset(300, 200);
+    final before = (focal - container.read(canvasProvider).panOffset) /
+        container.read(canvasProvider).scale;
+
+    notifier.panAndZoomAt(focal, scaleFactor: 1.25);
+
+    final state = container.read(canvasProvider);
+    expect(state.scale, closeTo(1.25, 0.0001));
+    // Fokus tetap di titik board yang sama.
+    final after = (focal - state.panOffset) / state.scale;
+    expect(after.dx, closeTo(before.dx, 0.001));
+    expect(after.dy, closeTo(before.dy, 0.001));
+  });
+
+  test('panAndZoomAt with only pan delta just pans', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+    notifier.setScale(1.0);
+    notifier.panAndZoomAt(
+      const Offset(100, 100),
+      panDelta: const Offset(25, -10),
+    );
+    final state = container.read(canvasProvider);
+    expect(state.scale, 1.0);
+    expect(state.panOffset, const Offset(25, -10));
+  });
+
+  test('panAndZoomAt clamps scale to the sane range', () {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+    notifier.setScale(CanvasState.maxScale);
+    notifier.panAndZoomAt(const Offset(0, 0), scaleFactor: 2.0);
+    expect(container.read(canvasProvider).scale, CanvasState.maxScale);
+  });
 }

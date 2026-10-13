@@ -464,13 +464,24 @@ class CanvasNotifier extends Notifier<CanvasState> {
     return Offset(dx, dy);
   }
 
+  /// Geser board sebesar [delta] **dalam piksel layar**.
+  /// Delta dipakai apa adanya (pan adalah offset layar), jadi scroll wheel,
+  /// drag, maupun pan programatik semuanya konsisten di semua tingkat zoom.
   void panBy(Offset delta) {
+    if (delta == Offset.zero) return;
     state = state.copyWith(
       panOffset: _clampPan(state.panOffset + delta, state.scale),
     );
   }
 
+  /// Zoom di sekitar titik [focalScreen] (koordinat layar) sebesar [factor].
+  ///
+  /// Titik board di bawah kursor dipertahankan tepat di bawah kursor. Pan
+  /// di-clamp HANYA sebagai jaring pengaman (agar konten tak hilang), dan
+  /// clamping dilakukan setelah fokus dihitung sehingga tidak "merusak" fokus
+  /// selama konten masih dalam batas wajar.
   void zoomAt(Offset focalScreen, double factor) {
+    if (factor <= 0 || !factor.isFinite) return;
     final newScale = (state.scale * factor).clamp(
       CanvasState.minScale,
       CanvasState.maxScale,
@@ -480,6 +491,53 @@ class CanvasNotifier extends Notifier<CanvasState> {
     // Jaga titik fokus tetap di bawah kursor saat zoom.
     final boardPoint = (focalScreen - state.panOffset) / state.scale;
     final newPan = focalScreen - boardPoint * newScale;
+
+    state = state.copyWith(
+      scale: newScale,
+      panOffset: _clampPan(newPan, newScale),
+    );
+  }
+
+  /// Zoom **relatif** di tengah viewport (dipakai tombol +/- dan hotkey).
+  void zoomBy(double factor) {
+    final center = Offset(_viewport.width / 2, _viewport.height / 2);
+    zoomAt(center, factor);
+  }
+
+  /// Pan + zoom sekaligus dalam SATU update state (dipakai gesture pinch).
+  ///
+  /// Menggabungkan keduanya menghindari dua rebuild berturut-turut yang
+  /// membuat frame/grid "bergetar" saat mencubit. [focalScreen] adalah titik
+  /// jangkar (koordinat layar); [panDelta] pergeseran layar; [scaleFactor]
+  /// faktor zoom relatif.
+  void panAndZoomAt(
+    Offset focalScreen, {
+    Offset panDelta = Offset.zero,
+    double scaleFactor = 1.0,
+  }) {
+    final hasZoom = scaleFactor != 1.0 && scaleFactor > 0 && scaleFactor.isFinite;
+    if (!hasZoom && panDelta == Offset.zero) return;
+
+    final newScale = hasZoom
+        ? (state.scale * scaleFactor).clamp(
+            CanvasState.minScale,
+            CanvasState.maxScale,
+          )
+        : state.scale;
+
+    if (newScale == state.scale) {
+      // Hanya pan: fokus tidak relevan, cukup geser.
+      if (panDelta != Offset.zero) {
+        state = state.copyWith(
+          panOffset: _clampPan(state.panOffset + panDelta, state.scale),
+        );
+      }
+      return;
+    }
+
+    // Titik board di bawah fokus, lalu re-posisi dengan skala baru + delta pan.
+    final boardPoint = (focalScreen - state.panOffset) / state.scale;
+    final newPan = focalScreen + panDelta - boardPoint * newScale;
 
     state = state.copyWith(
       scale: newScale,

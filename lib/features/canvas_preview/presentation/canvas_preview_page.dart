@@ -181,6 +181,26 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
       notifier.redo();
       return KeyEventResult.handled;
     }
+    // Ctrl + '+' / '=' zoom in, Ctrl + '-' zoom out, Ctrl + '0' reset.
+    if (isCtrl &&
+        (event.logicalKey == LogicalKeyboardKey.equal ||
+            event.logicalKey == LogicalKeyboardKey.add ||
+            event.logicalKey == LogicalKeyboardKey.numpadAdd)) {
+      notifier.zoomBy(1.2);
+      return KeyEventResult.handled;
+    }
+    if (isCtrl &&
+        (event.logicalKey == LogicalKeyboardKey.minus ||
+            event.logicalKey == LogicalKeyboardKey.numpadSubtract)) {
+      notifier.zoomBy(1 / 1.2);
+      return KeyEventResult.handled;
+    }
+    if (isCtrl &&
+        (event.logicalKey == LogicalKeyboardKey.digit0 ||
+            event.logicalKey == LogicalKeyboardKey.numpad0)) {
+      notifier.resetView();
+      return KeyEventResult.handled;
+    }
     if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyC) {
       // Hanya "curi" Ctrl+C bila memang ada node terpilih (copy komponen).
       // Jika tidak, biarkan sistem menangani (mis. copy teks lain).
@@ -753,7 +773,7 @@ class _ZoomChip extends ConsumerWidget {
             size: 28,
             iconSize: 15,
             onPressed: canZoomOut
-                ? () => notifier.setScale(scale - 0.1)
+                ? () => notifier.zoomBy(1 / 1.2)
                 : null,
           ),
           InkWell(
@@ -773,7 +793,7 @@ class _ZoomChip extends ConsumerWidget {
             tooltip: 'Zoom in',
             size: 28,
             iconSize: 15,
-            onPressed: canZoomIn ? () => notifier.setScale(scale + 0.1) : null,
+            onPressed: canZoomIn ? () => notifier.zoomBy(1.2) : null,
           ),
         ],
       ),
