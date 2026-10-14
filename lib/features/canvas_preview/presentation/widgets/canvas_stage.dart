@@ -43,7 +43,6 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
   final CanvasWebviewService _service = createCanvasWebviewService();
   StreamSubscription<CanvasSelectEvent>? _subscription;
   bool _ready = false;
-  DateTime _lastScaleChangeAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Gagal init/render WebView. Null = sehat. Ditampilkan sebagai placeholder
   /// error (bukan kartu putih kosong) agar kegagalan WebView2 terlihat.
@@ -126,13 +125,10 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
 
     final notifier = ref.read(canvasProvider.notifier);
     if (event.type == 'resize') {
-      // Abaikan laporan tinggi yang datang tepat setelah board di-zoom:
-      // tinggi CSS tidak boleh berubah karena zoom (layout sudah logis via
-      // OverflowBox). Laporan saat itu adalah transient/reflow sesaat.
-      if (DateTime.now().difference(_lastScaleChangeAt) <
-          const Duration(milliseconds: 400)) {
-        return;
-      }
+      // Tinggi frame WAJIB mengikuti isi. Karena layout selalu logis (constraint
+      // dilepas), `contentHeight` tidak berubah akibat zoom — jadi tidak perlu
+      // menahan laporan resize. Menahannya justru membuat frame tertinggal
+      // pendek bila laporan sesungguhnya tiba tepat setelah zoom.
       final height = event.contentHeight;
       if (height != null && height > 0) {
         notifier.setFrameContentHeight(widget.frame.id, height);
@@ -168,9 +164,7 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       // Future tidak bisa di-await di sini; tangkap error-nya agar tidak
       // jadi unhandled async error dan agar kegagalan render terlihat.
       _service
-          .renderHtml(
-            widget.frame.html.isEmpty ? null : widget.frame.html,
-          )
+          .renderHtml(widget.frame.html.isEmpty ? null : widget.frame.html)
           .then((_) {
             if (mounted && _error != null) setState(() => _error = null);
           })
@@ -180,18 +174,13 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
           });
     }
     if (oldWidget.frame.size.width != widget.frame.size.width) {
-      _service.setViewportWidth(widget.frame.size.width).catchError((
-        Object e,
-      ) {
+      _service.setViewportWidth(widget.frame.size.width).catchError((Object e) {
         debugPrint('[canvas] setViewportWidth gagal: $e');
       });
     }
     // Skala board ditangani Transform Flutter (bukan WebView), jadi tidak ada
     // re-setZoom saat `scale` berubah. WebView SELALU 1.0: jangan pernah
     // teruskan `widget.scale` ke setZoom — itu penyebab double-zoom.
-    if (oldWidget.scale != widget.scale) {
-      _lastScaleChangeAt = DateTime.now();
-    }
   }
 
   @override
@@ -224,8 +213,9 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       pan: widget.pan,
       // Saat tool hand (Space/pan) aktif, boardlah yang menangani drag —
       // frame tidak boleh ikut bergerak agar tidak dobel dengan pan board.
-      boardPanning:
-          ref.watch(canvasProvider.select((s) => s.tool == BoardTool.hand)),
+      boardPanning: ref.watch(
+        canvasProvider.select((s) => s.tool == BoardTool.hand),
+      ),
       onSelect: () =>
           ref.read(canvasProvider.notifier).selectFrame(widget.frame.id),
       onDelete: () =>
@@ -278,7 +268,9 @@ class _WebviewError extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                message.length > 220 ? '${message.substring(0, 220)}…' : message,
+                message.length > 220
+                    ? '${message.substring(0, 220)}…'
+                    : message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontFamily: AppFonts.monoFamily,
@@ -328,7 +320,6 @@ class _WebviewLoading extends StatelessWidget {
   }
 }
 
-
 /// Kartu frame: judul + area konten + ring aksen saat aktif.
 ///
 /// Kartu digambar pada **ukuran logis** frame (mis. 390×844), lalu seluruh
@@ -373,62 +364,68 @@ class _FrameCard extends StatelessWidget {
     final screenTop = pan.dy + frame.offset.dy * scale;
 
     // PENTING: layout vs paint dipisah.
-    // - `Positioned` berukuran HASIL-SKALA agar hit-test & posisi benar.
-    // - `OverflowBox` mengisolasi constraint: WebView di dalamnya selalu
-    //   di-layout pada ukuran LOGIS (mis. 390px) sehingga viewport CSS tetap
-    //   dan tidak reflow saat board di-zoom (anti double-zoom/geser).
-    // - `Transform.scale` hanya meng-scale paint (visual ala Figma).
-    final scaledWidth = frame.size.width * scale;
-    final scaledHeight = frame.size.height * scale;
+    // - `Positioned` TANPA width/height: Stack memberi constraint LONGGAR,
+    //   sehingga child menentukan ukurannya sendiri (ukuran LOGIS, mis. 390px)
+    //   apa pun skala board. Kalau Positioned diberi width/height hasil-skala,
+    //   constraint tight memaksa SizedBox logis ikut menyusut/melar -> WebView
+    //   reflow tiap zoom (render tidak konsisten antar level zoom).
+    // - `Transform.scale` meng-scale paint dari kiri-atas (visual ala Figma);
+    //   hit-test tetap benar karena Transform meng-inverse transform saat
+    //   hit-testing, jadi drag/tap tetap akurat di area visual kartu.
     final borderWidth = isActive ? 1.5 : 1.0;
     // Radius dalam sedikit lebih kecil dari radius luar agar border tidak
     // tertutup clip (penyebab kesan "terpotong" dulu).
-    final innerRadius = BorderRadius.all(
-      Radius.circular(12.0 - borderWidth),
-    );
+    final innerRadius = BorderRadius.all(Radius.circular(12.0 - borderWidth));
 
     return Positioned(
       left: screenLeft,
       top: screenTop,
-      width: scaledWidth,
-      height: scaledHeight,
-      child: OverflowBox(
+      child: Transform.scale(
+        scale: scale,
         alignment: Alignment.topLeft,
-        maxWidth: frame.size.width,
-        maxHeight: frame.size.height,
-        child: Transform.scale(
-          scale: scale,
-          alignment: Alignment.topLeft,
-          // Kualitas filter tinggi agar teks tidak burik saat board di-zoom
-          // (downscale texture WebView di 75% dsb).
-          filterQuality: FilterQuality.high,
-          // Kartu berukuran logis; Transform menskalakannya ke ruang layar.
-          child: SizedBox(
-            width: frame.size.width,
-            height: frame.size.height,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                // Label frame (ikut skala bersama kartu).
-                SizedBox(
-                  height: 22,
-                  child: _FrameLabel(
-                    frame: frame,
-                    isActive: isActive,
-                    onSelect: onSelect,
-                    onDelete: onDelete,
-                  ),
+        // Kualitas filter tinggi agar teks tidak burik saat board di-zoom
+        // (downscale texture WebView di 75% dsb).
+        filterQuality: FilterQuality.high,
+        // Kartu berukuran logis; Transform menskalakannya ke ruang layar.
+        child: SizedBox(
+          width: frame.size.width,
+          height: frame.size.height,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              // Label frame (ikut skala bersama kartu).
+              SizedBox(
+                height: 22,
+                child: _FrameLabel(
+                  frame: frame,
+                  isActive: isActive,
+                  onSelect: onSelect,
+                  onDelete: onDelete,
                 ),
-                const SizedBox(height: 6),
-                Expanded(
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: MouseRegion(
+                  // Cursor hanya di ATAS kartu frame (bukan area kosong board):
+                  //  - move (panah 4 arah) saat mode pilih/geser: kartu bisa
+                  //    di-drag untuk memindahkan posisinya.
+                  //  - grab saat board yang di-pan (tool hand / Space) di atas
+                  //    kartu; cursor board sendiri menangani sisanya.
+                  cursor: boardPanning
+                      ? SystemMouseCursors.grab
+                      : SystemMouseCursors.move,
                   child: GestureDetector(
                     behavior: HitTestBehavior.deferToChild,
                     onTap: onSelect,
-                    // Delta drag dalam piksel layar → koordinat board (bagi scale).
+                    // `Transform.scale` meng-inverse transform saat hit-testing,
+                    // jadi `details.delta` SUDAH dalam ruang logis kartu (=
+                    // ruang board). Jangan dibagi `scale` lagi — itu
+                    // menyebabkan drag overshoot (sangat sensitif) di zoom
+                    // < 100%.
                     onPanUpdate: boardPanning
                         ? null
-                        : (details) => onDrag(details.delta / scale),
+                        : (details) => onDrag(details.delta),
                     onPanEnd: boardPanning ? null : (_) => onDragEnd?.call(),
                     // Border + radius digambar di luar clip sehingga tetap
                     // utuh di semua skala. Isi (WebView) di-clip ke radius
@@ -457,8 +454,8 @@ class _FrameCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

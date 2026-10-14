@@ -478,10 +478,31 @@ class CanvasNotifier extends Notifier<CanvasState> {
     );
   }
 
-  /// Zoom **relatif** di tengah viewport (dipakai tombol +/- dan hotkey).
+  /// Zoom **relatif** dari tombol +/- dan hotkey.
+  ///
+  /// Jangkar zoom = pusat **frame aktif** (bila ada), bukan pusat viewport.
+  /// Ini membuat frame yang sedang dilihat tetap di tempatnya saat zoom,
+  /// bukan tergelincir ke arah tengah layar (bug "frame berpindah saat zoom").
+  /// Bila tak ada frame aktif, jangkar ke pusat viewport.
   void zoomBy(double factor) {
-    final center = Offset(_viewport.width / 2, _viewport.height / 2);
-    zoomAt(center, factor);
+    if (factor <= 0 || !factor.isFinite) return;
+    final focal = _zoomFocalScreen();
+    zoomAt(focal, factor);
+  }
+
+  /// Titik jangkar (koordinat layar) untuk zoom tombol/hotkey.
+  Offset _zoomFocalScreen() {
+    final frame = state.activeFrame;
+    if (frame != null) {
+      // Pusat frame aktif di layar.
+      final cx = frame.offset.dx + frame.size.width / 2;
+      final cy = frame.offset.dy + frame.size.height / 2;
+      return Offset(
+        cx * state.scale + state.panOffset.dx,
+        cy * state.scale + state.panOffset.dy,
+      );
+    }
+    return Offset(_viewport.width / 2, _viewport.height / 2);
   }
 
   /// Pan + zoom sekaligus dalam SATU update state (dipakai gesture pinch).
@@ -968,25 +989,13 @@ class CanvasNotifier extends Notifier<CanvasState> {
               '<!DOCTYPE html>...home screen only...\n'
               '```'
         : '';
-    // Ikon: ditegaskan per-request (bukan hanya di system prompt) karena model
-    // sering mengabaikan aturan global dan memakai emoji. Inline SVG only agar
-    // tetap offline-friendly (tanpa CDN/icon font).
-    const iconContext =
-        '\n\n[ICONS] NEVER use emoji as UI icons. Every icon MUST be inline SVG '
-        '(24x24, stroke-width 1.75, currentColor, round caps, Lucide-style).';
     final viewportContext =
         '\n\n[CANVAS TARGET] Design for a FIXED viewport width of exactly '
         '${size.width.round()} CSS px (${effectiveViewport.name}). '
-        'The layout MUST fit this width with NO horizontal overflow, NO '
-        'horizontal scrollbar, and NO clipped text. '
-        'Height starts at ${size.height.round()}px but the page may grow '
-        'vertically as needed (min-height, natural document flow). '
-        'Respect the user-requested style (e.g. minimal stays minimal, but '
-        'never empty: keep full structure, real copy, working controls). '
-        'Every interactive affordance you draw MUST work with vanilla JS '
-        '(toggles, accordions, tabs, menus). Use real imagery with unique '
-        'seeds so the page feels alive.'
-        '$multiContext$iconContext';
+        'The layout MUST fit this width with NO horizontal overflow and NO horizontal scrollbar. '
+        'Height starts at ${size.height.round()}px (min-height: 100vh) and grows vertically with natural document flow. '
+        'Ensure real interactive vanilla JS controls, crisp 2x open-source imagery, and inline SVG icons.'
+        '$multiContext';
 
     final baseText = designToken == null || !wantsUi
         ? trimmed
@@ -1251,9 +1260,16 @@ class CanvasNotifier extends Notifier<CanvasState> {
           'content': _buildVisionContent(message.text, attachments),
         });
       } else {
+        // Riwayat user lama cukup memakai displayText (teks asli pengguna yang
+        // bersih dari [CANVAS TARGET] dan konteks internal) agar riwayat tidak
+        // bertele-tele dan tidak mencemari konteks percakapan. Hanya giliran aktif
+        // yang memakai teks lengkap dengan konteks canvas saat ini.
+        final content = message.role == ChatRole.user && !isLastUser
+            ? (message.displayText ?? message.text)
+            : message.text;
         payload.add({
           'role': message.role == ChatRole.user ? 'user' : 'assistant',
-          'content': message.text,
+          'content': content,
         });
       }
     }

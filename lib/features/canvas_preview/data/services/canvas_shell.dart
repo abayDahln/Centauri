@@ -174,7 +174,11 @@ const String canvasBridgeScript = r'''
           if (el.id === 'centauri-bridge') continue;
           var tag = el.tagName ? el.tagName.toLowerCase() : '';
           if (tag === 'script' || tag === 'style') continue;
-          var bottom = (el.offsetTop || 0) + (el.offsetHeight || 0);
+          // Tinggi anak bisa berupa min-height:100vh walau isinya lebih
+          // panjang; pakai scrollHeight anak agar konten yang ber-overflow
+          // tetap terhitung (feed panjang, dsb).
+          var elH = Math.max(el.offsetHeight || 0, el.scrollHeight || 0);
+          var bottom = (el.offsetTop || 0) + elH;
           try {
             var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
             if (cs && cs.marginBottom) bottom += parseFloat(cs.marginBottom) || 0;
@@ -188,8 +192,13 @@ const String canvasBridgeScript = r'''
           }
         } catch (e) {}
       }
+      // Ambil tinggi konten RIIL: bila tepi-bawah anak-anak body lebih pendek
+      // dari scrollHeight (kasus min-height:100vh memaksa body setinggi
+      // viewport), pakai contentBottom agar frame tidak lebih besar dari isi.
+      // Bila konten justru lebih tinggi (mis. satu anak ber-overflow), pakai
+      // scrollHeight agar tidak terpotong.
       var height = docHeight;
-      if (contentBottom > 0 && contentBottom < docHeight) height = contentBottom;
+      if (contentBottom > 0) height = contentBottom;
       if (height > 0) sendToHost({ type: 'resize', height: height });
     } catch (e) { /* abaikan */ }
   }
@@ -245,8 +254,11 @@ const String canvasBridgeScript = r'''
     } catch (e) { /* abaikan */ }
   }
 
-  // Jaring pengaman gambar: bila sebuah <img> gagal dimuat, ganti dengan
-  // gradien lembut agar UI tidak menampilkan kotak rusak/kosong.
+  // Jaring pengaman gambar: bila sebuah <img> gagal dimuat, beri latar gradien
+  // lembut agar UI tidak menampilkan kotak rusak. PENTING: `src` TIDAK dihapus
+  // (menghapus src memunculkan ikon rusak + teks alt; itu yang terjadi dulu).
+  // Cukup tambah kelas fallback yang mengisi latar; gambar (bila sempat
+  // berhasil dimuat) tetap menutupinya.
   function ensureImageFallback() {
     try {
       if (document.getElementById('centauri-img-fix')) return;
@@ -262,9 +274,13 @@ const String canvasBridgeScript = r'''
         (function (img) {
           if (img.dataset.centauriImg) return;
           img.dataset.centauriImg = '1';
+          // Sudah selesai tapi tanpa piksel (gagal) -> tandai langsung.
+          if (img.complete && img.naturalWidth === 0) {
+            img.classList.add('centauri-fallback');
+            return;
+          }
           img.addEventListener('error', function () {
             img.classList.add('centauri-fallback');
-            img.removeAttribute('src');
           });
         })(imgs[i]);
       }

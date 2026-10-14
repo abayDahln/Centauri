@@ -51,5 +51,12 @@ void main() {
       // Satu script bridge untuk satu dokumen.
       expect('id="centauri-bridge"'.allMatches(out).length, 1);
     });
+
+    test('fallback gambar TIDAK menghapus src (anti alt/ikon rusak)', () {
+      // Regresi: dulu onerror memanggil removeAttribute('src') yang memunculkan
+      // ikon gambar rusak + teks alt. Sekarang cukup menandai kelas fallback.
+      expect(canvasBridgeScript, isNot(contains("removeAttribute('src')")));
+      expect(canvasBridgeScript, contains('centauri-fallback'));
+    });
   });
 }
