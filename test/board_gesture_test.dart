@@ -39,26 +39,25 @@ void main() {
   CanvasState state() => container!.read(canvasProvider);
   CanvasNotifier notifier() => container!.read(canvasProvider.notifier);
 
-  testWidgets('mouse wheel pans horizontally by default', (tester) async {
+  testWidgets('mouse wheel pans vertically by default', (tester) async {
     await pumpBoard(tester);
     notifier().reportViewport(const Size(600, 400));
     notifier().setScale(1.0);
-    notifier().panBy(Offset.zero); // no-op, pastikan state awal bersih
 
     final center = tester.getCenter(find.byType(DotGridBoard));
     final pointer = TestPointer(1, PointerDeviceKind.mouse);
     pointer.hover(center);
 
-    // Roda mouse biasa: geser board kanan/kiri (pan horizontal), bukan zoom.
-    final before = state().panOffset.dx;
+    // Roda mouse biasa: geser board atas/bawah (pan vertikal), bukan zoom.
+    final before = state().panOffset.dy;
     await tester.sendEventToBinding(pointer.scroll(const Offset(0, 60)));
     await tester.pump();
 
     expect(state().scale, 1.0);
-    expect(state().panOffset.dx, isNot(before));
+    expect(state().panOffset.dy, isNot(before));
   });
 
-  testWidgets('shift + wheel pans vertically', (tester) async {
+  testWidgets('shift + wheel pans horizontally', (tester) async {
     await pumpBoard(tester);
     notifier().reportViewport(const Size(600, 400));
     notifier().setScale(1.0);
@@ -72,9 +71,9 @@ void main() {
     await tester.pump();
     await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
 
-    // Scale tidak berubah; board bergeser vertikal (dy != 0).
+    // Scale tidak berubah; board bergeser horizontal (dx != 0).
     expect(state().scale, 1.0);
-    expect(state().panOffset.dy, isNot(0));
+    expect(state().panOffset.dx, isNot(0));
   });
 
   testWidgets('trackpad two-finger scroll pans, does not zoom', (

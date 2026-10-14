@@ -231,7 +231,7 @@ void main() {
     expect(container.read(canvasProvider).scale, 1.0);
   });
 
-  test('zoomBy zooms around the viewport centre', () {
+  test('zoomBy zooms around the viewport centre when no frame', () {
     final notifier = container.read(canvasProvider.notifier);
     notifier.reportViewport(const Size(1000, 700));
     notifier.setScale(0.6);
@@ -240,6 +240,36 @@ void main() {
       container.read(canvasProvider).scale,
       closeTo(0.9, 0.0001),
     );
+  });
+
+  test('zoomBy keeps the active frame centre fixed on screen', () async {
+    final notifier = container.read(canvasProvider.notifier);
+    notifier.reportViewport(const Size(1000, 700));
+    await notifier.loadSession(
+      messages: const [],
+      frames: [frame('f1', offset: const Offset(0, 0))],
+      activeFrameId: 'f1',
+    );
+    notifier.setScale(0.6);
+
+    Offset screenCentre() {
+      final s = container.read(canvasProvider);
+      final f = s.activeFrame!;
+      return Offset(
+        (f.offset.dx + f.size.width / 2) * s.scale + s.panOffset.dx,
+        (f.offset.dy + f.size.height / 2) * s.scale + s.panOffset.dy,
+      );
+    }
+
+    final before = screenCentre();
+    notifier.zoomBy(1.2);
+    notifier.zoomBy(1.2);
+    notifier.zoomBy(1 / 1.2);
+    final after = screenCentre();
+
+    // Pusat frame aktif harus tetap di posisi layar yang sama (tidak bergeser).
+    expect(after.dx, closeTo(before.dx, 0.5));
+    expect(after.dy, closeTo(before.dy, 0.5));
   });
 
   test('panAndZoomAt applies pan and zoom in a single update', () {

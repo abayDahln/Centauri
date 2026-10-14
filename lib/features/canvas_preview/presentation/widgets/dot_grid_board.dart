@@ -57,17 +57,18 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
     final pan = state.panOffset;
     final handTool = state.tool == BoardTool.hand;
 
-    // Cursor dinamis: hand saat bisa menggeser board (tool hand / Space),
-    // grabbing saat benar-benar menggeser, move (panah 4 arah) saat mode
-    // pilih/geser. Nilai di-cache agar tidak bikin MouseRegion repaint tiap
-    // frame saat drag berlangsung.
+    // Cursor board: default (di area kosong). Hand saat bisa menggeser board
+    // (tool hand / Space), grabbing saat benar-benar menggeser.
+    // Cursor `move` (panah 4 arah) TIDAK dipasang di sini — itu milik kartu
+    // frame (lihat `_FrameCard`), agar hanya muncul saat kursor di atas frame,
+    // bukan di area kosong board.
     final spaceHeld = HardwareKeyboard.instance.isLogicalKeyPressed(
       LogicalKeyboardKey.space,
     );
     final canPanBoard = handTool || spaceHeld;
     final cursor = _dragging
         ? SystemMouseCursors.grabbing
-        : (canPanBoard ? SystemMouseCursors.grab : SystemMouseCursors.move);
+        : (canPanBoard ? SystemMouseCursors.grab : MouseCursor.defer);
 
     return ClipRRect(
       borderRadius: AppRadius.lg,
@@ -82,6 +83,7 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
 
           return MouseRegion(
             cursor: cursor,
+            opaque: false,
             child: Listener(
               // ============================================================
               // A. Gestur TRACKPAD native (PointerPanZoom).
@@ -155,12 +157,10 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
                 final dy = event.scrollDelta.dy;
                 final sdx = event.scrollDelta.dx;
 
-                // Pemetaan roda mouse (permintaan eksplisit):
-                //  - scroll biasa       -> geser board kanan/kiri (pan horizontal)
-                //  - Shift + scroll     -> geser board atas/bawah (pan vertikal)
+                // Pemetaan roda mouse:
+                //  - scroll biasa       -> geser board atas/bawah (pan vertikal)
+                //  - Shift + scroll     -> geser board kanan/kiri (pan horizontal)
                 //  - Ctrl/Cmd + scroll  -> zoom in/out ke arah kursor
-                // Sumbu vertikal (dy) jadi intensitas utama; roda tilt (sdx) tetap
-                // dihormati untuk pan horizontal alami.
                 if (event.kind == PointerDeviceKind.trackpad) {
                   // Trackpad = pan dua-jari natural (jalur PointerPanZoom biasanya),
                   // fallback di sini: pan mengikuti delta, ctrl = zoom.
@@ -187,17 +187,17 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
                 }
 
                 if (keys.isShiftPressed) {
-                  // Shift + scroll = geser atas/bawah.
+                  // Shift + scroll = geser board kanan/kiri.
                   if (dy == 0 && sdx == 0) return;
-                  final v = dy != 0 ? dy : sdx;
-                  notifier.panBy(Offset(0, -v));
+                  final h = dy != 0 ? dy : sdx;
+                  notifier.panBy(Offset(-h, 0));
                   return;
                 }
 
-                // Default: scroll biasa menggeser board kanan/kiri.
+                // Default: scroll biasa menggeser board atas/bawah.
                 if (dy == 0 && sdx == 0) return;
-                final h = dy != 0 ? dy : sdx;
-                notifier.panBy(Offset(-h, 0));
+                final v = dy != 0 ? dy : sdx;
+                notifier.panBy(Offset(0, -v));
               },
 
               // ============================================================
