@@ -57,6 +57,18 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
     final pan = state.panOffset;
     final handTool = state.tool == BoardTool.hand;
 
+    // Cursor dinamis: hand saat bisa menggeser board (tool hand / Space),
+    // grabbing saat benar-benar menggeser, move (panah 4 arah) saat mode
+    // pilih/geser. Nilai di-cache agar tidak bikin MouseRegion repaint tiap
+    // frame saat drag berlangsung.
+    final spaceHeld = HardwareKeyboard.instance.isLogicalKeyPressed(
+      LogicalKeyboardKey.space,
+    );
+    final canPanBoard = handTool || spaceHeld;
+    final cursor = _dragging
+        ? SystemMouseCursors.grabbing
+        : (canPanBoard ? SystemMouseCursors.grab : SystemMouseCursors.move);
+
     return ClipRRect(
       borderRadius: AppRadius.lg,
       child: LayoutBuilder(
@@ -68,181 +80,195 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
                 .reportViewport(constraints.biggest);
           });
 
-          return Listener(
-            // ============================================================
-            // A. Gestur TRACKPAD native (PointerPanZoom).
-            //
-            // Di Windows/macOS, cukup banyak trackpad presisi mengirim gestur
-            // sebagai PointerPanZoom (BUKAN PointerScrollEvent). Satu gestur
-            // membawa: pan dua-jari, pinch (scale), dan rotasi. Kita pakai:
-            //   - panDelta  -> geser board (pan)
-            //   - scale     -> zoom ke titik jari (kumulatif)
-            // ============================================================
-            onPointerPanZoomStart: (event) {
-              _panZoomActive = true;
-              // Nilai kumulatif gesture dimulai dari nol.
-              _lastPanZoomPan = Offset.zero;
-              _lastPanZoomScale = 1.0;
-            },
-            onPointerPanZoomUpdate: (event) {
-              if (!_panZoomActive) return;
-              final notifier = ref.read(canvasProvider.notifier);
+          return MouseRegion(
+            cursor: cursor,
+            child: Listener(
+              // ============================================================
+              // A. Gestur TRACKPAD native (PointerPanZoom).
+              //
+              // Di Windows/macOS, cukup banyak trackpad presisi mengirim gestur
+              // sebagai PointerPanZoom (BUKAN PointerScrollEvent). Satu gestur
+              // membawa: pan dua-jari, pinch (scale), dan rotasi. Kita pakai:
+              //   - panDelta  -> geser board (pan)
+              //   - scale     -> zoom ke titik jari (kumulatif)
+              // ============================================================
+              onPointerPanZoomStart: (event) {
+                _panZoomActive = true;
+                // Nilai kumulatif gesture dimulai dari nol.
+                _lastPanZoomPan = Offset.zero;
+                _lastPanZoomScale = 1.0;
+              },
+              onPointerPanZoomUpdate: (event) {
+                if (!_panZoomActive) return;
+                final notifier = ref.read(canvasProvider.notifier);
 
-              // Delta pan sejak event sebelumnya (px layar).
-              final panDelta = event.pan - _lastPanZoomPan;
+                // Delta pan sejak event sebelumnya (px layar).
+                final panDelta = event.pan - _lastPanZoomPan;
 
-              // `event.scale` kumulatif; ambil faktor relatif terhadap
-              // pembacaan sebelumnya agar zoom tidak "melompat".
-              var factor = _lastPanZoomScale == 0
-                  ? 1.0
-                  : event.scale / _lastPanZoomScale;
+                // `event.scale` kumulatif; ambil faktor relatif terhadap
+                // pembacaan sebelumnya agar zoom tidak "melompat".
+                var factor = _lastPanZoomScale == 0
+                    ? 1.0
+                    : event.scale / _lastPanZoomScale;
 
-              // Deadzone: trackpad sering menghasilkan noise scale sangat kecil
-              // saat pan dua-jari. Abaikan agar pan tidak mengubah zoom.
-              const scaleDeadzone = 0.005; // 0.5%
-              if ((factor - 1.0).abs() < scaleDeadzone) factor = 1.0;
+                // Deadzone: trackpad sering menghasilkan noise scale sangat kecil
+                // saat pan dua-jari. Abaikan agar pan tidak mengubah zoom.
+                const scaleDeadzone = 0.005; // 0.5%
+                if ((factor - 1.0).abs() < scaleDeadzone) factor = 1.0;
 
-              _lastPanZoomPan = event.pan;
-              _lastPanZoomScale = event.scale;
+                _lastPanZoomPan = event.pan;
+                _lastPanZoomScale = event.scale;
 
-              // Satu update state: pan + zoom sekaligus (anti-getar).
-              notifier.panAndZoomAt(
-                event.localPosition,
-                panDelta: panDelta,
-                scaleFactor: factor,
-              );
-            },
-            onPointerPanZoomEnd: (event) {
-              _panZoomActive = false;
-              _lastPanZoomPan = Offset.zero;
-              _lastPanZoomScale = 1.0;
-            },
+                // Satu update state: pan + zoom sekaligus (anti-getar).
+                notifier.panAndZoomAt(
+                  event.localPosition,
+                  panDelta: panDelta,
+                  scaleFactor: factor,
+                );
+              },
+              onPointerPanZoomEnd: (event) {
+                _panZoomActive = false;
+                _lastPanZoomPan = Offset.zero;
+                _lastPanZoomScale = 1.0;
+              },
 
-            // ============================================================
-            // B. Pointer signal: roda mouse & trackpad yang mengirim sinyal.
-            //
-            // - PointerScaleEvent  : pinch dari trackpad lama/OS tertentu.
-            // - PointerScrollEvent : roda mouse, atau trackpad non-precision
-            //   (Windows hanya mengirim pan-zoom bila driver mendukung).
-            // ============================================================
-            onPointerSignal: (event) {
-              // Pinch lama -> zoom langsung di titik jari.
-              if (event is PointerScaleEvent) {
-                ref
-                    .read(canvasProvider.notifier)
-                    .zoomAt(event.localPosition, event.scale);
-                return;
-              }
-
-              if (event is! PointerScrollEvent) return;
-
-              final notifier = ref.read(canvasProvider.notifier);
-              final keys = HardwareKeyboard.instance;
-              final dy = event.scrollDelta.dy;
-              final sdx = event.scrollDelta.dx;
-              final forceZoom = keys.isControlPressed || keys.isMetaPressed;
-              final horizontalPan = keys.isShiftPressed;
-
-              // Bedakan sumber sinyal:
-              //  - roda MOUSE  -> zoom (default kanvas ala Figma/Miro)
-              //  - TRACKPAD    -> pan (dua jari), kecuali ctrl/shift dipakai.
-              // Perangkat precision umumnya memakai PointerPanZoom (jalur A),
-              // tetapi trackpad dengan driver lama bisa muncul di sini dengan
-              // kind == trackpad. Kita hormati itu agar dua-jari tidak jadi
-              // zoom tak sengaja.
-              final isTrackpad = event.kind == PointerDeviceKind.trackpad;
-
-              if (isTrackpad && !forceZoom) {
-                // Dua jari = pan. Shift = pan horizontal saja.
-                if (horizontalPan) {
-                  final v = sdx != 0 ? sdx : dy;
-                  if (v == 0) return;
-                  notifier.panBy(Offset(-v, 0));
+              // ============================================================
+              // B. Pointer signal: roda mouse & trackpad yang mengirim sinyal.
+              //
+              // - PointerScaleEvent  : pinch dari trackpad lama/OS tertentu.
+              // - PointerScrollEvent : roda mouse, atau trackpad non-precision
+              //   (Windows hanya mengirim pan-zoom bila driver mendukung).
+              // ============================================================
+              onPointerSignal: (event) {
+                // Pinch lama -> zoom langsung di titik jari.
+                if (event is PointerScaleEvent) {
+                  ref
+                      .read(canvasProvider.notifier)
+                      .zoomAt(event.localPosition, event.scale);
                   return;
                 }
-                if (sdx == 0 && dy == 0) return;
-                notifier.panBy(Offset(-sdx, -dy));
-                return;
-              }
 
-              // Roda mouse (atau trackpad + modifier): zoom / pan horizontal.
-              // Prioritas: Shift+scroll = pan horizontal (roda mouse tilt / shift).
-              if (horizontalPan && !forceZoom) {
-                if (sdx == 0 && dy == 0) return;
-                final delta = sdx != 0 ? Offset(-sdx, 0) : Offset(-dy, 0);
-                notifier.panBy(delta);
-                return;
-              }
+                if (event is! PointerScrollEvent) return;
 
-              // Default: zoom. Pakai faktor eksponensial agar rata di semua
-              // level zoom. Ambil sumbu vertikal sebagai intensitas zoom.
-              if (dy == 0) return;
-              final factor = math.exp(-dy * 0.0015);
-              notifier.zoomAt(event.localPosition, factor);
-            },
+                final notifier = ref.read(canvasProvider.notifier);
+                final keys = HardwareKeyboard.instance;
+                final dy = event.scrollDelta.dy;
+                final sdx = event.scrollDelta.dx;
 
-            // ============================================================
-            // C. Drag pan (mouse & trackpad click-drag).
-            // ============================================================
-            onPointerDown: (event) {
-              // Pan dengan drag bila: tool hand, spasi ditahan, atau tombol
-              // tengah mouse. Trackpad klik-drag juga mengirim PointerDown
-              // lalu PointerMove.
-              final spaceHeld = HardwareKeyboard.instance.isLogicalKeyPressed(
-                LogicalKeyboardKey.space,
-              );
-              final middleButton = event.buttons & kMiddleMouseButton != 0;
-              final wantsPan = handTool || spaceHeld || middleButton;
-              if (!wantsPan) return;
-              _dragging = true;
-              _panPointerId = event.pointer;
-              _lastFocal = event.localPosition;
-            },
-            onPointerMove: (event) {
-              if (!_dragging || event.pointer != _panPointerId) return;
-              final previous = _lastFocal ?? event.localPosition;
-              final delta = event.localPosition - previous;
-              _lastFocal = event.localPosition;
-              ref.read(canvasProvider.notifier).panBy(delta);
-            },
-            onPointerUp: (event) {
-              if (event.pointer == _panPointerId) {
-                _dragging = false;
-                _panPointerId = null;
-                _lastFocal = null;
-              }
-            },
-            onPointerCancel: (event) {
-              if (event.pointer == _panPointerId) {
-                _dragging = false;
-                _panPointerId = null;
-                _lastFocal = null;
-              }
-            },
+                // Pemetaan roda mouse (permintaan eksplisit):
+                //  - scroll biasa       -> geser board kanan/kiri (pan horizontal)
+                //  - Shift + scroll     -> geser board atas/bawah (pan vertikal)
+                //  - Ctrl/Cmd + scroll  -> zoom in/out ke arah kursor
+                // Sumbu vertikal (dy) jadi intensitas utama; roda tilt (sdx) tetap
+                // dihormati untuk pan horizontal alami.
+                if (event.kind == PointerDeviceKind.trackpad) {
+                  // Trackpad = pan dua-jari natural (jalur PointerPanZoom biasanya),
+                  // fallback di sini: pan mengikuti delta, ctrl = zoom.
+                  if (keys.isControlPressed || keys.isMetaPressed) {
+                    if (dy != 0) {
+                      notifier.zoomAt(
+                        event.localPosition,
+                        math.exp(-dy * 0.0015),
+                      );
+                    }
+                    return;
+                  }
+                  if (sdx == 0 && dy == 0) return;
+                  notifier.panBy(Offset(-sdx, -dy));
+                  return;
+                }
 
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () =>
-                  ref.read(canvasProvider.notifier).selectFrame(null),
-              onSecondaryTap: () =>
-                  ref.read(canvasProvider.notifier).selectFrame(null),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Grid statis di layar.
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _DotGridPainter(
-                        pan: pan,
-                        scale: scale,
-                        spacing: _dotSpacing,
-                        radius: _dotRadius,
-                        showGrid: state.showGrid,
+                if (keys.isControlPressed || keys.isMetaPressed) {
+                  // Zoom ke arah kursor.
+                  if (dy == 0) return;
+                  final factor = math.exp(-dy * 0.0015);
+                  notifier.zoomAt(event.localPosition, factor);
+                  return;
+                }
+
+                if (keys.isShiftPressed) {
+                  // Shift + scroll = geser atas/bawah.
+                  if (dy == 0 && sdx == 0) return;
+                  final v = dy != 0 ? dy : sdx;
+                  notifier.panBy(Offset(0, -v));
+                  return;
+                }
+
+                // Default: scroll biasa menggeser board kanan/kiri.
+                if (dy == 0 && sdx == 0) return;
+                final h = dy != 0 ? dy : sdx;
+                notifier.panBy(Offset(-h, 0));
+              },
+
+              // ============================================================
+              // C. Drag pan (mouse & trackpad click-drag).
+              // ============================================================
+              onPointerDown: (event) {
+                // Pan dengan drag bila: tool hand, spasi ditahan, atau tombol
+                // tengah mouse. Trackpad klik-drag juga mengirim PointerDown
+                // lalu PointerMove.
+                final spaceNow = HardwareKeyboard.instance.isLogicalKeyPressed(
+                  LogicalKeyboardKey.space,
+                );
+                final middleButton = event.buttons & kMiddleMouseButton != 0;
+                final wantsPan = handTool || spaceNow || middleButton;
+                if (!wantsPan) return;
+                setState(() {
+                  _dragging = true;
+                  _panPointerId = event.pointer;
+                  _lastFocal = event.localPosition;
+                });
+              },
+              onPointerMove: (event) {
+                if (!_dragging || event.pointer != _panPointerId) return;
+                final previous = _lastFocal ?? event.localPosition;
+                final delta = event.localPosition - previous;
+                _lastFocal = event.localPosition;
+                ref.read(canvasProvider.notifier).panBy(delta);
+              },
+              onPointerUp: (event) {
+                if (event.pointer == _panPointerId) {
+                  setState(() {
+                    _dragging = false;
+                    _panPointerId = null;
+                    _lastFocal = null;
+                  });
+                }
+              },
+              onPointerCancel: (event) {
+                if (event.pointer == _panPointerId) {
+                  setState(() {
+                    _dragging = false;
+                    _panPointerId = null;
+                    _lastFocal = null;
+                  });
+                }
+              },
+
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () =>
+                    ref.read(canvasProvider.notifier).selectFrame(null),
+                onSecondaryTap: () =>
+                    ref.read(canvasProvider.notifier).selectFrame(null),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Grid statis di layar.
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _DotGridPainter(
+                          pan: pan,
+                          scale: scale,
+                          spacing: _dotSpacing,
+                          radius: _dotRadius,
+                          showGrid: state.showGrid,
+                        ),
                       ),
                     ),
-                  ),
-                  widget.child,
-                ],
+                    widget.child,
+                  ],
+                ),
               ),
             ),
           );

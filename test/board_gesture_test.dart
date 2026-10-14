@@ -39,26 +39,26 @@ void main() {
   CanvasState state() => container!.read(canvasProvider);
   CanvasNotifier notifier() => container!.read(canvasProvider.notifier);
 
-  testWidgets('mouse wheel zooms by default (Figma-like canvas)', (
-    tester,
-  ) async {
+  testWidgets('mouse wheel pans horizontally by default', (tester) async {
     await pumpBoard(tester);
+    notifier().reportViewport(const Size(600, 400));
     notifier().setScale(1.0);
+    notifier().panBy(Offset.zero); // no-op, pastikan state awal bersih
 
     final center = tester.getCenter(find.byType(DotGridBoard));
     final pointer = TestPointer(1, PointerDeviceKind.mouse);
     pointer.hover(center);
 
-    // Roda mouse: delta sumbu Y positif (scroll turun) -> zoom OUT.
+    // Roda mouse biasa: geser board kanan/kiri (pan horizontal), bukan zoom.
+    final before = state().panOffset.dx;
     await tester.sendEventToBinding(pointer.scroll(const Offset(0, 60)));
     await tester.pump();
 
-    expect(state().scale, lessThan(1.0));
+    expect(state().scale, 1.0);
+    expect(state().panOffset.dx, isNot(before));
   });
 
-  testWidgets('shift + wheel pans horizontally instead of zooming', (
-    tester,
-  ) async {
+  testWidgets('shift + wheel pans vertically', (tester) async {
     await pumpBoard(tester);
     notifier().reportViewport(const Size(600, 400));
     notifier().setScale(1.0);
@@ -72,9 +72,9 @@ void main() {
     await tester.pump();
     await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
 
-    // Scale tidak berubah; board bergeser horizontal (dx != 0).
+    // Scale tidak berubah; board bergeser vertikal (dy != 0).
     expect(state().scale, 1.0);
-    expect(state().panOffset.dx, isNot(0));
+    expect(state().panOffset.dy, isNot(0));
   });
 
   testWidgets('trackpad two-finger scroll pans, does not zoom', (
@@ -96,14 +96,12 @@ void main() {
     expect(state().panOffset, isNot(Offset.zero));
   });
 
-  testWidgets('ctrl + wheel zooms even from a trackpad signal', (
-    tester,
-  ) async {
+  testWidgets('ctrl + wheel zooms toward the cursor', (tester) async {
     await pumpBoard(tester);
     notifier().setScale(1.0);
 
     final center = tester.getCenter(find.byType(DotGridBoard));
-    final pointer = TestPointer(1, PointerDeviceKind.trackpad);
+    final pointer = TestPointer(1, PointerDeviceKind.mouse);
     pointer.hover(center);
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
