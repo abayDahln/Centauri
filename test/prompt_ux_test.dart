@@ -67,6 +67,42 @@ void main() {
       final req = detectScreenRequest('buatkan profil dan pengaturan');
       expect(req.names, ['profile', 'settings']);
     });
+
+    test('two named screens means two frames (pricing + payment)', () {
+      final req = detectScreenRequest('buatkan pricing dan payment page');
+      expect(req.count, 2);
+      expect(req.names, ['pricing', 'payment']);
+    });
+
+    test('single screen keyword stays single', () {
+      final req = detectScreenRequest('buatkan landing page');
+      expect(req.count, 1);
+      expect(req.names, isEmpty);
+    });
+
+    test('new keywords canonicalized (produk, riwayat)', () {
+      final req = detectScreenRequest('buatkan produk dan riwayat order');
+      expect(req.count, 3);
+      expect(req.names, containsAll(['product', 'history', 'order']));
+    });
+  });
+
+  group('buildSplitFollowUpPrompt (auto-split tanpa prompt ulang)', () {
+    test('demands exact block count with order', () {
+      final prompt = buildSplitFollowUpPrompt(
+        count: 2,
+        names: const ['pricing', 'payment'],
+      );
+      expect(prompt, contains('EXACTLY 2 separate ```html'));
+      expect(prompt, contains('pricing -> payment'));
+      expect(prompt, contains('REUSE'));
+      expect(prompt, contains('FORBIDDEN'));
+    });
+
+    test('works without names (count only)', () {
+      final prompt = buildSplitFollowUpPrompt(count: 3, names: const []);
+      expect(prompt, contains('EXACTLY 3 separate ```html'));
+    });
   });
 
   group('Submit guard', () {

@@ -213,53 +213,60 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                         _AttachButton(onPressed: _pickFiles),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Focus(
-                            onKeyEvent: (node, event) {
-                              // Enter = kirim, Shift+Enter = baris baru.
-                              if (event is KeyDownEvent &&
-                                  event.logicalKey ==
-                                      LogicalKeyboardKey.enter &&
-                                  !HardwareKeyboard.instance.isShiftPressed) {
-                                if (!state.isGenerating) _send();
-                                return KeyEventResult.handled;
-                              }
-                              // Ctrl+V: tempel gambar dari clipboard.
-                              if (event is KeyDownEvent &&
-                                  event.logicalKey ==
-                                      LogicalKeyboardKey.keyV &&
-                                  HardwareKeyboard.instance.isControlPressed) {
-                                _pasteFromClipboard();
-                              }
-                              return KeyEventResult.ignored;
-                            },
-                            child: TextField(
-                              controller: _controller,
-                              focusNode: _focusNode,
-                              minLines: 1,
-                              maxLines: 4,
-                              keyboardType: TextInputType.multiline,
-                              textInputAction: TextInputAction.newline,
-                              style: const TextStyle(
-                                fontFamily: AppFonts.uiFamily,
-                                fontFamilyFallback: AppFonts.uiFallback,
-                                fontSize: 13.5,
-                                color: AppColors.textPrimary,
-                              ),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                filled: false,
-                                hintText:
-                                    'What would you like to change or create?',
-                                hintStyle: TextStyle(
+                          // Samakan tinggi baris dengan tombol 40px agar teks
+                          // selalu di tengah vertikal (single-line). Saat
+                          // multiline, kontainer ikut tumbuh ke atas.
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 40),
+                            alignment: Alignment.centerLeft,
+                            child: Focus(
+                              onKeyEvent: (node, event) {
+                                // Enter = kirim, Shift+Enter = baris baru.
+                                if (event is KeyDownEvent &&
+                                    event.logicalKey ==
+                                        LogicalKeyboardKey.enter &&
+                                    !HardwareKeyboard.instance.isShiftPressed) {
+                                  if (!state.isGenerating) _send();
+                                  return KeyEventResult.handled;
+                                }
+                                // Ctrl+V: tempel gambar dari clipboard.
+                                if (event is KeyDownEvent &&
+                                    event.logicalKey ==
+                                        LogicalKeyboardKey.keyV &&
+                                    HardwareKeyboard.instance.isControlPressed) {
+                                  _pasteFromClipboard();
+                                }
+                                return KeyEventResult.ignored;
+                              },
+                              child: TextField(
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                minLines: 1,
+                                maxLines: 4,
+                                keyboardType: TextInputType.multiline,
+                                textInputAction: TextInputAction.newline,
+                                style: const TextStyle(
                                   fontFamily: AppFonts.uiFamily,
                                   fontFamilyFallback: AppFonts.uiFallback,
                                   fontSize: 13.5,
-                                  color: AppColors.textDisabled,
+                                  color: AppColors.textPrimary,
                                 ),
-                                contentPadding: EdgeInsets.symmetric(
-                                  vertical: 10,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  filled: false,
+                                  hintText:
+                                      'What would you like to change or create?',
+                                  hintStyle: TextStyle(
+                                    fontFamily: AppFonts.uiFamily,
+                                    fontFamilyFallback: AppFonts.uiFallback,
+                                    fontSize: 13.5,
+                                    color: AppColors.textDisabled,
+                                  ),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                 ),
                               ),
                             ),

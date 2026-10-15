@@ -50,6 +50,16 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
   Offset _lastPanZoomPan = Offset.zero;
   double _lastPanZoomScale = 1.0;
 
+  /// Posisi kursor terakhir yang diketahui di atas board (koordinat lokal
+  /// Listener — ruang yang sama dengan `panOffset`).
+  ///
+  /// Dipakai sebagai jangkar zoom pinch trackpad. Alasan: posisi yang dibawa
+  /// `PointerPanZoomUpdateEvent` dari OS gesture sering TIDAK akurat (dapat
+  /// berupa origin), sehingga zoom selalu terjangkar ke pojok. Posisi kursor
+  /// dari hover/move/signal selalu benar — sama seperti jalur Ctrl+scroll
+  /// yang sudah terjangkar ke kursor dengan tepat.
+  Offset? _cursorLocal;
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(canvasProvider);
@@ -85,6 +95,10 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
             cursor: cursor,
             opaque: false,
             child: Listener(
+              // Lacak kursor: jangkar zoom pinch yang akurat.
+              onPointerHover: (event) {
+                _cursorLocal = event.localPosition;
+              },
               // ============================================================
               // A. Gestur TRACKPAD native (PointerPanZoom).
               //
@@ -99,6 +113,9 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
                 // Nilai kumulatif gesture dimulai dari nol.
                 _lastPanZoomPan = Offset.zero;
                 _lastPanZoomScale = 1.0;
+                // Jangan timpa posisi kursor yang sudah diketahui akurat —
+                // posisi event gesture dari OS tidak bisa diandalkan.
+                _cursorLocal ??= event.localPosition;
               },
               onPointerPanZoomUpdate: (event) {
                 if (!_panZoomActive) return;
@@ -121,9 +138,10 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
                 _lastPanZoomPan = event.pan;
                 _lastPanZoomScale = event.scale;
 
+                // Jangkar ke kursor (bukan event.localPosition yang tak akurat).
                 // Satu update state: pan + zoom sekaligus (anti-getar).
                 notifier.panAndZoomAt(
-                  event.localPosition,
+                  _cursorLocal ?? event.localPosition,
                   panDelta: panDelta,
                   scaleFactor: factor,
                 );
@@ -142,15 +160,21 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
               //   (Windows hanya mengirim pan-zoom bila driver mendukung).
               // ============================================================
               onPointerSignal: (event) {
-                // Pinch lama -> zoom langsung di titik jari.
+                // Pinch lama -> zoom langsung di titik jari (jangkar kursor).
                 if (event is PointerScaleEvent) {
                   ref
                       .read(canvasProvider.notifier)
-                      .zoomAt(event.localPosition, event.scale);
+                      .zoomAt(
+                        _cursorLocal ?? event.localPosition,
+                        event.scale,
+                      );
                   return;
                 }
 
                 if (event is! PointerScrollEvent) return;
+
+                // Catat posisi kursor dari sinyal scroll (selalu akurat).
+                _cursorLocal = event.localPosition;
 
                 final notifier = ref.read(canvasProvider.notifier);
                 final keys = HardwareKeyboard.instance;
@@ -220,6 +244,7 @@ class _DotGridBoardState extends ConsumerState<DotGridBoard> {
                 });
               },
               onPointerMove: (event) {
+                _cursorLocal = event.localPosition;
                 if (!_dragging || event.pointer != _panPointerId) return;
                 final previous = _lastFocal ?? event.localPosition;
                 final delta = event.localPosition - previous;

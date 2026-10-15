@@ -71,6 +71,7 @@ DESIGN EXCELLENCE & ANTI-AI-SLOP GUIDELINES
 - Support both light and dark themes using a [data-theme] attribute with a working toggle in the UI.
 - Ban AI Slop: No generic purple-blue gradients on everything, no neon glows on dark backgrounds, no centered-hero-with-3-identical-cards formula, and NEVER use "Lorem ipsum" or fake placeholder copy. Write realistic, context-specific microcopy, realistic figures, and plausible brand names.
 - Rich Content Architecture: Every production-grade screen must feature a clear focal point and deliberate zones (navigation, hero/summary, content grids/lists, actions, detail panels, footers).
+- COMPACT VERTICAL RHYTHM (zero dead whitespace): sections hug their content (vertical padding 48-96px, never empty spacer divs, min-height:100vh ONLY on hero). Footer sits immediately after the last section with no gap. Every block taller than ~400px MUST contain visible content (text, media, or controls) — never blank bands, never empty detail panels.
 
 Review your output before sending: ensure it is fully self-contained, interactive, responsive, visually polished, and strictly aligned with the user's intent.
 ''';

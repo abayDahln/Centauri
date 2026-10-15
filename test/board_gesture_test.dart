@@ -131,6 +131,36 @@ void main() {
     expect(state().scale, greaterThan(1.0));
   });
 
+  testWidgets('pan-zoom pinch anchors at cursor, not event position', (
+    tester,
+  ) async {
+    await pumpBoard(tester);
+    notifier().reportViewport(const Size(600, 400));
+    notifier().setScale(1.0);
+
+    // Board 600x400 di tengah surface 800x600 -> origin board (100,100).
+    final center = tester.getCenter(find.byType(DotGridBoard));
+    final corner = center - const Offset(300, 200);
+    final pointer = TestPointer(1, PointerDeviceKind.trackpad);
+
+    // Kursor di tengah board; gestur OS datang dari pojok (posisi event
+    // gesture dari OS tidak akurat — dulu zoom selalu terjangkar ke pojok).
+    await tester.sendEventToBinding(pointer.hover(center));
+    await tester.pump();
+    await tester.sendEventToBinding(pointer.panZoomStart(corner));
+    await tester.sendEventToBinding(
+      pointer.panZoomUpdate(corner, scale: 1.5),
+    );
+    await tester.pump();
+    await tester.sendEventToBinding(pointer.panZoomEnd());
+
+    expect(state().scale, greaterThan(1.0));
+    // Jangkar = tengah board (300,200 lokal): pan = focal - focal*1.5.
+    // Tanpa fix, jangkar = posisi event (0,0 lokal) -> pan tetap nol.
+    expect(state().panOffset.dx, closeTo(-150, 0.001));
+    expect(state().panOffset.dy, closeTo(-100, 0.001));
+  });
+
   testWidgets('pointer pan-zoom pure pan does not change zoom', (
     tester,
   ) async {

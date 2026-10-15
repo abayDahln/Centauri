@@ -5,6 +5,7 @@ import '../../../prompt_editor/domain/ai_response.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 import '../../../prompt_editor/domain/prompt_templates.dart';
 import '../../../provider_config/data/datasources/ai_api_service.dart';
+import '../../../provider_config/domain/entities/api_provider.dart';
 import '../../../provider_config/presentation/providers/provider_config_provider.dart';
 import '../../data/services/canvas_webview_service.dart';
 import '../../domain/board_frame.dart';
@@ -966,7 +967,8 @@ class CanvasNotifier extends Notifier<CanvasState> {
               'between login/home/profile). FORBIDDEN: tab bars, nav links, or JS view-switching '
               'used as a substitute for separate documents. Each screen lives in its OWN block.\n'
               '6. If you output only ONE ```html block for this request, the task FAILS — '
-              'do not do that.\n'
+              'do not do that. Two screens still means TWO separate blocks; '
+              'never merge them into one document with in-page navigation.\n'
               'Example skeleton:\n'
               '### Login\n'
               '```html\n'
@@ -999,6 +1001,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
         'The layout MUST be fully fluid and responsive (using modern flexbox/grid, percentage/fluid widths, and media queries) '
         'fitting this width with ZERO horizontal overflow and NO horizontal scrollbars, and dynamically adapting if resized. '
         'Height starts at ${size.height.round()}px (min-height: 100vh) and grows vertically with natural document flow. '
+        'Sections must hug their content (no empty spacer divs, no blank bands, footer directly after the last section). '
         'Ensure real interactive vanilla JS controls, crisp high-DPI/HD open-source imagery, and inline SVG icons.'
         '$multiContext';
 
@@ -1066,42 +1069,19 @@ class CanvasNotifier extends Notifier<CanvasState> {
       final baseTitle = _titleFromPrompt(trimmed);
       final isFirstOnBoard = state.frames.isEmpty;
 
-      final newFrames = <BoardFrame>[];
-      var offset = _nextFrameOffset(size);
-      for (var i = 0; i < response.screens.length; i++) {
-        final screen = response.screens[i];
-        final tree = await buildDomTreeInIsolate(screen.html);
-        final frameId = 'frame_${_frameCounter++}';
-        final fallbackTitle = response.screens.length > 1
-            ? '$baseTitle ${i + 1}'
-            : baseTitle;
-        final title = _sanitizeScreenTitle(screen.title, fallbackTitle);
+      final firstOffset = _nextFrameOffset(size);
+      var newFrames = await _buildFramesFromScreens(
+        screens: response.screens,
+        explicitViewport: explicitViewport,
+        effectiveViewport: effectiveViewport,
+        baseTitle: baseTitle,
+        startOffset: firstOffset,
+      );
 
-        // Ukuran frame ditentukan oleh: instruksi eksplisit user -> deklarasi otonom AI -> deteksi prompt
-        final aiDeclared = detectViewportFromHtml(screen.html);
-        final screenViewport = explicitViewport ?? aiDeclared ?? effectiveViewport;
-        final screenSize = _sizeFor(screenViewport);
+      // Bila dibatalkan saat build tree, jangan lanjut render.
+      if (!state.isGenerating) return;
 
-        newFrames.add(
-          BoardFrame(
-            id: frameId,
-            title: title,
-            html: tree.stampedHtml,
-            offset: offset,
-            size: screenSize,
-            domTree: tree,
-            isActive: i == 0,
-          ),
-        );
-        offset = Offset(offset.dx + screenSize.width + _gap, offset.dy);
-      }
-
-      final seeded = _normalizeFrames([
-        ...state.frames.map((f) => f.copyWith(isActive: false)),
-        ...newFrames,
-      ]);
-
-      // Catatan penjelasan AI (PART 1) tampil sebagai pesan chat.
+      // Catatan penjelasan AI (PART 1) + dokumen hasil masuk riwayat.
       final note = response.note?.trim();
       final messages = [...state.messages];
       if (note != null && note.isNotEmpty) {
@@ -1120,28 +1100,45 @@ class CanvasNotifier extends Notifier<CanvasState> {
           text: response.screens.first.html,
         ),
       );
-      // AI menggabung layar yang diminta terpisah ke 1 dokumen: beri tahu user
-      // + sediakan teks follow-up siap kirim agar tinggal copy-paste.
+
+      // AI menggabung layar yang diminta terpisah ke 1 dokumen: JANGAN bebani
+      // user untuk prompt ulang — app berinisiatif memecah otomatis dengan
+      // satu follow-up call memakai dokumen gabungan sebagai konteks.
       if (screenReq.count > 1 && response.screens.length == 1) {
-        final want = screenReq.names.isEmpty
-            ? '${screenReq.count} layar'
-            : screenReq.names.join(', ');
-        final splitAsk = screenReq.names.isEmpty
-            ? 'satu per layar'
-            : screenReq.names.join(', ');
-        messages.add(
-          CanvasMessage(
-            role: ChatRole.assistant,
-            kind: ChatMessageKind.chat,
-            text: 'Catatan: kamu meminta $want, tapi AI menggabung semuanya '
-                'ke 1 dokumen sehingga hanya 1 frame yang dibuat. Untuk '
-                'memecahnya, kirim pesan berikut:\n\n"Pecah menjadi '
-                '${screenReq.count} file HTML terpisah ($splitAsk), '
-                'masing-masing dokumen lengkap sendiri di blok ```html '
-                'tersendiri."',
-          ),
+        final split = await _autoSplitMerged(
+          screenReq: screenReq,
+          activeProvider: activeProvider,
+          explicitViewport: explicitViewport,
+          effectiveViewport: effectiveViewport,
+          baseTitle: baseTitle,
+          startOffset: firstOffset,
+          historyBeforeSplit: messages,
         );
+        if (split != null && split.length > 1) {
+          // Sukses: pesan follow-up + hasil pecahan sudah di-commit di dalam.
+          newFrames = split;
+        } else {
+          // Dibatalkan saat split: hormati Stop, jangan commit apa pun lagi.
+          if (!state.isGenerating) return;
+          state = state.copyWith(
+            messages: [
+              ...messages,
+              CanvasMessage(
+                role: ChatRole.assistant,
+                kind: ChatMessageKind.chat,
+                text: _splitFallbackNote(screenReq),
+              ),
+            ],
+          );
+        }
+      } else {
+        state = state.copyWith(messages: messages);
       }
+
+      final seeded = _normalizeFrames([
+        ...state.frames.map((f) => f.copyWith(isActive: false)),
+        ...newFrames,
+      ]);
 
       state = state.copyWith(
         frames: seeded,
@@ -1151,7 +1148,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
         status: AiStatus.idle,
         // Frame pertama di board: pusatkan agar hasilnya langsung terlihat.
         panOffset: isFirstOnBoard ? const Offset(60, 40) : null,
-        messages: messages,
+        messages: state.messages,
       );
     } on ApiConnectionException catch (e) {
       // Force-stop via cancel dianggap normal, bukan error yang ditampilkan.
@@ -1166,6 +1163,153 @@ class CanvasNotifier extends Notifier<CanvasState> {
       if (!state.isGenerating) return;
       _failGeneration('Terjadi kesalahan: $e');
     }
+  }
+
+  /// Bangun [BoardFrame] dari daftar layar AI mulai di [startOffset].
+  /// Satu layar = satu frame. Id selalu unik via [_frameCounter].
+  Future<List<BoardFrame>> _buildFramesFromScreens({
+    required List<UiScreen> screens,
+    required ViewportMode? explicitViewport,
+    required ViewportMode effectiveViewport,
+    required String baseTitle,
+    required Offset startOffset,
+  }) async {
+    final frames = <BoardFrame>[];
+    var offset = startOffset;
+    for (var i = 0; i < screens.length; i++) {
+      final screen = screens[i];
+      final tree = await buildDomTreeInIsolate(screen.html);
+      final frameId = 'frame_${_frameCounter++}';
+      final fallbackTitle = screens.length > 1
+          ? '$baseTitle ${i + 1}'
+          : baseTitle;
+      final title = _sanitizeScreenTitle(screen.title, fallbackTitle);
+
+      // Ukuran frame ditentukan oleh: instruksi eksplisit user -> deklarasi otonom AI -> deteksi prompt
+      final aiDeclared = detectViewportFromHtml(screen.html);
+      final screenViewport = explicitViewport ?? aiDeclared ?? effectiveViewport;
+      final screenSize = _sizeFor(screenViewport);
+
+      frames.add(
+        BoardFrame(
+          id: frameId,
+          title: title,
+          html: tree.stampedHtml,
+          offset: offset,
+          size: screenSize,
+          domTree: tree,
+          isActive: i == 0,
+        ),
+      );
+      offset = Offset(offset.dx + screenSize.width + _gap, offset.dy);
+    }
+    return frames;
+  }
+
+  /// Pecah otomatis dokumen gabungan menjadi frame terpisah TANPA user
+  /// mengetik ulang: satu follow-up call memakai dokumen gabungan + riwayat
+  /// sebagai konteks. Meng-commit pesan follow-up + hasil ke state bila
+  /// berhasil (atau bila model tetap menggabung). Mengembalikan daftar frame
+  /// pecahan, atau null bila dibatalkan / gagal (caller pakai hasil gabungan
+  /// + catatan singkat sebagai fallback).
+  Future<List<BoardFrame>?> _autoSplitMerged({
+    required ({int count, List<String> names}) screenReq,
+    required ApiProvider activeProvider,
+    required ViewportMode? explicitViewport,
+    required ViewportMode effectiveViewport,
+    required String baseTitle,
+    required Offset startOffset,
+    required List<CanvasMessage> historyBeforeSplit,
+  }) async {
+    if (!state.isGenerating) return null;
+    _setStatus(AiStatus.responding);
+
+    final want = screenReq.names.isEmpty
+        ? '${screenReq.count} layar'
+        : screenReq.names.join(', ');
+    final followUp = CanvasMessage(
+      role: ChatRole.user,
+      text: buildSplitFollowUpPrompt(
+        count: screenReq.count,
+        names: screenReq.names,
+      ),
+      // Transparan di bubble chat: user melihat app berinisiatif memecah.
+      displayText: 'Pecah otomatis menjadi $want…',
+    );
+    final history = [...historyBeforeSplit, followUp];
+    // Lampiran prompt asal tetap disertakan agar konteks visual tidak hilang.
+    final lastAttachments = historyBeforeSplit
+        .where((m) => m.role == ChatRole.user && m.attachments.isNotEmpty)
+        .expand((m) => m.attachments)
+        .toList();
+
+    try {
+      final payload = _buildMessagesPayload(
+        attachments: lastAttachments,
+        historyOverride: history,
+      );
+      final raw = await ref
+          .read(aiApiServiceProvider)
+          .generateUI(provider: activeProvider, messages: payload);
+      // Bila user menekan Stop saat split, hasil yang telat diabaikan.
+      if (!state.isGenerating) return null;
+      final split = await classifyAiResponseInIsolate(raw);
+      if (!state.isGenerating) return null;
+      if (split.isChat || split.screens.length <= 1) return null;
+
+      final committed = [...history];
+      final splitNote = split.note?.trim();
+      if (splitNote != null && splitNote.isNotEmpty) {
+        committed.add(
+          CanvasMessage(
+            role: ChatRole.assistant,
+            kind: ChatMessageKind.chat,
+            text: splitNote,
+          ),
+        );
+      }
+      committed.add(
+        CanvasMessage(
+          role: ChatRole.assistant,
+          kind: ChatMessageKind.ui,
+          text: split.screens.first.html,
+        ),
+      );
+      committed.add(
+        CanvasMessage(
+          role: ChatRole.assistant,
+          kind: ChatMessageKind.chat,
+          text: 'Dokumen gabungan otomatis dipecah menjadi '
+              '${split.screens.length} frame ($want).',
+        ),
+      );
+      state = state.copyWith(messages: committed);
+
+      final splitFrames = await _buildFramesFromScreens(
+        screens: split.screens,
+        explicitViewport: explicitViewport,
+        effectiveViewport: effectiveViewport,
+        baseTitle: baseTitle,
+        startOffset: startOffset,
+      );
+      if (!state.isGenerating) return null;
+      return splitFrames;
+    } catch (_) {
+      // Jaringan gagal saat split: caller fallback ke hasil gabungan.
+      return null;
+    }
+  }
+
+  /// Catatan singkat bila auto-split pun gagal (2x percobaan): hasil gabungan
+  /// tetap dipakai, user cukup menyebut tiap layar eksplisit bila mau pecah.
+  String _splitFallbackNote(({int count, List<String> names}) screenReq) {
+    final want = screenReq.names.isEmpty
+        ? '${screenReq.count} layar'
+        : screenReq.names.join(', ');
+    return 'Catatan: kamu meminta $want, tapi AI tetap menggabung semuanya '
+        'ke 1 dokumen setelah 2x percobaan. Sebutkan tiap layar lebih '
+        'eksplisit bila ingin frame terpisah, mis. "buatkan $want sebagai '
+        'file HTML terpisah, satu per layar".';
   }
 
   /// Hentikan generate yang sedang berjalan (tombol Stop).
@@ -1260,8 +1404,9 @@ class CanvasNotifier extends Notifier<CanvasState> {
 
   List<Map<String, dynamic>> _buildMessagesPayload({
     List<Attachment> attachments = const [],
+    List<CanvasMessage>? historyOverride,
   }) {
-    final history = state.messages
+    final history = (historyOverride ?? state.messages)
         .where((m) => m.role != ChatRole.error)
         .toList();
 
@@ -1572,6 +1717,23 @@ ViewportMode? detectViewportFromHtml(String html) {
     'dashboard',
     'pricing',
     'harga',
+    'landing',
+    'portfolio',
+    'gallery',
+    'galeri',
+    'blog',
+    'product',
+    'produk',
+    'order',
+    'pesanan',
+    'history',
+    'riwayat',
+    'wallet',
+    'dompet',
+    'contact',
+    'kontak',
+    'about',
+    'tentang',
   ];
   final hits = <int, String>{};
   for (final kw in screenKeywords) {
@@ -1591,6 +1753,13 @@ ViewportMode? detectViewportFromHtml(String html) {
     'pengaturan': 'settings',
     'notifikasi': 'notifications',
     'harga': 'pricing',
+    'galeri': 'gallery',
+    'produk': 'product',
+    'pesanan': 'order',
+    'riwayat': 'history',
+    'dompet': 'wallet',
+    'kontak': 'contact',
+    'tentang': 'about',
   };
   final ordered = hits.keys.toList()..sort();
   final names = <String>[];
@@ -1615,6 +1784,41 @@ ViewportMode? detectViewportFromHtml(String html) {
   if (names.length > count) count = names.length;
   if (count == 1 && names.length == 1) return (count: 1, names: const []);
   return (count: count, names: names);
+}
+
+/// Instruksi follow-up OTOMATIS saat AI menggabung layar yang diminta terpisah
+/// ke 1 dokumen: pecah memakai dokumen gabungan sebelumnya sebagai konteks,
+/// tanpa user mengetik ulang. Top-level agar bisa diuji langsung.
+///
+/// Contoh: buildSplitFollowUpPrompt(count: 2, names: ['pricing', 'payment'])
+/// -> instruksi tegas "EXACTLY 2 separate ```html blocks (pricing -> payment)".
+String buildSplitFollowUpPrompt({
+  required int count,
+  required List<String> names,
+}) {
+  final order = names.isEmpty
+      ? 'plan the screen order yourself and keep it'
+      : names.join(' -> ');
+  final scope = names.isEmpty ? '$count screens' : names.join(', ');
+  return '[AUTO-SPLIT — USE YOUR PREVIOUS MERGED DOCUMENT AS CONTEXT] '
+      'You merged the requested screens into ONE document. Now split it into '
+      'EXACTLY $count separate complete self-contained HTML documents '
+      '($scope). Follow these steps:\n'
+      '1. Output EXACTLY $count separate ```html fenced code blocks, one per '
+      'screen, in this order: $order.\n'
+      '2. REUSE the design system, sections, content, and copy from your '
+      'previous document — do not redesign from scratch, just separate it '
+      'per screen (each screen keeps full detail: nav, content, actions, '
+      'footer).\n'
+      '3. Each block is ONE complete self-contained HTML document '
+      '(<!DOCTYPE html>, ONE inline <style>, inline vanilla JS, inline SVG '
+      'icons, zero horizontal overflow).\n'
+      '4. Before each block, write a one-line heading with the screen name '
+      '(e.g. `### Home`).\n'
+      '5. FORBIDDEN: merging screens into one document, tab bars, nav links, '
+      'or JS view-switching as a substitute for separate documents.\n'
+      'Declare each screen\u2019s viewport with '
+      '<meta name="viewport-target" content="mobile|tablet|desktop|hd">.';
 }
 
 /// Heuristik MODE GATE sisi klien: apakah prompt user benar-benar meminta UI?
