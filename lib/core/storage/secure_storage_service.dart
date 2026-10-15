@@ -59,6 +59,9 @@ class SecureStorageService {
   String _keyFor(String providerId) =>
       '${AppConstants.apiKeyPrefix}$providerId';
 
+  String _tokenKeyFor(String providerId) =>
+      '${AppConstants.oauthTokenPrefix}$providerId';
+
   /// Simpan API Key. Melempar [SecureStorageException] bila native storage
   /// gagal, agar kegagalan tidak senyap (key tidak tersimpan tanpa disadari).
   Future<void> saveApiKey(String providerId, String apiKey) async {
@@ -91,6 +94,40 @@ class SecureStorageService {
       // Key mungkin belum ada / storage belum siap. Jangan gagalkan operasi
       // hapus provider; key yatim tidak berbahaya (tak ada provider-nya).
       throw SecureStorageException('Gagal menghapus API key: $e');
+    }
+  }
+
+  // ------------------------------------------------------- oauth token set --
+
+  /// Simpan token set OAuth (JSON) secara terenkripsi. Melempar
+  /// [SecureStorageException] bila gagal, agar token tidak hilang senyap.
+  Future<void> saveTokenSet(String providerId, String json) async {
+    try {
+      await _storage.write(key: _tokenKeyFor(providerId), value: json);
+    } catch (e) {
+      throw SecureStorageException(
+        'Gagal menyimpan token OAuth secara terenkripsi: $e',
+      );
+    }
+  }
+
+  /// Baca token set OAuth (JSON). Null bila belum ada.
+  Future<String?> readTokenSet(String providerId) async {
+    try {
+      return await _storage.read(key: _tokenKeyFor(providerId));
+    } catch (e) {
+      throw SecureStorageException(
+        'Gagal membaca token OAuth terenkripsi: $e',
+      );
+    }
+  }
+
+  /// Hapus token set OAuth (best-effort).
+  Future<void> deleteTokenSet(String providerId) async {
+    try {
+      await _storage.delete(key: _tokenKeyFor(providerId));
+    } catch (e) {
+      throw SecureStorageException('Gagal menghapus token OAuth: $e');
     }
   }
 }

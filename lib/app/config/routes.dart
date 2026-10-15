@@ -2,14 +2,32 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/canvas_preview/presentation/canvas_preview_page.dart';
 import '../../features/code_exporter/presentation/code_exporter_page.dart';
-import '../../features/provider_config/presentation/provider_config_page.dart';
+import '../../features/provider_config/presentation/model_picker_page.dart';
+import '../../features/provider_config/presentation/provider_catalog_page.dart';
+import '../../features/provider_config/presentation/provider_detail_page.dart';
+import '../../features/provider_config/presentation/provider_list_page.dart';
+import '../../features/provider_config/presentation/provider_navigation_args.dart';
 
 class AppRoutes {
   AppRoutes._();
 
   static const String canvasPreview = '/';
-  static const String providerConfig = '/provider-config';
   static const String codeExport = '/code-export';
+
+  /// Daftar provider tersimpan (pintu masuk konfigurasi).
+  static const String providers = '/providers';
+
+  /// Formulir tambah provider baru.
+  static const String providerNew = '/providers/new';
+
+  /// Katalog provider siap-pakai (menutup layar dengan `CatalogSelection`).
+  static const String providersCatalog = '/providers/catalog';
+
+  /// Pemilih model live (`GET /models`) untuk satu provider draft.
+  static const String providersModels = '/providers/models';
+
+  /// Detail/edit provider tersimpan.
+  static String providerDetail(String id) => '/providers/$id';
 }
 
 final GoRouter appRouter = GoRouter(
@@ -20,8 +38,31 @@ final GoRouter appRouter = GoRouter(
       builder: (_, _) => const CanvasPreviewPage(),
     ),
     GoRoute(
-      path: AppRoutes.providerConfig,
-      builder: (_, _) => const ProviderConfigPage(),
+      path: AppRoutes.providers,
+      builder: (_, _) => const ProviderListPage(),
+      routes: [
+        // Segmen statis didahulukan agar tidak tertangkap oleh `:id`.
+        GoRoute(
+          path: 'new',
+          builder: (_, state) =>
+              ProviderDetailPage(args: state.extra as ProviderDetailArgs?),
+        ),
+        GoRoute(
+          path: 'catalog',
+          builder: (_, _) => const ProviderCatalogPage(),
+        ),
+        GoRoute(
+          path: 'models',
+          builder: (_, state) =>
+              ModelPickerPage(args: state.extra as ModelPickerArgs?),
+        ),
+        GoRoute(
+          path: ':id',
+          builder: (_, state) => ProviderDetailPage(
+            providerId: state.pathParameters['id'],
+          ),
+        ),
+      ],
     ),
     GoRoute(
       path: AppRoutes.codeExport,

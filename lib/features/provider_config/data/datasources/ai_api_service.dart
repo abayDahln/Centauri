@@ -18,24 +18,80 @@ class ApiConnectionException implements Exception {
 }
 
 /// HTTP client dinamis berbasis Dio (TR-03). Dio dibuat per-request agar
-/// Base URL, header, dan API Key selalu sesuai provider yang dipilih.
+/// Base URL, header, dan kredensial selalu sesuai provider yang dipilih.
 class AiApiService {
-  const AiApiService();
+  const AiApiService({this.resolveBearerToken, this.clientFactory});
+
+  /// Resolver token segar untuk provider OAuth. Dipanggil oleh interceptor
+  /// saat server membalas 401 (access token kedaluwarsa), agar request dapat
+  /// diulang sekali dengan token baru. Null = tanpa retry otomatis.
+  final Future<String?> Function(ApiProvider provider)? resolveBearerToken;
+
+  /// Seam pengujian: bila diisi, dipakai sebagai ganti `_buildClient`.
+  final Dio Function(ApiProvider provider)? clientFactory;
+
+  Dio _clientFor(ApiProvider provider) {
+    final factory = clientFactory;
+    if (factory == null) return _buildClient(provider);
+    // Klien uji (mis. Dio dengan adapter palsu) tetap harus memakai header
+    // autentikasi yang sama seperti klien produksi.
+    final dio = factory(provider);
+    dio.options.headers.addAll(_headers(provider));
+    return dio;
+  }
+
+  /// Header bersama (Content-Type + Authorization) untuk semua request.
+  Map<String, String> _headers(ApiProvider provider) {
+    final bearer = provider.bearerToken?.trim() ?? '';
+    return {
+      'Content-Type': 'application/json',
+      if (bearer.isNotEmpty) 'Authorization': 'Bearer $bearer',
+    };
+  }
 
   Dio _buildClient(ApiProvider provider) {
-    final apiKey = provider.apiKey?.trim() ?? '';
-    return Dio(
+    final dio = Dio(
       BaseOptions(
         // URL endpoint dibangun eksplisit (lihat [resolveEndpoint]) agar
         // tidak bergantung pada penggabungan path Dio yang rawan salah.
         connectTimeout: AppConstants.connectTimeout,
         receiveTimeout: AppConstants.receiveTimeout,
-        headers: {
-          'Content-Type': 'application/json',
-          if (apiKey.isNotEmpty) 'Authorization': 'Bearer $apiKey',
-        },
+        headers: _headers(provider),
       ),
     );
+
+    // Retry sekali saat 401 untuk provider OAuth: token mungkin baru saja
+    // kedaluwarsa. Refresh proaktif di repository adalah jalur utama; ini
+    // jaring pengaman bila token kedaluwarsa di tengah request.
+    final resolver = resolveBearerToken;
+    if (provider.usesOAuth && resolver != null) {
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onError: (error, handler) async {
+            final isUnauthorized = error.response?.statusCode == 401;
+            final alreadyRetried =
+                error.requestOptions.extra['oauthRetried'] == true;
+            if (!isUnauthorized || alreadyRetried) {
+              return handler.next(error);
+            }
+            try {
+              final fresh = await resolver(provider);
+              if (fresh == null || fresh.isEmpty) return handler.next(error);
+
+              final options = error.requestOptions;
+              options.extra['oauthRetried'] = true;
+              options.headers['Authorization'] = 'Bearer $fresh';
+              final response = await dio.fetch<dynamic>(options);
+              return handler.resolve(response);
+            } catch (_) {
+              return handler.next(error);
+            }
+          },
+        ),
+      );
+    }
+
+    return dio;
   }
 
   /// Daftar token pembatalan aktif, dipakai [cancelAll] agar UI bisa
@@ -93,7 +149,7 @@ class AiApiService {
       AppConstants.testConnectionPath,
     );
     try {
-      final response = await _buildClient(provider).get(
+      final response = await _clientFor(provider).get(
         url,
         options: Options(
           responseType: ResponseType.plain,
@@ -113,6 +169,76 @@ class AiApiService {
     }
   }
 
+  /// Mengambil daftar model dari `GET {baseUrl}/models` (FR: pemilih model).
+  ///
+  /// Bekerja untuk provider yang belum tersimpan (draft dengan baseUrl + key
+  /// dari form) maupun provider OAuth (token dibawa lewat [ApiProvider]).
+  Future<List<String>> listModels(ApiProvider provider) async {
+    final url = resolveEndpoint(
+      provider.normalizedBaseUrl,
+      AppConstants.testConnectionPath,
+    );
+    try {
+      final response = await _clientFor(provider).get<dynamic>(
+        url,
+        options: Options(
+          responseType: ResponseType.json,
+          receiveTimeout: AppConstants.testConnectionTimeout,
+        ),
+      );
+      if (response.statusCode != 200) {
+        throw ApiConnectionException(
+          'Endpoint membalas dengan status ${response.statusCode}.',
+        );
+      }
+      _assertNotHtml(response);
+      return parseModels(response.data);
+    } on DioException catch (e) {
+      throw ApiConnectionException(_mapDioError(e));
+    }
+  }
+
+  /// Mengurai respons `/models` menjadi daftar id model yang unik & terurut.
+  ///
+  /// Menangani bentuk OpenAI (`{data:[{id}]}`), gaya Ollama
+  /// (`{models:[{name}]}`), dan list langsung. Melempar
+  /// [ApiConnectionException] bila struktur tidak dikenali.
+  @visibleForTesting
+  List<String> parseModels(dynamic data) {
+    final Iterable<dynamic> raw;
+    if (data is Map && data['data'] is List) {
+      raw = data['data'] as List;
+    } else if (data is Map && data['models'] is List) {
+      raw = data['models'] as List;
+    } else if (data is List) {
+      raw = data;
+    } else {
+      throw ApiConnectionException(
+        'Daftar model dari provider tidak dikenali. '
+        'Periksa apakah endpoint /models mengembalikan JSON standar.',
+      );
+    }
+
+    final ids = <String>{};
+    for (final item in raw) {
+      final dynamic candidate = item is String
+          ? item
+          : (item is Map ? (item['id'] ?? item['name'] ?? item['model']) : null);
+      if (candidate is String && candidate.trim().isNotEmpty) {
+        ids.add(candidate.trim());
+      }
+    }
+
+    if (ids.isEmpty) {
+      throw ApiConnectionException(
+        'Provider tidak mengembalikan model apa pun di /models.',
+      );
+    }
+
+    return ids.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
+
   Future<String> generateUI({
     required ApiProvider provider,
     required List<Map<String, dynamic>> messages,
@@ -129,7 +255,7 @@ class AiApiService {
 
     final Response<ResponseBody> response;
     try {
-      response = await _buildClient(provider).post<ResponseBody>(
+      response = await _clientFor(provider).post<ResponseBody>(
         url,
         data: {
           'model': provider.model,
