@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/config/theme.dart';
+import '../../history/presentation/history_provider.dart';
 import '../../canvas_preview/presentation/provider/canvas_provider.dart';
 import '../../canvas_preview/presentation/widgets/ai_status_indicator.dart';
 import '../../canvas_preview/presentation/widgets/attachment_preview_dialog.dart';
@@ -144,6 +145,8 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
 
   Widget _buildMessageList(CanvasState state) {
     final extra = state.isGenerating ? 1 : 0;
+    final hasUserMessage =
+        state.messages.any((m) => m.role == ChatRole.user);
     return SelectionArea(
       child: ListView.separated(
         controller: _scrollController,
@@ -157,13 +160,23 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
               child: AiStatusIndicator(),
             );
           }
-          return _buildMessageBubble(state.messages[index], index);
+          return _buildMessageBubble(
+            state.messages[index],
+            index,
+            busy: state.isGenerating,
+            canRetry: hasUserMessage,
+          );
         },
       ),
     );
   }
 
-  Widget _buildMessageBubble(CanvasMessage message, int index) {
+  Widget _buildMessageBubble(
+    CanvasMessage message,
+    int index, {
+    bool busy = false,
+    bool canRetry = false,
+  }) {
     switch (message.role) {
       case ChatRole.user:
         return Align(
@@ -253,27 +266,62 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
               borderRadius: AppRadius.md,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 14,
-                  color: AppColors.statusError,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    message.text,
-                    style: const TextStyle(
-                      fontFamily: AppFonts.uiFamily,
-                      fontFamilyFallback: AppFonts.uiFallback,
-                      fontSize: 11.5,
-                      height: 1.5,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 14,
                       color: AppColors.statusError,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        message.text,
+                        style: const TextStyle(
+                          fontFamily: AppFonts.uiFamily,
+                          fontFamilyFallback: AppFonts.uiFallback,
+                          fontSize: 11.5,
+                          height: 1.5,
+                          color: AppColors.statusError,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                // Kirim ulang prompt terakhir tanpa mengetik ulang.
+                if (canRetry) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            await ref
+                                .read(canvasProvider.notifier)
+                                .retryLastPrompt();
+                            ref
+                                .read(historyProvider.notifier)
+                                .persistCurrent();
+                          },
+                    icon: const Icon(Icons.refresh, size: 14),
+                    label: const Text('Coba lagi'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.statusError,
+                      side: const BorderSide(color: AppColors.statusError),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      textStyle: const TextStyle(
+                        fontFamily: AppFonts.uiFamily,
+                        fontFamilyFallback: AppFonts.uiFallback,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

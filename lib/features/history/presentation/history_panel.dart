@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
-import '../data/mydesign_service.dart';
-import '../domain/project.dart';
 import '../presentation/history_provider.dart';
 
 /// Panel riwayat ala Gemini: tombol "Chat baru", pencarian, dan daftar
-/// percakapan tersimpan (dengan hapus).
+/// percakapan tersimpan (dengan hapus). Membuka/membuat chat otomatis
+/// mengantar ke tab Chat via [onOpenProject].
 class HistoryPanel extends ConsumerStatefulWidget {
   const HistoryPanel({super.key, this.onOpenProject});
 
@@ -32,49 +31,9 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
     widget.onOpenProject?.call();
   }
 
-  Future<void> _saveMydesign() async {
-    // Pastikan board terbaru tersimpan dulu, lalu ekspor proyek aktif.
-    ref.read(historyProvider.notifier).persistCurrent();
-    final history = ref.read(historyProvider);
-    Project? active;
-    for (final p in history.projects) {
-      if (p.id == history.activeProjectId) active = p;
-    }
-    if (active == null) {
-      _snack('Belum ada proyek untuk disimpan. Buat UI dulu.');
-      return;
-    }
-    try {
-      final path = await MydesignService().saveToFile(active);
-      if (path != null) _snack('Disimpan: $path');
-    } on MydesignException catch (e) {
-      _snack(e.message);
-    }
-  }
-
-  Future<void> _loadMydesign() async {
-    try {
-      final project = await MydesignService().pickAndLoad();
-      if (project == null) return;
-      await ref.read(historyProvider.notifier).importProject(project);
-      widget.onOpenProject?.call();
-      _snack('Proyek "${project.title}" dibuka.');
-    } on MydesignException catch (e) {
-      _snack(e.message);
-    }
-  }
-
-  void _snack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.bgElevated,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  void _newChat() {
+    ref.read(historyProvider.notifier).startNew();
+    widget.onOpenProject?.call();
   }
 
   @override
@@ -88,32 +47,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
         const _PanelHeader(title: 'Riwayat'),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-          child: _NewChatButton(
-            onTap: () => ref.read(historyProvider.notifier).startNew(),
-          ),
-        ),
-        // File proyek offline (.mydesign): simpan & buka.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: _FileButton(
-                  icon: Icons.save_outlined,
-                  label: 'Simpan file',
-                  onTap: _saveMydesign,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _FileButton(
-                  icon: Icons.folder_open_outlined,
-                  label: 'Buka file',
-                  onTap: _loadMydesign,
-                ),
-              ),
-            ],
-          ),
+          child: _NewChatButton(onTap: _newChat),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -240,58 +174,6 @@ class _NewChatButton extends StatelessWidget {
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.accentPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FileButton extends StatelessWidget {
-  const _FileButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: AppRadius.md,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.md,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.borderSubtle),
-            borderRadius: AppRadius.md,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 15, color: AppColors.textSecondary),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: AppFonts.uiFamily,
-                    fontFamilyFallback: AppFonts.uiFallback,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
                 ),
               ),
             ],

@@ -121,7 +121,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
   String _deriveTitle(CanvasState canvas) {
     // Judul dari prompt user pertama; fallback judul frame pertama.
     // PENTING: pakai `displayText` (teks asli user) agar konteks internal
-    // seperti `[CANVAS TARGET]` / design token tidak bocor ke nama sesi.
+    // seperti `[CANVAS TARGET]` tidak bocor ke nama sesi.
     for (final message in canvas.messages) {
       if (message.role != ChatRole.user) continue;
       final raw = (message.displayText ?? message.text).trim();

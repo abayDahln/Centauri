@@ -583,7 +583,7 @@ class _BoardStatusPill extends ConsumerWidget {
 }
 
 /// Kontrol kanan atas: zoom, grid, fit, bersihkan.
-/// (Viewport dipilih lewat toggle di PromptBar.)
+/// Layout frame sepenuhnya otomatis dari AI (prompt user / auto-select).
 class _CanvasViewControls extends ConsumerWidget {
   const _CanvasViewControls();
 

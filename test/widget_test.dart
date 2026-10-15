@@ -62,8 +62,8 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    // Zoom chip + viewport toggle (di prompt bar) tetap ada; kontrol board
-    // lain (grid/fit/clear) hanya saat board aktif.
+    // Prompt bar (input + kirim) tetap ada; kontrol board lain
+    // (grid/fit/clear) hanya saat board aktif.
     expect(find.byIcon(Icons.grid_4x4), findsNothing);
     expect(find.byIcon(Icons.fit_screen_outlined), findsNothing);
 

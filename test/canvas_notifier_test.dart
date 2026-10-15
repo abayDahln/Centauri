@@ -1,7 +1,6 @@
 import 'package:centauri/features/canvas_preview/domain/board_frame.dart';
 import 'package:centauri/features/canvas_preview/domain/viewport_mode.dart';
 import 'package:centauri/features/canvas_preview/presentation/provider/canvas_provider.dart';
-import 'package:centauri/features/prompt_editor/domain/prompt_templates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,30 +19,8 @@ void main() {
     size: const Size(390, 844),
   );
 
-  test('design token selection is shared state', () {
-    final notifier = container.read(canvasProvider.notifier);
-
-    expect(container.read(canvasProvider).selectedToken, isNull);
-
-    final electric = designTokenPresets.firstWhere((t) => t.id == 'electric');
-    notifier.setSelectedToken(electric);
-    expect(container.read(canvasProvider).selectedToken?.id, 'electric');
-
-    notifier.setSelectedToken(null);
-    expect(container.read(canvasProvider).selectedToken, isNull);
-  });
-
-  test('viewport mode updates state and active frame size', () {
-    final notifier = container.read(canvasProvider.notifier);
-
-    expect(container.read(canvasProvider).viewport, ViewportMode.mobile);
-
-    notifier.setViewport(ViewportMode.tablet);
-    expect(container.read(canvasProvider).viewport, ViewportMode.tablet);
-  });
-
-  test('detectViewportOverride: user text wins over the toggle', () {
-    // Tidak menyebut apa pun -> null (tombol dipakai sebagai default).
+  test('detectViewportOverride: user text wins over auto-select', () {
+    // Tidak menyebut apa pun -> null (AI auto-select dipakai).
     expect(detectViewportOverride('Build a pricing page'), isNull);
 
     // Pola eksplisit paling kuat.
@@ -55,13 +32,24 @@ void main() {
       detectViewportOverride('viewport=mobile please'),
       ViewportMode.mobile,
     );
+    expect(
+      detectViewportOverride('viewport: hd'),
+      ViewportMode.hd,
+    );
+    expect(
+      detectViewportOverride('viewport: windows'),
+      ViewportMode.desktop,
+    );
 
-    // Nama device.
+    // Nama device / resolusi.
     expect(detectViewportOverride('a tablet layout'), ViewportMode.tablet);
+    expect(detectViewportOverride('buat tampilan windows modern'), ViewportMode.desktop);
+    expect(detectViewportOverride('design for full hd 1080p'), ViewportMode.hd);
 
     // Lebar px.
     expect(detectViewportOverride('design at 1280px wide'), ViewportMode.desktop);
     expect(detectViewportOverride('use 390 width'), ViewportMode.mobile);
+    expect(detectViewportOverride('design at 1920px wide'), ViewportMode.hd);
 
     // Device disebut terakhir menang.
     expect(
@@ -70,7 +58,56 @@ void main() {
     );
   });
 
-  test('setViewport does not resize existing frames', () async {
+  test('detectAutoViewport autonomously selects layout based on prompt semantics', () {
+    // Web / Dashboard / SaaS -> Desktop
+    expect(detectAutoViewport('buatkan dashboard analytics crypto'), ViewportMode.desktop);
+    expect(detectAutoViewport('admin portal for crm management'), ViewportMode.desktop);
+    expect(detectAutoViewport('modern saas landing page with pricing'), ViewportMode.desktop);
+
+    // Mobile apps / feeds / stories -> Mobile
+    expect(detectAutoViewport('buat aplikasi pesan makanan seperti gofood'), ViewportMode.mobile);
+    expect(detectAutoViewport('instagram feed clone with stories'), ViewportMode.mobile);
+    expect(detectAutoViewport('mobile chat app with bottom nav'), ViewportMode.mobile);
+
+    // Tablet / POS / Kiosk -> Tablet
+    expect(detectAutoViewport('aplikasi kasir restoran pos'), ViewportMode.tablet);
+    expect(detectAutoViewport('interactive menu display for kiosk'), ViewportMode.tablet);
+
+    // Widescreen / Wallboard -> HD
+    expect(detectAutoViewport('wallboard analytics display for office'), ViewportMode.hd);
+
+    // Explicit override in prompt wins over semantic keywords
+    expect(
+      detectAutoViewport('dashboard analytics for mobile phone'),
+      ViewportMode.mobile,
+    );
+  });
+
+  test('detectViewportFromHtml extracts AI declared viewport meta tag or comment', () {
+    expect(
+      detectViewportFromHtml('<html><head><meta name="viewport-target" content="hd"></head></html>'),
+      ViewportMode.hd,
+    );
+    expect(
+      detectViewportFromHtml('<html><head><meta name="viewport-target" content="desktop"></head></html>'),
+      ViewportMode.desktop,
+    );
+    expect(
+      detectViewportFromHtml('<html><head><meta name="viewport-target" content="mobile"></head></html>'),
+      ViewportMode.mobile,
+    );
+    expect(
+      detectViewportFromHtml('<html><head><meta name="viewport-width" content="1920"></head></html>'),
+      ViewportMode.hd,
+    );
+    expect(
+      detectViewportFromHtml('<!-- viewport: tablet --><html><body>pos</body></html>'),
+      ViewportMode.tablet,
+    );
+    expect(detectViewportFromHtml('<html><body>plain</body></html>'), isNull);
+  });
+
+  test('generate layout is fully automatic (no manual viewport state)', () async {
     final notifier = container.read(canvasProvider.notifier);
     // Buat frame lewat loadSession agar ukurannya diketahui.
     await notifier.loadSession(
@@ -80,24 +117,42 @@ void main() {
     );
 
     final before = container.read(canvasProvider).frames.first.size;
-    notifier.setViewport(ViewportMode.desktop);
-    final after = container.read(canvasProvider).frames.first.size;
-
-    // Ukuran frame tidak boleh berubah oleh tombol viewport.
-    expect(after, before);
+    // Tidak ada lagi setViewport manual — ukuran awal hanya dari AI/prompt.
+    // Manual resize hanya via drag handle (setFrameWidth).
+    notifier.setFrameWidth('f1', before.width + 100);
+    expect(
+      container.read(canvasProvider).frames.first.size.width,
+      before.width + 100,
+    );
   });
 
-  test('clearBoard resets frames but keeps token selection', () {
+  test('setFrameWidth dynamically resizes frame and clamps to valid limits', () async {
     final notifier = container.read(canvasProvider.notifier);
-    final current = designTokenPresets.first;
-    notifier.setSelectedToken(current);
+    await notifier.loadSession(
+      messages: const [],
+      frames: [frame('f1', offset: const Offset(0, 0))],
+      activeFrameId: 'f1',
+    );
+
+    notifier.setFrameWidth('f1', 1920);
+    expect(container.read(canvasProvider).frames.first.size.width, 1920);
+
+    // Clamping min / max
+    notifier.setFrameWidth('f1', 100);
+    expect(container.read(canvasProvider).frames.first.size.width, 280);
+
+    notifier.setFrameWidth('f1', 5000);
+    expect(container.read(canvasProvider).frames.first.size.width, 3840);
+  });
+
+  test('clearBoard resets frames and messages', () {
+    final notifier = container.read(canvasProvider.notifier);
 
     notifier.clearBoard();
 
     final state = container.read(canvasProvider);
     expect(state.frames, isEmpty);
     expect(state.messages, isEmpty);
-    expect(state.selectedToken?.id, current.id);
   });
 
   test('pan by accumulates offset', () {

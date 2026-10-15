@@ -11,15 +11,13 @@ import '../../../../app/config/theme.dart';
 import '../../../history/presentation/history_provider.dart';
 import '../../../prompt_editor/data/attachment_service.dart';
 import '../../../prompt_editor/domain/attachment.dart';
-import '../../../prompt_editor/presentation/preset_manager_sheet.dart';
-import '../../../prompt_editor/presentation/preset_provider.dart';
-import '../../domain/viewport_mode.dart';
 import '../provider/canvas_provider.dart';
 import 'attachment_strip.dart';
 import 'chat_side_panel.dart';
 
 /// Bar prompt mengambang di bawah board (gaya Stitch):
-/// input besar membulat, chip design token, dan tombol kirim.
+/// input besar membulat, lampiran gambar, dan tombol kirim.
+/// Gaya desain ditulis langsung di prompt oleh user, atau direkomendasikan AI.
 /// Mendukung lampiran gambar via tombol, drag & drop, atau paste (Ctrl+V).
 class PromptBar extends ConsumerStatefulWidget {
   const PromptBar({super.key});
@@ -57,11 +55,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
     ref.read(panelVisibleProvider.notifier).show();
     await ref
         .read(canvasProvider.notifier)
-        .submitPrompt(
-          text.isEmpty ? 'Analisa gambar ini.' : text,
-          designToken: ref.read(canvasProvider).selectedToken,
-          viewport: ref.read(canvasProvider).viewport,
-        );
+        .submitPrompt(text.isEmpty ? 'Analisa gambar ini.' : text);
     // Auto-save percakapan + board ke riwayat.
     ref.read(historyProvider.notifier).persistCurrent();
   }
@@ -169,9 +163,6 @@ class _PromptBarState extends ConsumerState<PromptBar> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(canvasProvider);
-    final selectedTokenId = state.selectedToken?.id;
-    // Fase 4: daftar preset gabungan bawaan + kustom (Custom Bebas).
-    final presets = ref.watch(presetProvider.select((s) => s.all));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -215,53 +206,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                       ),
                       const SizedBox(height: 8),
                     ],
-                    // Baris kontrol: viewport (checkbox) + design token.
-                    Row(
-                      children: [
-                        _ViewportSelector(
-                          selected: state.viewport,
-                          onChanged: (mode) => ref
-                              .read(canvasProvider.notifier)
-                              .setViewport(mode),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          width: 1,
-                          height: 18,
-                          color: AppColors.borderSubtle,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: SizedBox(
-                            height: 26,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: presets.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(width: 6),
-                              itemBuilder: (context, index) {
-                                final preset = presets[index];
-                                final selected = preset.id == selectedTokenId;
-                                return _TokenChip(
-                                  label: preset.label,
-                                  selected: selected,
-                                  onTap: () => ref
-                                      .read(canvasProvider.notifier)
-                                      .setSelectedToken(
-                                        selected ? null : preset,
-                                      ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        // Manajer preset + system prompt (Fase 4).
-                        _PresetManagerButton(
-                          onPressed: () => showPresetManagerSheet(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                    // Baris input: lampiran, field teks, tombol kirim.
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -360,138 +305,6 @@ class _AttachButton extends StatelessWidget {
             Icons.add_photo_alternate_outlined,
             size: 20,
             color: AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Pemilih viewport sebagai toggle kecil di dalam prompt bar.
-/// Murni hint untuk generate BERIKUTNYA — tidak mengubah frame yang sudah ada.
-/// Bila user menyebut viewport eksplisit di teks prompt ("...viewport: desktop"),
-/// teks tersebut menang atas tombol ini.
-class _ViewportSelector extends StatelessWidget {
-  const _ViewportSelector({required this.selected, required this.onChanged});
-
-  final ViewportMode selected;
-  final ValueChanged<ViewportMode> onChanged;
-
-  static const _icons = {
-    ViewportMode.mobile: Icons.smartphone_outlined,
-    ViewportMode.tablet: Icons.tablet_mac_outlined,
-    ViewportMode.desktop: Icons.desktop_windows_outlined,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.bgSunken,
-        borderRadius: AppRadius.pill,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: ViewportMode.values.map((mode) {
-          final active = mode == selected;
-          return Tooltip(
-            message: '${mode.label} - ${mode.widthLabel} (target generate)',
-            child: GestureDetector(
-              onTap: () => onChanged(mode),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: active ? AppColors.bgSurface : Colors.transparent,
-                  borderRadius: AppRadius.pill,
-                  boxShadow: active ? AppColors.shadowSoft : null,
-                ),
-                child: Icon(
-                  _icons[mode],
-                  size: 15,
-                  color: active
-                      ? AppColors.accentPrimary
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-/// Tombol gear pembuka manajer preset + system prompt.
-class _PresetManagerButton extends StatelessWidget {
-  const _PresetManagerButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Kelola gaya & system prompt',
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: AppRadius.pill,
-        child: Container(
-          height: 26,
-          width: 26,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.bgSunken,
-            borderRadius: AppRadius.pill,
-          ),
-          child: const Icon(
-            Icons.tune_outlined,
-            size: 14,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TokenChip extends StatelessWidget {
-  const _TokenChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.accentSoft : AppColors.bgSunken,
-          borderRadius: AppRadius.pill,
-          border: Border.all(
-            color: selected ? AppColors.accentPrimary : Colors.transparent,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppFonts.uiFamily,
-            fontFamilyFallback: AppFonts.uiFallback,
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-            color: selected ? AppColors.accentPrimary : AppColors.textSecondary,
           ),
         ),
       ),
