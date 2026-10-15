@@ -1,0 +1,12 @@
+{
+  "name": "Centauri Design Import",
+  "id": "centauri-design-import",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "reasoning": "Plugin bekerja sepenuhnya offline: payload ditempel/di-drop, tanpa jaringan."
+  }
+}

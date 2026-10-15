@@ -18,7 +18,7 @@ class MydesignException implements Exception {
 /// `project` memakai skema yang sama dengan [Project.toJson] agar kompatibel
 /// dengan penyimpanan Hive.
 class MydesignService {
-  static const int currentVersion = 1;
+  static const int currentVersion = 2;
   static const String fileExtension = 'mydesign';
 
   /// Bangun JSON envelope dari proyek.
@@ -69,7 +69,7 @@ class MydesignService {
 
     try {
       final project = Project.fromJson(projectJson);
-      if (project.frames.isEmpty && project.messages.isEmpty) {
+      if (project.pages.isEmpty && project.messages.isEmpty) {
         throw MydesignException('Proyek di file ini kosong.');
       }
       return project;

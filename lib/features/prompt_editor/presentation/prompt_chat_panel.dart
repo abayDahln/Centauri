@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/config/theme.dart';
 import '../../history/presentation/history_provider.dart';
-import '../../canvas_preview/presentation/provider/canvas_provider.dart';
+import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import '../../canvas_preview/presentation/widgets/ai_status_indicator.dart';
 import '../../canvas_preview/presentation/widgets/attachment_preview_dialog.dart';
 import '../../canvas_preview/presentation/widgets/markdown_message.dart';
@@ -40,7 +40,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final canvasState = ref.watch(canvasProvider);
+    final canvasState = ref.watch(workspaceProvider);
     if (canvasState.messages.isNotEmpty) _scrollToBottom();
 
     return Column(
@@ -143,7 +143,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     );
   }
 
-  Widget _buildMessageList(CanvasState state) {
+  Widget _buildMessageList(WorkspaceState state) {
     final extra = state.isGenerating ? 1 : 0;
     final hasUserMessage =
         state.messages.any((m) => m.role == ChatRole.user);
@@ -301,7 +301,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                         ? null
                         : () async {
                             await ref
-                                .read(canvasProvider.notifier)
+                                .read(workspaceProvider.notifier)
                                 .retryLastPrompt();
                             ref
                                 .read(historyProvider.notifier)

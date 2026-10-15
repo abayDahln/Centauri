@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../canvas_preview/domain/board_frame.dart';
-import '../../canvas_preview/presentation/provider/canvas_provider.dart';
+import '../../canvas_preview/domain/page.dart';
+import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
 
@@ -79,16 +79,16 @@ class HistoryNotifier extends Notifier<HistoryState> {
   /// Mulai sesi baru yang kosong (belum disimpan sampai ada aktivitas).
   void startNew() {
     state = state.copyWith(clearActive: true);
-    ref.read(canvasProvider.notifier).clearBoard();
+    ref.read(workspaceProvider.notifier).clearWorkspace();
     _createdAt = DateTime.now();
   }
 
-  /// Simpan state board saat ini menjadi proyek (auto-save).
+  /// Simpan state workspace saat ini menjadi proyek (auto-save).
   /// Bila belum ada proyek aktif, buat baru.
   void persistCurrent({String? title}) {
-    final canvas = ref.read(canvasProvider);
+    final canvas = ref.read(workspaceProvider);
     // Jangan simpan sesi yang benar-benar kosong.
-    if (canvas.messages.isEmpty && canvas.frames.isEmpty) return;
+    if (canvas.messages.isEmpty && canvas.pages.isEmpty) return;
 
     final repo = ref.read(projectRepositoryProvider);
     final id = state.activeProjectId ?? _uuid.v4();
@@ -118,10 +118,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
     return _createdAt;
   }
 
-  String _deriveTitle(CanvasState canvas) {
-    // Judul dari prompt user pertama; fallback judul frame pertama.
-    // PENTING: pakai `displayText` (teks asli user) agar konteks internal
-    // seperti `[CANVAS TARGET]` tidak bocor ke nama sesi.
+  String _deriveTitle(WorkspaceState canvas) {
+    // Judul dari prompt user pertama; fallback nama halaman pertama.
     for (final message in canvas.messages) {
       if (message.role != ChatRole.user) continue;
       final raw = (message.displayText ?? message.text).trim();
@@ -129,11 +127,11 @@ class HistoryNotifier extends Notifier<HistoryState> {
       final cleaned = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
       return cleaned.length > 48 ? '${cleaned.substring(0, 48)}...' : cleaned;
     }
-    if (canvas.frames.isNotEmpty) return canvas.frames.first.title;
+    if (canvas.pages.isNotEmpty) return canvas.pages.first.name;
     return 'Percakapan baru';
   }
 
-  /// Buka proyek tersimpan: muat pesan + frame ke board.
+  /// Buka proyek tersimpan: muat pesan + halaman ke workspace.
   Future<void> open(String id) async {
     final repo = ref.read(projectRepositoryProvider);
     Project? project;
@@ -159,25 +157,23 @@ class HistoryNotifier extends Notifier<HistoryState> {
         )
         .toList();
 
-    final frames = project.frames
+    final pages = project.pages
         .map(
-          (f) => BoardFrame(
-            id: f.id,
-            title: f.title,
-            html: f.html,
-            offset: f.offset,
-            size: f.size,
-            isActive: f.id == project!.activeFrameId,
+          (p) => AppPage(
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            html: p.html,
           ),
         )
         .toList();
 
     await ref
-        .read(canvasProvider.notifier)
+        .read(workspaceProvider.notifier)
         .loadSession(
           messages: messages,
-          frames: frames,
-          activeFrameId: project.activeFrameId,
+          pages: pages,
+          activePageId: project.activePageId,
         );
   }
 
@@ -198,7 +194,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
       query: state.query,
     );
     if (wasActive) {
-      ref.read(canvasProvider.notifier).clearBoard();
+      ref.read(workspaceProvider.notifier).clearWorkspace();
       _createdAt = DateTime.now();
     }
   }
@@ -216,8 +212,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
       id: id,
       title: effective.title,
       messages: effective.messages,
-      frames: effective.frames,
-      activeFrameId: effective.activeFrameId,
+      pages: effective.pages,
+      activePageId: effective.activePageId,
       createdAt: effective.createdAt,
       updatedAt: DateTime.now(),
     );

@@ -1,6 +1,6 @@
 import 'package:centauri/features/canvas_preview/data/services/canvas_webview_service.dart';
-import 'package:centauri/features/canvas_preview/presentation/provider/canvas_provider.dart';
-import 'package:centauri/features/code_exporter/data/frame_export_service.dart';
+import 'package:centauri/features/canvas_preview/presentation/provider/workspace_provider.dart';
+import 'package:centauri/features/code_exporter/data/page_export_service.dart';
 import 'package:centauri/features/code_exporter/domain/code_transformer.dart';
 import 'package:centauri/features/code_exporter/domain/export_format.dart';
 import 'package:centauri/features/code_exporter/domain/html_to_tailwind.dart';
@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('buildSelectedNodeContext (Fase 4b)', () {
-    test('describes tag, box, and styles', () {
+    test('describes tag, box, and styles for the page', () {
       const geometry = NodeGeometry(
         id: 'n3',
         tag: 'button',
@@ -21,7 +21,7 @@ void main() {
       );
       final context = buildSelectedNodeContext(
         geometry: geometry,
-        frameTitle: 'Login',
+        pageName: 'Login',
       );
       expect(context, contains('[SELECTED NODE]'));
       expect(context, contains('<button>'));
@@ -41,7 +41,7 @@ void main() {
       );
       final context = buildSelectedNodeContext(
         geometry: geometry,
-        frameTitle: 'Home',
+        pageName: 'Home',
       );
       expect(context, contains('[SELECTED NODE]'));
       expect(context, isNot(contains('styles=')));
@@ -100,11 +100,22 @@ void main() {
         ]),
       );
     });
+
+    test('node tools address pages via pageId', () {
+      final schemas = {
+        for (final t in McpServer.toolSchemas()) t['name'] as String: t,
+      };
+      final addNode = schemas['add_node']!;
+      final props =
+          (addNode['inputSchema'] as Map<String, dynamic>)['properties']
+              as Map<String, dynamic>;
+      expect(props.keys, contains('pageId'));
+    });
   });
 
-  group('FrameExportService (Fase 3 regression)', () {
+  group('PageExportService (Fase 3 regression)', () {
     test('service is constructible', () {
-      expect(FrameExportService.new, isNotNull);
+      expect(PageExportService.new, isNotNull);
     });
   });
 }

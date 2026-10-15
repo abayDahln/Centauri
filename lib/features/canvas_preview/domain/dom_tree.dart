@@ -191,9 +191,9 @@ Map<String, dynamic> buildDomTreePayload(String htmlSource) {
 
   final root = DomNode(
     id: 'root',
-    tag: 'frame',
+    tag: 'page',
     depth: 0,
-    label: 'Canvas Frame',
+    label: 'Page',
     children: rootChildren,
   );
 

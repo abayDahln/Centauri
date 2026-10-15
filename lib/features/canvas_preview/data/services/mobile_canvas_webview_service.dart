@@ -20,9 +20,13 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
 
   bool _ready = false;
   String? _pendingHtml;
-  double? _pendingViewportWidth;
-  double _pendingZoom = 1;
   bool _disposed = false;
+
+  /// True saat dokumen konten sedang dimuat (navigasi awal harus diizinkan).
+  bool _loadingDocument = false;
+
+  /// Base URL dokumen konten agar link relatif (`home.html`) teresolusi.
+  static const String _baseUrl = 'https://centauri.local/';
 
   @override
   Stream<CanvasSelectEvent> get selectionEvents => _selectionEvents.stream;
@@ -32,6 +36,33 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFFFFFFFF))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) {
+            // Navigasi awal (loadHtmlString) harus diizinkan.
+            if (_loadingDocument) return NavigationDecision.navigate;
+            final url = request.url;
+            if (url.startsWith('about:') ||
+                url.startsWith('data:') ||
+                url.startsWith('blob:')) {
+              return NavigationDecision.navigate;
+            }
+            // Navigasi top-level lain (klik link yang lolos intersep JS):
+            // cegat, teruskan ke Dart.
+            final uri = Uri.tryParse(url);
+            final href = (uri != null && uri.host == 'centauri.local')
+                ? uri.path.replaceFirst('/', '') +
+                      (uri.query.isEmpty ? '' : '?${uri.query}')
+                : url;
+            if (!_selectionEvents.isClosed) {
+              _selectionEvents.add(
+                CanvasSelectEvent(type: 'navigate', id: null, href: href),
+              );
+            }
+            return NavigationDecision.prevent;
+          },
+        ),
+      )
       ..addJavaScriptChannel(
         'centauriBridge',
         onMessageReceived: (message) {
@@ -44,7 +75,6 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
 
     _ready = true;
 
-    // Push state yang mungkin sudah berubah sebelum init selesai.
     if (_pendingHtml != null) {
       final html = _pendingHtml;
       _pendingHtml = null;
@@ -57,32 +87,35 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
     _pendingHtml = html;
     if (!_ready || _disposed) return;
 
-    if (html == null || html.isEmpty) {
-      await _controller.loadHtmlString(_emptyDocument);
-      return;
+    _loadingDocument = true;
+    try {
+      if (html == null || html.isEmpty) {
+        await _controller.loadHtmlString(_emptyDocument);
+        return;
+      }
+      final document = injectBridge(html);
+      await _controller.loadHtmlString(document, baseUrl: _baseUrl);
+    } finally {
+      _loadingDocument = false;
     }
-
-    // Inject bridge (mobile TIDAK pakai native zoom → transform CSS).
-    final document = injectBridge(html, nativeZoom: false);
-    await _controller.loadHtmlString(document);
-
-    // Terapkan state tampilan yang mungkin sudah berubah sebelum dokumen siap.
-    await setViewportWidth(_pendingViewportWidth);
-    await setZoom(_pendingZoom);
   }
 
   @override
-  Future<void> setViewportWidth(double? widthPx) async {
-    _pendingViewportWidth = widthPx;
+  Future<void> setLinkIntercept(bool enabled) async {
     if (!_ready || _disposed) return;
-    await _safeRun('window.setViewport(${widthPx ?? 'null'})');
+    await _safeRun('window.centauriSetLinkIntercept(${enabled ? 'true' : 'false'})');
   }
 
   @override
-  Future<void> setZoom(double factor) async {
-    _pendingZoom = factor;
+  Future<void> requestDocumentSize() async {
     if (!_ready || _disposed) return;
-    await _safeRun('window.setZoom($factor)');
+    await _safeRun('window.centauriGetSize()');
+  }
+
+  @override
+  Future<void> requestFigmaPayload() async {
+    if (!_ready || _disposed) return;
+    await _safeRun('window.centauriExportFigma()');
   }
 
   @override

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>Centauri Design Import</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, "Segoe UI", sans-serif;
+      font-size: 12px;
+      color: #1f1f1f;
+      background: #ffffff;
+    }
+    header { padding: 14px 16px 8px; }
+    h1 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+    p.hint { margin: 0; color: #6b6b6b; line-height: 1.5; }
+    main { padding: 8px 16px 16px; }
+    textarea {
+      width: 100%;
+      height: 260px;
+      resize: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      padding: 10px;
+      border: 1px solid #d9d9d9;
+      border-radius: 8px;
+      outline: none;
+    }
+    textarea:focus { border-color: #0d99ff; }
+    textarea.drop { border-color: #0d99ff; background: #f2f8ff; }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    button {
+      flex: 1;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 8px;
+      background: #0d99ff;
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    button:disabled { background: #b9dcff; cursor: default; }
+    button.secondary { background: #f0f0f0; color: #1f1f1f; }
+    .status { margin-top: 10px; min-height: 16px; line-height: 1.4; }
+    .status.error { color: #d93025; }
+    .status.ok { color: #1a7f37; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Centauri → Figma</h1>
+    <p class="hint">
+      Di Centauri, pilih <strong>Ekspor → Figma (payload plugin)</strong>.
+      Payload otomatis tersalin ke clipboard — tempel di bawah (atau
+      seret file <code>.centauri-figma.json</code> ke sini).
+    </p>
+  </header>
+  <main>
+    <textarea
+      id="payload"
+      placeholder='Tempel payload JSON di sini...'
+      spellcheck="false"
+    ></textarea>
+    <div class="row">
+      <button id="build" disabled>Bangun layer</button>
+      <button id="clear" class="secondary">Bersihkan</button>
+    </div>
+    <div id="status" class="status"></div>
+  </main>
+
+  <script>
+    var ta = document.getElementById('payload');
+    var buildBtn = document.getElementById('build');
+    var clearBtn = document.getElementById('clear');
+    var status = document.getElementById('status');
+
+    function setStatus(text, kind) {
+      status.textContent = text || '';
+      status.className = 'status' + (kind ? ' ' + kind : '');
+    }
+
+    function refresh() {
+      buildBtn.disabled = ta.value.trim().length === 0;
+    }
+
+    ta.addEventListener('input', refresh);
+
+    // Drag & drop file payload ke textarea.
+    ta.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      ta.classList.add('drop');
+    });
+    ta.addEventListener('dragleave', function () {
+      ta.classList.remove('drop');
+    });
+    ta.addEventListener('drop', function (e) {
+      e.preventDefault();
+      ta.classList.remove('drop');
+      var file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        ta.value = String(reader.result || '');
+        refresh();
+        setStatus('File dimuat: ' + file.name, 'ok');
+      };
+      reader.readAsText(file);
+    });
+
+    buildBtn.addEventListener('click', function () {
+      var raw = ta.value.trim();
+      if (!raw) return;
+      setStatus('Membangun...', null);
+      buildBtn.disabled = true;
+      parent.postMessage(
+        { pluginMessage: { type: 'build', payload: raw } },
+        '*'
+      );
+    });
+
+    clearBtn.addEventListener('click', function () {
+      ta.value = '';
+      setStatus('', null);
+      refresh();
+    });
+
+    window.onmessage = function (event) {
+      var msg = event.data.pluginMessage;
+      if (!msg) return;
+      if (msg.type === 'done') {
+        setStatus(
+          'Selesai: ' + msg.count + ' layer dibuat (' + msg.name + ').',
+          'ok'
+        );
+      } else if (msg.type === 'error') {
+        setStatus('Gagal: ' + msg.message, 'error');
+      }
+      refresh();
+    };
+
+    refresh();
+  </script>
+</body>
+</html>

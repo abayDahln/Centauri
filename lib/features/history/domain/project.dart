@@ -1,51 +1,45 @@
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 
-import '../../canvas_preview/presentation/provider/canvas_provider.dart';
+import '../../canvas_preview/domain/page_slug.dart';
+import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import '../../prompt_editor/domain/attachment.dart';
 
-/// Satu percakapan/proyek yang tersimpan: berisi riwayat pesan dan frame UI
-/// di board. Analog dengan "chat" di Gemini.
+/// Versi skema proyek tersimpan. v2 menggantikan `frames` (board) dengan
+/// `pages` (UI & prototype builder).
+const int kProjectSchemaVersion = 2;
+
+/// Satu halaman tersimpan: HTML self-contained + nama file untuk link.
 @immutable
-class ProjectFrame {
-  const ProjectFrame({
+class ProjectPage {
+  const ProjectPage({
     required this.id,
-    required this.title,
+    required this.name,
+    required this.slug,
     required this.html,
-    required this.offset,
-    required this.size,
   });
 
   final String id;
-  final String title;
+  final String name;
+  final String slug;
   final String html;
-  final Offset offset;
-  final Size size;
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'title': title,
+    'name': name,
+    'slug': slug,
     'html': html,
-    'dx': offset.dx,
-    'dy': offset.dy,
-    'w': size.width,
-    'h': size.height,
   };
 
-  static ProjectFrame fromJson(Map<String, dynamic> json) => ProjectFrame(
-    id: json['id'] as String,
-    title: json['title'] as String? ?? 'Untitled',
-    html: json['html'] as String? ?? '',
-    offset: Offset(
-      (json['dx'] as num?)?.toDouble() ?? 0,
-      (json['dy'] as num?)?.toDouble() ?? 0,
-    ),
-    size: Size(
-      (json['w'] as num?)?.toDouble() ?? 390,
-      (json['h'] as num?)?.toDouble() ?? 844,
-    ),
-  );
+  static ProjectPage fromJson(Map<String, dynamic> json) {
+    final name = json['name'] as String? ?? json['title'] as String? ?? 'Untitled';
+    final slug = json['slug'] as String? ?? slugify(name);
+    return ProjectPage(
+      id: json['id'] as String? ?? 'page',
+      name: name,
+      slug: slug,
+      html: json['html'] as String? ?? '',
+    );
+  }
 }
 
 @immutable
@@ -92,15 +86,15 @@ class ProjectMessage {
   );
 }
 
-/// Proyek tersimpan (satu percakapan + board-nya).
+/// Proyek tersimpan (satu percakapan + halaman-halamannya).
 @immutable
 class Project {
   const Project({
     required this.id,
     required this.title,
     required this.messages,
-    required this.frames,
-    required this.activeFrameId,
+    required this.pages,
+    required this.activePageId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -108,35 +102,33 @@ class Project {
   final String id;
   final String title;
   final List<ProjectMessage> messages;
-  final List<ProjectFrame> frames;
-  final String? activeFrameId;
+  final List<ProjectPage> pages;
+  final String? activePageId;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   Project copyWith({
     String? title,
     List<ProjectMessage>? messages,
-    List<ProjectFrame>? frames,
-    String? activeFrameId,
-    bool clearActiveFrame = false,
+    List<ProjectPage>? pages,
+    String? activePageId,
+    bool clearActivePage = false,
     DateTime? updatedAt,
   }) {
     return Project(
       id: id,
       title: title ?? this.title,
       messages: messages ?? this.messages,
-      frames: frames ?? this.frames,
-      activeFrameId: clearActiveFrame
+      pages: pages ?? this.pages,
+      activePageId: clearActivePage
           ? null
-          : (activeFrameId ?? this.activeFrameId),
+          : (activePageId ?? this.activePageId),
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   /// Ringkasan untuk daftar: teks pesan user pertama, dipakai bila judul kosong.
-  /// Pakai `displayText` (teks asli user) bila ada agar konteks internal seperti
-  /// `[CANVAS TARGET]` tidak ikut tampil.
   String get preview {
     for (final message in messages) {
       if (message.role != 'user') continue;
@@ -152,35 +144,73 @@ class Project {
     'id': id,
     'title': title,
     'messages': messages.map((m) => m.toJson()).toList(),
-    'frames': frames.map((f) => f.toJson()).toList(),
-    'activeFrameId': activeFrameId,
+    'pages': pages.map((p) => p.toJson()).toList(),
+    'activePageId': activePageId,
+    'schemaVersion': kProjectSchemaVersion,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };
 
-  static Project fromJson(Map<String, dynamic> json) => Project(
-    id: json['id'] as String,
-    title: json['title'] as String? ?? 'Percakapan baru',
-    messages: (json['messages'] as List<dynamic>? ?? [])
-        .map((m) => ProjectMessage.fromJson(m as Map<String, dynamic>))
-        .toList(),
-    frames: (json['frames'] as List<dynamic>? ?? [])
-        .map((f) => ProjectFrame.fromJson(f as Map<String, dynamic>))
-        .toList(),
-    activeFrameId: json['activeFrameId'] as String?,
-    createdAt:
-        DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-        DateTime.now(),
-    updatedAt:
-        DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
-        DateTime.now(),
-  );
+  static Project fromJson(Map<String, dynamic> json) {
+    final pagesJson = json['pages'] as List<dynamic>?;
+    final List<ProjectPage> pages;
+    if (pagesJson != null) {
+      pages = pagesJson
+          .map((p) => ProjectPage.fromJson(p as Map<String, dynamic>))
+          .toList();
+    } else {
+      // Migrasi v1: `frames` (board) -> `pages` (koordinat dibuang, HTML tetap).
+      pages = _migrateFrames(json['frames'] as List<dynamic>?);
+    }
 
-  /// Bangun dari state board yang sedang aktif.
+    final activePageId =
+        json['activePageId'] as String? ?? json['activeFrameId'] as String?;
+
+    return Project(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? 'Percakapan baru',
+      messages: (json['messages'] as List<dynamic>? ?? [])
+          .map((m) => ProjectMessage.fromJson(m as Map<String, dynamic>))
+          .toList(),
+      pages: pages,
+      activePageId: activePageId,
+      createdAt:
+          DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
+          DateTime.now(),
+    );
+  }
+
+  /// Migrasi proyek skema lama (`frames` berkoordinat) ke `pages`.
+  static List<ProjectPage> _migrateFrames(List<dynamic>? frames) {
+    if (frames == null || frames.isEmpty) return const [];
+    final used = <String>[];
+    final pages = <ProjectPage>[];
+    for (var i = 0; i < frames.length; i++) {
+      final frame = frames[i];
+      if (frame is! Map<String, dynamic>) continue;
+      final name = frame['title'] as String? ?? 'Halaman ${i + 1}';
+      final slug = uniqueSlug(slugify(name), used);
+      used.add(slug);
+      pages.add(
+        ProjectPage(
+          id: frame['id'] as String? ?? 'page_$i',
+          name: name,
+          slug: slug,
+          html: frame['html'] as String? ?? '',
+        ),
+      );
+    }
+    return pages;
+  }
+
+  /// Bangun dari state workspace yang sedang aktif.
   static Project fromCanvas({
     required String id,
     required String title,
-    required CanvasState state,
+    required WorkspaceState state,
     required DateTime createdAt,
   }) {
     return Project(
@@ -198,18 +228,17 @@ class Project {
             ),
           )
           .toList(),
-      frames: state.frames
+      pages: state.pages
           .map(
-            (f) => ProjectFrame(
-              id: f.id,
-              title: f.title,
-              html: f.html,
-              offset: f.offset,
-              size: f.size,
+            (p) => ProjectPage(
+              id: p.id,
+              name: p.name,
+              slug: p.slug,
+              html: p.html,
             ),
           )
           .toList(),
-      activeFrameId: state.activeFrameId,
+      activePageId: state.activePageId,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

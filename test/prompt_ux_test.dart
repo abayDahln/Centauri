@@ -1,4 +1,4 @@
-import 'package:centauri/features/canvas_preview/presentation/provider/canvas_provider.dart';
+import 'package:centauri/features/canvas_preview/presentation/provider/workspace_provider.dart';
 import 'package:centauri/features/provider_config/data/datasources/ai_api_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,27 +13,20 @@ void main() {
   group('Cancel generate (regression UX)', () {
     test('cancelGeneration on idle is a no-op', () {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
-      expect(container.read(canvasProvider).isGenerating, isFalse);
+      final notifier = container.read(workspaceProvider.notifier);
+      expect(container.read(workspaceProvider).isGenerating, isFalse);
       notifier.cancelGeneration();
-      expect(container.read(canvasProvider).isGenerating, isFalse);
-      // Tidak menambah pesan apa pun ketika tidak ada yang berjalan.
-      expect(container.read(canvasProvider).messages, isEmpty);
+      expect(container.read(workspaceProvider).isGenerating, isFalse);
+      expect(container.read(workspaceProvider).messages, isEmpty);
     });
 
-    test('cancelGeneration stops a running generation and appends a notice',
-        () {
+    test('cancelGeneration is idempotent when nothing is running', () {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
-
-      // Simulasi generate sedang berjalan (tanpa jaringan): tanda isGenerating
-      // di-set lewat submit tanpa provider -> tetap idle karena gagal dini.
-      // Jadi kita pakai jalur internal lewat copyWith tak tersedia; sebagai
-      // gantinya uji bahwa cancelAll tidak melempar dan idempoten.
+      final notifier = container.read(workspaceProvider.notifier);
       AiApiService.cancelAll();
       AiApiService.cancelAll();
       notifier.cancelGeneration();
-      expect(container.read(canvasProvider).isGenerating, isFalse);
+      expect(container.read(workspaceProvider).isGenerating, isFalse);
     });
 
     test('cancelAll is safe with no active requests', () {
@@ -41,86 +34,50 @@ void main() {
     });
   });
 
-  group('detectScreenRequest', () {
-    test('range with comma list detects all screens in order', () {
-      final req = detectScreenRequest(
-        'buatkan aku ui aplikasi media sosial seperti instagram dan facebook, '
-        'lengkap dengan semua screen dari login, home sampai profile',
+  group('isUiRequestPrompt (MODE GATE)', () {
+    test('greetings stay chat', () {
+      expect(isUiRequestPrompt('hello'), isFalse);
+      expect(isUiRequestPrompt('halo!'), isFalse);
+      expect(isUiRequestPrompt('selamat pagi'), isFalse);
+    });
+
+    test('UI verbs and nouns trigger generation', () {
+      expect(isUiRequestPrompt('buatkan landing page'), isTrue);
+      expect(isUiRequestPrompt('create a pricing page'), isTrue);
+      expect(isUiRequestPrompt('edit the navbar'), isTrue);
+      expect(isUiRequestPrompt('tampilkan dashboard'), isTrue);
+    });
+
+    test('short chatter without UI signal stays chat', () {
+      expect(isUiRequestPrompt('apa kabar'), isFalse);
+      expect(isUiRequestPrompt('terima kasih'), isFalse);
+    });
+
+    test('attachment-only or node-only requests stay chat', () {
+      expect(
+        isUiRequestPrompt('lihat ini', hasAttachments: true),
+        isFalse,
       );
-      expect(req.count, 3);
-      expect(req.names, ['login', 'home', 'profile']);
-    });
-
-    test('explicit count without names', () {
-      final req = detectScreenRequest('buatkan 5 screen onboarding');
-      expect(req.count, 5);
-      expect(req.names, contains('onboarding'));
-    });
-
-    test('single screen stays single', () {
-      final req = detectScreenRequest('buatkan landing page');
-      expect(req.count, 1);
-      expect(req.names, isEmpty);
-    });
-
-    test('ID spelling canonicalized to EN', () {
-      final req = detectScreenRequest('buatkan profil dan pengaturan');
-      expect(req.names, ['profile', 'settings']);
-    });
-
-    test('two named screens means two frames (pricing + payment)', () {
-      final req = detectScreenRequest('buatkan pricing dan payment page');
-      expect(req.count, 2);
-      expect(req.names, ['pricing', 'payment']);
-    });
-
-    test('single screen keyword stays single', () {
-      final req = detectScreenRequest('buatkan landing page');
-      expect(req.count, 1);
-      expect(req.names, isEmpty);
-    });
-
-    test('new keywords canonicalized (produk, riwayat)', () {
-      final req = detectScreenRequest('buatkan produk dan riwayat order');
-      expect(req.count, 3);
-      expect(req.names, containsAll(['product', 'history', 'order']));
-    });
-  });
-
-  group('buildSplitFollowUpPrompt (auto-split tanpa prompt ulang)', () {
-    test('demands exact block count with order', () {
-      final prompt = buildSplitFollowUpPrompt(
-        count: 2,
-        names: const ['pricing', 'payment'],
+      expect(
+        isUiRequestPrompt('ini apa', hasSelectedNode: true),
+        isFalse,
       );
-      expect(prompt, contains('EXACTLY 2 separate ```html'));
-      expect(prompt, contains('pricing -> payment'));
-      expect(prompt, contains('REUSE'));
-      expect(prompt, contains('FORBIDDEN'));
-    });
-
-    test('works without names (count only)', () {
-      final prompt = buildSplitFollowUpPrompt(count: 3, names: const []);
-      expect(prompt, contains('EXACTLY 3 separate ```html'));
     });
   });
 
   group('Submit guard', () {
     test('empty prompt does nothing', () async {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
       await notifier.submitPrompt('   ');
-      expect(container.read(canvasProvider).isGenerating, isFalse);
-      expect(container.read(canvasProvider).messages, isEmpty);
+      expect(container.read(workspaceProvider).isGenerating, isFalse);
+      expect(container.read(workspaceProvider).messages, isEmpty);
     });
   });
 
   group('retryLastPrompt (UX: coba lagi tanpa ketik ulang)', () {
-    CanvasMessage userMsg(String text) => CanvasMessage(
-      role: ChatRole.user,
-      text: text,
-      displayText: text,
-    );
+    CanvasMessage userMsg(String text) =>
+        CanvasMessage(role: ChatRole.user, text: text, displayText: text);
     const errMsg = CanvasMessage(
       role: ChatRole.error,
       text: 'Tidak dapat terhubung ke endpoint.',
@@ -128,38 +85,37 @@ void main() {
 
     test('no-op when there is nothing to retry', () async {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
       await notifier.retryLastPrompt();
-      expect(container.read(canvasProvider).messages, isEmpty);
+      expect(container.read(workspaceProvider).messages, isEmpty);
     });
 
     test('dangling error without user prompt is left intact', () async {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
       await notifier.loadSession(
         messages: const [errMsg],
-        frames: const [],
-        activeFrameId: null,
+        pages: const [],
+        activePageId: null,
       );
       await notifier.retryLastPrompt();
-      // Tidak ada prompt user untuk dipakai ulang: pesan tidak disentuh.
-      final messages = container.read(canvasProvider).messages;
+      final messages = container.read(workspaceProvider).messages;
       expect(messages.length, 1);
       expect(messages.single.role, ChatRole.error);
     });
 
     test('reuses last user prompt without duplicating bubbles', () async {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
       await notifier.loadSession(
         messages: [userMsg('buatkan landing page'), errMsg],
-        frames: const [],
-        activeFrameId: null,
+        pages: const [],
+        activePageId: null,
       );
       await notifier.retryLastPrompt();
-      final messages = container.read(canvasProvider).messages;
       // Tanpa provider aktif, submit ulang gagal lagi — yang penting hanya
       // ada tepat 1 pesan error baru, tanpa duplikasi bubble user.
+      final messages = container.read(workspaceProvider).messages;
       expect(messages.length, 1);
       expect(messages.single.role, ChatRole.error);
     });

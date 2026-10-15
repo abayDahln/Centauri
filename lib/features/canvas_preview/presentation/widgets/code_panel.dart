@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
 import '../../../code_exporter/data/code_export_service.dart';
-import '../provider/canvas_provider.dart';
+import '../provider/workspace_provider.dart';
 
 /// Panel kode read-only ala VS Code (Dev mode). Menampilkan HTML hasil AI
 /// dengan nomor baris, breadcrumb file, dan aksi copy/simpan.
@@ -57,7 +57,7 @@ class _CodePanelState extends ConsumerState<CodePanel> {
 
   @override
   Widget build(BuildContext context) {
-    final html = ref.watch(canvasProvider.select((s) => s.activeFrame?.html));
+    final html = ref.watch(workspaceProvider.select((s) => s.activePage?.html));
 
     return ColoredBox(
       color: AppColors.bgSurface,

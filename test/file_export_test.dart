@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:centauri/features/code_exporter/data/frame_export_service.dart';
+import 'package:centauri/features/code_exporter/data/page_export_service.dart';
 import 'package:centauri/features/history/data/mydesign_service.dart';
 import 'package:centauri/features/history/domain/project.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xml/xml.dart' as xml;
 
@@ -14,16 +13,15 @@ Project _sample() => Project(
   messages: const [
     ProjectMessage(role: 'user', text: 'buatkan landing page', kind: 'chat'),
   ],
-  frames: const [
-    ProjectFrame(
-      id: 'frame_0',
-      title: 'Landing Page',
+  pages: const [
+    ProjectPage(
+      id: 'page_0',
+      name: 'Home',
+      slug: 'home.html',
       html: '<!DOCTYPE html><html><body>Halo</body></html>',
-      offset: Offset(80, 40),
-      size: Size(390, 844),
     ),
   ],
-  activeFrameId: 'frame_0',
+  activePageId: 'page_0',
   createdAt: DateTime(2026, 1, 1),
   updatedAt: DateTime(2026, 1, 2),
 );
@@ -35,23 +33,32 @@ void main() {
     test('round-trips project through envelope JSON', () {
       final raw = service.buildMydesignJson(_sample());
       expect(raw, contains('"format": "mydesign"'));
-      expect(raw, contains('"version": 1'));
+      expect(raw, contains('"version": 2'));
 
       final restored = service.parseMydesign(raw);
       expect(restored.id, 'p1');
       expect(restored.title, 'Landing Page');
-      expect(restored.frames.single.offset, const Offset(80, 40));
-      expect(restored.frames.single.size, const Size(390, 844));
-      expect(restored.frames.single.html, contains('Halo'));
-      expect(restored.activeFrameId, 'frame_0');
+      expect(restored.pages.single.name, 'Home');
+      expect(restored.pages.single.slug, 'home.html');
+      expect(restored.pages.single.html, contains('Halo'));
+      expect(restored.activePageId, 'page_0');
     });
 
     test('accepts raw project JSON without envelope', () {
       final restored = service.parseMydesign(
-        '{"id":"x","frames":[{"id":"f","title":"T","html":"<p>hi</p>"}]}',
+        '{"id":"x","pages":[{"id":"p","name":"T","slug":"t.html","html":"<p>hi</p>"}]}',
       );
       expect(restored.id, 'x');
-      expect(restored.frames.single.html, contains('hi'));
+      expect(restored.pages.single.html, contains('hi'));
+    });
+
+    test('migrates a v1 envelope (frames -> pages)', () {
+      const v1 =
+          '{"app":"centauri","format":"mydesign","version":1,'
+          '"project":{"id":"x","frames":[{"id":"f","title":"Home","html":"<p>hi</p>"}]}}';
+      final restored = service.parseMydesign(v1);
+      expect(restored.pages.single.name, 'Home');
+      expect(restored.pages.single.slug, 'home.html');
     });
 
     test('rejects non-JSON content', () {
@@ -64,7 +71,7 @@ void main() {
     test('rejects foreign envelope', () {
       expect(
         () => service.parseMydesign(
-          '{"app":"other","format":"mydesign","version":1,"project":{"id":"x"}}',
+          '{"app":"other","format":"mydesign","version":2,"project":{"id":"x"}}',
         ),
         throwsA(isA<MydesignException>()),
       );
@@ -82,15 +89,15 @@ void main() {
     test('rejects empty project', () {
       expect(
         () => service.parseMydesign(
-          '{"app":"centauri","format":"mydesign","version":1,"project":{"id":"x","frames":[],"messages":[]}}',
+          '{"app":"centauri","format":"mydesign","version":2,"project":{"id":"x","pages":[],"messages":[]}}',
         ),
         throwsA(isA<MydesignException>()),
       );
     });
   });
 
-  group('FrameExportService.buildStandaloneSvg', () {
-    final service = FrameExportService();
+  group('PageExportService.buildStandaloneSvg', () {
+    final service = PageExportService();
 
     test('wraps html in svg foreignObject with dimensions', () {
       final svg = service.buildStandaloneSvg(
@@ -102,8 +109,6 @@ void main() {
       expect(svg, contains('foreignObject'));
       expect(svg, contains('width="390"'));
       expect(svg, contains('height="844"'));
-      // HTML diserialisasi sebagai XHTML di dalam foreignObject agar
-      // ter-render saat file dibuka di browser.
       expect(
         svg,
         contains(
@@ -138,12 +143,8 @@ void main() {
         width: 390,
         height: 844,
       );
-      // Dokumen SVG dibrowser diparse sebagai XML: harus well-formed.
       final parsed = xml.XmlDocument.parse(svg);
-      expect(
-        parsed.findAllElements('foreignObject'),
-        hasLength(1),
-      );
+      expect(parsed.findAllElements('foreignObject'), hasLength(1));
       expect(svg, contains('<img src="a.png" alt="x" width="10"/>'));
       expect(svg, contains('<br/>'));
       expect(svg, isNot(contains('<!--')));
@@ -156,17 +157,16 @@ void main() {
         width: 0,
         height: -5,
       );
-      expect(svg, contains('width="390"'));
+      expect(svg, contains('width="1440"'));
+      expect(svg, contains('height="2000"'));
     });
   });
 
-  group('FrameExportService.buildPdfFromPng', () {
+  group('PageExportService.buildPdfFromPng', () {
     test('produces a non-empty PDF from a 1x1 PNG', () async {
-      // PNG 1x1 transparan.
       final png = _tinyPng();
-      final pdf = await FrameExportService().buildPdfFromPng(png);
+      final pdf = await PageExportService().buildPdfFromPng(png);
       expect(pdf, isNotEmpty);
-      // Header PDF.
       expect(String.fromCharCodes(pdf.take(5)), '%PDF-');
     });
   });

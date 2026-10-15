@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 /// Satu layar UI hasil generate.
 @immutable
 class UiScreen {
-  const UiScreen({required this.title, required this.html});
+  const UiScreen({required this.title, required this.html, this.slug});
 
   /// Judul layar (dari heading sebelum blok, mis. "Home"); boleh kosong.
   final String title;
@@ -13,11 +13,20 @@ class UiScreen {
   /// HTML self-contained layar ini.
   final String html;
 
-  Map<String, dynamic> toJson() => {'title': title, 'html': html};
+  /// Nama file halaman yang dideklarasikan AI via
+  /// `<meta name="centauri-page" content="home.html">`; boleh null.
+  final String? slug;
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'html': html,
+    if (slug != null) 'slug': slug,
+  };
 
   static UiScreen fromJson(Map<String, dynamic> json) => UiScreen(
     title: json['title'] as String? ?? '',
     html: json['html'] as String? ?? '',
+    slug: json['slug'] as String?,
   );
 }
 
@@ -116,6 +125,7 @@ AiResponse classifyAiResponse(String rawResponse) {
       UiScreen(
         title: _titleBeforeFence(raw, match.start),
         html: _ensureDoctype(body),
+        slug: _extractPageSlug(body),
       ),
     );
   }
@@ -158,6 +168,7 @@ AiResponse classifyAiResponse(String rawResponse) {
               list.add(UiScreen(
                 title: screen.title,
                 html: _ensureDoctype(screen.html.trim()),
+                slug: screen.slug ?? _extractPageSlug(screen.html),
               ));
             }
           }
@@ -260,6 +271,22 @@ bool _looksLikeHtml(String text) {
 String _ensureDoctype(String html) {
   if (html.toLowerCase().startsWith('<!doctype')) return html;
   return '<!DOCTYPE html>\n$html';
+}
+
+/// Ekstrak nama file halaman dari `<meta name="centauri-page" content="...">`.
+/// Mengembalikan null bila tidak ada.
+String? _extractPageSlug(String html) {
+  final match = RegExp(
+    "<meta\\s+[^>]*name=[\"']centauri-page[\"']\\s+[^>]*content=[\"']([^\"']+)[\"']",
+    caseSensitive: false,
+  ).firstMatch(html) ??
+      RegExp(
+        "<meta\\s+[^>]*content=[\"']([^\"']+)[\"']\\s+[^>]*name=[\"']centauri-page[\"']",
+        caseSensitive: false,
+      ).firstMatch(html);
+  final value = match?.group(1)?.trim();
+  if (value == null || value.isEmpty) return null;
+  return value;
 }
 
 /// Buang fence markdown agar jawaban chat tampil bersih.

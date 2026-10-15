@@ -1,20 +1,22 @@
 # Centauri
 
-**AI-Powered UI/UX Canvas & Code Generator**
+**AI-Powered UI & Prototype Builder**
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.19%2B-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.3%2B-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Windows-4CAF50)]()
 
-> Transform your ideas into interactive UI and production-ready code in seconds. Powered by your favorite AI models.
+> Turn a prompt into a fully responsive, multi-page HTML prototype — then refine, export, and hand off to code or Figma.
 
 ---
 
 ## Tentang Proyek
 
-**Centauri** adalah aplikasi lintas-platform (Android & Windows) berbasis Flutter yang menjembatani desain visual dan penulisan kode. Terinspirasi oleh Google Stitch, Centauri memungkinkan designer, developer, dan maker menghasilkan antarmuka pengguna serta kode siap pakai hanya dari instruksi teks (prompt).
+**Centauri** adalah aplikasi lintas-platform (Android & Windows) berbasis Flutter untuk membuat **UI dan prototipe web** dari instruksi teks (prompt). AI menghasilkan satu atau lebih **file HTML self-contained** — HTML, CSS, dan JavaScript tergabung dalam satu file — yang saling terhubung lewat link antar-halaman dan bisa langsung dibuka di browser.
 
-Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. Pengguna tidak terikat pada satu penyedia layanan cloud dan bebas menggunakan OpenAI, Gemini, Anthropic, Groq, hingga server Ollama lokal. Semua data, API Key, dan riwayat proyek disimpan secara **Local-First** demi privasi dan keamanan.
+Berbeda dari tool kanvas desain, Centauri tidak memakai papan board berkoordinat. Fokusnya adalah **membangun UI & prototipe nyata**: setiap halaman dirender apa adanya di WebView (fluid & responsif ke semua ukuran layar, dari small phone hingga desktop/ultrawide), tanpa toggle device manual.
+
+Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. Pengguna bebas memakai OpenAI, Gemini, Anthropic, Groq, hingga Ollama lokal. Semua data, API Key, dan riwayat proyek disimpan **Local-First** demi privasi dan keamanan.
 
 ## Fitur Utama
 
@@ -23,18 +25,21 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 - BYOK: kelola Custom API Gateway sendiri (endpoint standar OpenAI, Ollama, Groq, proxy pribadi).
 - Local-First: API Key, konfigurasi, dan riwayat proyek tersimpan terenkripsi di perangkat.
 
-**Desain & Visualisasi**
+**Halaman & Preview**
 
-- Live Interactive Canvas: render real-time HTML self-contained (CSS dan JS inline) di WebView internal.
-- Figma-style Layers Tree: struktur DOM hasil generate sebagai tree dengan hover/klik yang tersinkron dua arah ke elemen di canvas (termasuk navigasi keyboard).
-- Design Token Presets: tetapkan color palette, border radius, dan font family sebelum generasi.
-- Responsive Viewport Preview: pratinjau mode Mobile (375px), Tablet (768px), dan Desktop (100%), plus kontrol zoom.
+- Multi-page Prototype: satu blok HTML = satu halaman. AI menentukan jumlah halaman sesuai permintaan; tiap halaman punya nama file (`slug`) unik.
+- Interkoneksi Halaman: AI menulis link `<a href="pricing.html">` sungguhan antar-halaman; app meng-intersep klik itu lalu memuat halaman tujuan langsung di preview, tanpa reload WebView. Tersedia juga page switcher internal.
+- Fluid Responsive Preview: WebView mengisi penuh area kerja dan wajib responsif ke semua layout (small/medium phone, tablet, desktop, ultrawide) — tanpa lebar tetap, tanpa toggle device.
+- Node Selection & Inline Edit: klik elemen di preview untuk memilihnya (bbox + computed style dikirim ke AI), lalu minta revisi; AI menargetkan elemen terpilih.
 
 **Iterasi & Ekspor**
 
-- Iterative Refinement Chat: revisi UI secara bertahap melalui percakapan.
-- Design / Dev Mode: beralih antara canvas penuh dan split view dengan code panel read-only (nomor baris + syntax highlight) ala VS Code.
-- Code Exporter: ekspor satu file HTML lengkap - seluruh CSS di `<style>` dan JS vanilla di `<script>`, tanpa CDN/framework, bisa langsung dijalankan offline. Tersedia konversi opsional ke React (JSX) dan Flutter Widget dengan syntax highlighting.
+- Iterative Refinement Chat: revisi UI secara bertahap lewat percakapan (halaman yang sama di-generate ulang berdasarkan slug, link tetap stabil).
+- Design / Dev Mode: beralih antara preview penuh dan split view dengan code panel read-only (nomor baris + syntax highlight) ala VS Code.
+- Code Exporter: ekspor HTML self-contained (seluruh CSS di `<style>`, JS vanilla di `<script>`, tanpa CDN/framework, jalan offline). Tersedia konversi opsional ke React (JSX), Flutter Widget, dan Tailwind.
+- Image/Vector/Document Export: simpan halaman aktif sebagai PNG, SVG, atau PDF.
+- Export to Figma: hasilkan *payload* JSON yang dibaca plugin companion (`figma-plugin/`) untuk merekonstruksi frame/layer yang bisa diedit di Figma.
+- MCP Server: server MCP embedded (HTTP JSON-RPC di `127.0.0.1:8765`) agar agent eksternal bisa membaca struktur halaman dan memutasi node.
 
 ## Tech Stack
 
@@ -45,6 +50,7 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 | Networking | Dio (Custom Interceptors) |
 | Local Storage | Hive (Database), `flutter_secure_storage` (API Keys) |
 | Web Rendering | `webview_flutter` (Android), `webview_windows` (Desktop) |
+| MCP | Embedded HTTP JSON-RPC server + SSE |
 | UI Theme | VS Code Dark Modern (Segoe UI / Consolas) |
 | Architecture | Feature-First Clean Architecture |
 
@@ -53,11 +59,12 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 Centauri mengikuti Clean Architecture dengan pemisahan ketat antara UI, Domain, dan Data layer. Alur kerja utama:
 
 1. **Konfigurasi:** pengguna mengatur Custom Endpoint (Base URL, API Key, Model).
-2. **Input:** pengguna menulis prompt dan memilih Design Tokens.
-3. **Processing:** Prompt Engineering Layer menggabungkan input dengan System Prompt internal.
+2. **Input:** pengguna menulis prompt (boleh multi-halaman, mis. "buatkan login, home, dan profile").
+3. **Processing:** Prompt Engineering Layer menambahkan instruksi wajib: fluid/responsif, `<meta name="centauri-page">`, dan link antar-halaman.
 4. **Eksekusi:** Dynamic HTTP Client (Dio) mengirim request ke provider AI yang dipilih.
-5. **Rendering:** respons AI (HTML self-contained) di-parse dan di-inject ke Live Canvas.
-6. **Ekspor:** iterasi via Chat, lalu ekspor kode ke format yang diinginkan.
+5. **Rendering:** respons AI di-parse menjadi N halaman; DOM tiap halaman di-stamp id untuk seleksi lalu dirender di WebView.
+6. **Iterasi:** revisi via Chat, pindah halaman via link/switcher.
+7. **Ekspor:** kode (HTML/React/Flutter/Tailwind), gambar (PNG/SVG/PDF), atau payload Figma.
 
 ## Instalasi
 
@@ -91,15 +98,19 @@ Karena menggunakan arsitektur BYOK, konfigurasikan provider AI saat pertama kali
 2. Isi Provider Name, Base URL, API Key, dan Model Name (contoh: `gpt-4o`, `llama3`, `mixtral-8x7b`).
 3. Klik Test Connection untuk memvalidasi kredensial, lalu Save.
 
+## Plugin Figma
+
+Folder [`figma-plugin/`](figma-plugin/) berisi plugin companion untuk mengimpor desain Centauri ke Figma. Lihat [`figma-plugin/README.md`](figma-plugin/README.md) untuk instalasi dan skema payload.
+
 ## Roadmap
 
 | Versi | Target |
 | :--- | :--- |
-| v0.1.0 | Fondasi proyek, BYOK Manager, dan Live Canvas dasar |
-| v0.2.0 | Iterative Chat, Code Exporter (HTML self-contained), dan Responsive Viewport |
+| v0.1.0 | Fondasi proyek, BYOK Manager, preview halaman dasar |
+| v0.2.0 | Multi-halaman + interkoneksi link, Iterative Chat, Code Exporter |
+| v0.3.0 | Ekspor PNG/SVG/PDF, MCP server, plugin Figma |
 | v1.0.0 | Rilis stabil (Android & Windows) dengan optimasi performa WebView |
-| v1.1.0 | Import desain dari Figma via Figma API |
-| v1.2.0 | Integrasi native Ollama tanpa setup server HTTP manual |
+| v1.1.0 | Auto-layout Figma & import balik dari Figma |
 
 ## Lisensi
 
