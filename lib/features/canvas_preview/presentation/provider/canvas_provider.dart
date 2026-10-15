@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../prompt_editor/domain/ai_response.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 import '../../../prompt_editor/domain/prompt_templates.dart';
-import '../../../prompt_editor/presentation/preset_provider.dart';
 import '../../../provider_config/data/datasources/ai_api_service.dart';
 import '../../../provider_config/presentation/providers/provider_config_provider.dart';
 import '../../data/services/canvas_webview_service.dart';
@@ -34,7 +33,7 @@ class CanvasMessage {
   final String text;
 
   /// Teks yang ditampilkan di UI. Bila null, pakai [text].
-  /// Dipakai agar konteks internal (mis. `[CANVAS TARGET]`, design token)
+  /// Dipakai agar konteks internal (mis. `[CANVAS TARGET]`)
   /// yang di-append ke prompt tidak bocor ke chat bubble user.
   final String? displayText;
 
@@ -78,10 +77,8 @@ class CanvasState {
     this.activeFrameId,
     this.panOffset = Offset.zero,
     this.scale = 0.6,
-    this.viewport = ViewportMode.mobile,
     this.messages = const [],
     this.isGenerating = false,
-    this.selectedToken,
     this.selectedNodeId,
     this.hoveredNodeId,
     this.selectedNodeGeometry,
@@ -108,12 +105,8 @@ class CanvasState {
   /// Skala board.
   final double scale;
 
-  /// Preset viewport untuk frame baru.
-  final ViewportMode viewport;
-
   final List<CanvasMessage> messages;
   final bool isGenerating;
-  final DesignTokenPreset? selectedToken;
   final String? selectedNodeId;
   final String? hoveredNodeId;
   /// Cache tampilan untuk overlay native (bbox CSS + computed style).
@@ -160,11 +153,8 @@ class CanvasState {
     bool clearActiveFrame = false,
     Offset? panOffset,
     double? scale,
-    ViewportMode? viewport,
     List<CanvasMessage>? messages,
     bool? isGenerating,
-    DesignTokenPreset? selectedToken,
-    bool clearToken = false,
     String? selectedNodeId,
     bool clearSelection = false,
     String? hoveredNodeId,
@@ -189,10 +179,8 @@ class CanvasState {
           : (activeFrameId ?? this.activeFrameId),
       panOffset: panOffset ?? this.panOffset,
       scale: scale ?? this.scale,
-      viewport: viewport ?? this.viewport,
       messages: messages ?? this.messages,
       isGenerating: isGenerating ?? this.isGenerating,
-      selectedToken: clearToken ? null : (selectedToken ?? this.selectedToken),
       selectedNodeId: clearSelection
           ? null
           : (selectedNodeId ?? this.selectedNodeId),
@@ -344,19 +332,24 @@ class CanvasNotifier extends Notifier<CanvasState> {
   /// Dibiarkan sebagai hook agar mudah menambah aturan bila perlu.
   List<BoardFrame> _normalizeFrames(List<BoardFrame> frames) => frames;
 
-  /// Target viewport untuk generate BERIKUTNYA (murni hint prompt).
-  /// Sengaja TIDAK mengubah ukuran frame yang sudah ada di board — tombol
-  /// viewport di prompt bar bukan editor layout. Resize diam-diam justru
-  /// membuat UI "berubah" dan membingungkan (bug laporan user).
-  void setViewport(ViewportMode mode) {
-    if (mode == state.viewport) return;
-    state = state.copyWith(viewport: mode);
+  /// Sesuaikan lebar frame secara manual (resize handle di sisi frame).
+  /// WebView viewport otomatis me-reflow layout secara responsif.
+  /// Ukuran awal frame sepenuhnya ditentukan AI (auto-layout / prompt user).
+  void setFrameWidth(String id, double widthPx) {
+    const minWidth = 280.0;
+    const maxWidth = 3840.0;
+    final clamped = widthPx.clamp(minWidth, maxWidth);
+    final frames = state.frames.map((f) {
+      if (f.id != id) return f;
+      return f.copyWith(size: Size(clamped, f.size.height));
+    }).toList();
+    state = state.copyWith(frames: frames);
   }
 
   /// Jika user menyebut viewport secara eksplisit di prompt ("mobile",
   /// "tablet", "desktop", "viewport: ...", "390px", "768px", "1280px"),
-  /// itu MENANG atas tombol di prompt bar. Mengembalikan null bila user
-  /// tidak menyebut apa pun (pakai tombol sebagai default/fallback).
+  /// itu dipakai langsung. Bila tidak menyebut apa pun, AI memilih otomatis
+  /// via [detectAutoViewport].
   ViewportMode? _detectViewportOverride(String prompt) =>
       detectViewportOverride(prompt);
 
@@ -366,6 +359,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
     ViewportMode.mobile => const Size(390, 844),
     ViewportMode.tablet => const Size(768, 1024),
     ViewportMode.desktop => const Size(1280, 800),
+    ViewportMode.hd => const Size(1920, 1080),
   };
 
   void setOutputMode(OutputMode mode) {
@@ -808,7 +802,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
       frames: normalized,
       activeFrameId: activeFrameId,
       messages: messages,
-      viewport: state.viewport,
       outputMode: state.outputMode,
       tool: state.tool,
       showGrid: state.showGrid,
@@ -828,15 +821,6 @@ class CanvasNotifier extends Notifier<CanvasState> {
       }
     }
     return Offset(maxRight + _gap, top == double.infinity ? 0 : top);
-  }
-
-  void setSelectedToken(DesignTokenPreset? token) {
-    if (token == null) {
-      if (state.selectedToken == null) return;
-      state = state.copyWith(clearToken: true);
-      return;
-    }
-    state = state.copyWith(selectedToken: token);
   }
 
   /// Konteks node terpilih untuk inline edit (Fase 4).
@@ -917,11 +901,13 @@ class CanvasNotifier extends Notifier<CanvasState> {
   // ------------------------------------------------------------- generate --
 
   /// Generate frame baru dari prompt. Setiap hasil menjadi frame baru di board.
-  Future<void> submitPrompt(
-    String prompt, {
-    DesignTokenPreset? designToken,
-    ViewportMode viewport = ViewportMode.mobile,
-  }) async {
+  /// Layout sepenuhnya otomatis: bila user menyebut device/ukuran di prompt
+  /// ("mobile", "tablet", "desktop", "390px", ...) itu dipakai; bila tidak,
+  /// AI memilih layout terbaik via [detectAutoViewport] + deklarasi
+  /// `<meta name="viewport-target">` di HTML. Tidak ada toggle manual.
+  /// Gaya desain ditulis langsung di prompt oleh user, atau direkomendasikan
+  /// AI sebagai design partner — tidak ada preset token manual.
+  Future<void> submitPrompt(String prompt) async {
     if (state.isGenerating) return;
     final trimmed = prompt.trim();
     if (trimmed.isEmpty) return;
@@ -944,7 +930,7 @@ class CanvasNotifier extends Notifier<CanvasState> {
     // Lampiran yang dikirim bersama prompt ini.
     final pendingAttachments = state.attachments;
 
-    // Sapaan / obrolan biasa JANGAN ditempeli [CANVAS TARGET] + design token.
+    // Sapaan / obrolan biasa JANGAN ditempeli [CANVAS TARGET].
     // Konteks itu ("Design for a FIXED viewport...", "Every affordance MUST
     // work...") terbaca model sebagai instruksi UI dan mengalahkan MODE GATE
     // di system prompt, sehingga "hello" pun dibalas dengan ```html + frame.
@@ -956,9 +942,11 @@ class CanvasNotifier extends Notifier<CanvasState> {
           state.selectedNodeId != null && state.selectedNodeGeometry != null,
     );
 
-    // User text menang atas tombol: bila prompt menyebut viewport eksplisit,
-    // pakai itu sebagai target (dan sinkronkan tombol agar tidak membingungkan).
-    final effectiveViewport = _detectViewportOverride(trimmed) ?? viewport;
+    // Full otomatis ala Google Stitch: prompt user menang bila eksplisit,
+    // selebihnya AI memilih layout terbaik dari semantik prompt.
+    final explicitViewport = _detectViewportOverride(trimmed);
+    final effectiveViewport =
+        explicitViewport ?? detectAutoViewport(trimmed);
     final size = _sizeFor(effectiveViewport);
     // Multi-screen: bila user meminta beberapa layar (mis. "login, home sampai
     // profile", "5 screens"), tegaskan jumlah + format per-blok agar model tidak
@@ -989,37 +977,48 @@ class CanvasNotifier extends Notifier<CanvasState> {
               '<!DOCTYPE html>...home screen only...\n'
               '```'
         : '';
+
+    final String viewportInstruction;
+    if (explicitViewport != null) {
+      viewportInstruction =
+          '[USER TARGET VIEWPORT] The user explicitly requested layout: '
+          '${size.width.round()} CSS px (${effectiveViewport.label}). '
+          'You MUST design for this viewport width with ZERO horizontal overflow.';
+    } else {
+      viewportInstruction =
+          '[AUTONOMOUS VIEWPORT SELECTION (GOOGLE STITCH)] '
+          'Autonomously determine the best layout format based on the design context: '
+          'mobile (390px) for phone apps/social/chat; tablet (768px) for POS/kiosk/restaurant menu; '
+          'desktop (1280px) for SaaS/landing page/web apps/portals; hd (1920px) for wide analytics/dashboards/presentations. '
+          'Recommended initial format: ${effectiveViewport.label} (${size.width.round()}px). '
+          'Declare your chosen viewport in <head> as: <meta name="viewport-target" content="${effectiveViewport.name}">.';
+    }
+
     final viewportContext =
-        '\n\n[CANVAS TARGET] Design for a FIXED viewport width of exactly '
-        '${size.width.round()} CSS px (${effectiveViewport.name}). '
-        'The layout MUST fit this width with NO horizontal overflow and NO horizontal scrollbar. '
+        '\n\n$viewportInstruction '
+        'The layout MUST be fully fluid and responsive (using modern flexbox/grid, percentage/fluid widths, and media queries) '
+        'fitting this width with ZERO horizontal overflow and NO horizontal scrollbars, and dynamically adapting if resized. '
         'Height starts at ${size.height.round()}px (min-height: 100vh) and grows vertically with natural document flow. '
-        'Ensure real interactive vanilla JS controls, crisp 2x open-source imagery, and inline SVG icons.'
+        'Ensure real interactive vanilla JS controls, crisp high-DPI/HD open-source imagery, and inline SVG icons.'
         '$multiContext';
 
-    final baseText = designToken == null || !wantsUi
-        ? trimmed
-        : '$trimmed\n\n[Design Token: ${designToken.label}] ${designToken.promptFragment}';
-
     final userText = wantsUi
-        ? '$baseText$viewportContext${_selectedNodeContext()}'
-        : baseText;
+        ? '$trimmed$viewportContext${_selectedNodeContext()}'
+        : trimmed;
 
     // Jangan buat frame dulu: kita belum tahu apakah AI akan menjawab teks
     // (chat) atau membuat UI. Frame hanya dibuat setelah balasan terdeteksi UI,
     // supaya board tidak sempat tampil dengan placeholder yang batal.
-    // Sinkronkan tombol viewport bila user meng-override via teks.
     state = state.copyWith(
       isGenerating: true,
       generationStartedAt: DateTime.now(),
       status: AiStatus.thinking,
-      viewport: effectiveViewport,
       messages: [
         ...state.messages,
         CanvasMessage(
           role: ChatRole.user,
           text: userText,
-          // Tampilkan hanya prompt asli user; `[CANVAS TARGET]` dan design token
+          // Tampilkan hanya prompt asli user; `[CANVAS TARGET]`
           // tetap dikirim ke AI tapi tidak ditampilkan di bubble chat.
           displayText: trimmed,
           attachmentNames: pendingAttachments.map((a) => a.name).toList(),
@@ -1077,18 +1076,24 @@ class CanvasNotifier extends Notifier<CanvasState> {
             ? '$baseTitle ${i + 1}'
             : baseTitle;
         final title = _sanitizeScreenTitle(screen.title, fallbackTitle);
+
+        // Ukuran frame ditentukan oleh: instruksi eksplisit user -> deklarasi otonom AI -> deteksi prompt
+        final aiDeclared = detectViewportFromHtml(screen.html);
+        final screenViewport = explicitViewport ?? aiDeclared ?? effectiveViewport;
+        final screenSize = _sizeFor(screenViewport);
+
         newFrames.add(
           BoardFrame(
             id: frameId,
             title: title,
             html: tree.stampedHtml,
             offset: offset,
-            size: size,
+            size: screenSize,
             domTree: tree,
             isActive: i == 0,
           ),
         );
-        offset = Offset(offset.dx + size.width + _gap, offset.dy);
+        offset = Offset(offset.dx + screenSize.width + _gap, offset.dy);
       }
 
       final seeded = _normalizeFrames([
@@ -1199,6 +1204,25 @@ class CanvasNotifier extends Notifier<CanvasState> {
     _appendMessage(CanvasMessage(role: ChatRole.error, text: message));
   }
 
+  /// Kirim ulang prompt user terakhir tanpa mengetik ulang (tombol "Coba lagi"
+  /// pada bubble error). Pesan error trailing dibuang agar tidak menumpuk,
+  /// prompt user terakhir dipakai ulang — tidak ada duplikasi bubble user.
+  Future<void> retryLastPrompt() async {
+    if (state.isGenerating) return;
+    final messages = [...state.messages];
+    while (messages.isNotEmpty && messages.last.role == ChatRole.error) {
+      messages.removeLast();
+    }
+    if (messages.isEmpty) return;
+    final last = messages.last;
+    if (last.role != ChatRole.user) return;
+    final prompt = (last.displayText ?? last.text).trim();
+    if (prompt.isEmpty) return;
+    messages.removeLast();
+    state = state.copyWith(messages: messages);
+    await submitPrompt(prompt);
+  }
+
   void _setStatus(AiStatus status) {
     if (state.status == status) return;
     state = state.copyWith(status: status);
@@ -1241,8 +1265,8 @@ class CanvasNotifier extends Notifier<CanvasState> {
         .where((m) => m.role != ChatRole.error)
         .toList();
 
-    // Fase 4: system prompt bisa di-override pengguna (Custom Bebas).
-    final systemPrompt = ref.read(presetProvider).effectiveSystemPrompt;
+    // System prompt bawaan Centauri (Alpha).
+    const systemPrompt = uiSystemPrompt;
 
     final payload = <Map<String, dynamic>>[
       {'role': 'system', 'content': systemPrompt},
@@ -1358,10 +1382,13 @@ ViewportMode? detectViewportOverride(String prompt) {
 
   // 1. Pola paling eksplisit.
   final explicit = RegExp(
-    r'viewport\s*[:=]\s*(mobile|tablet|desktop)',
+    r'viewport\s*[:=]\s*(mobile|tablet|desktop|windows|hd|fhd)',
   ).firstMatch(lower);
   if (explicit != null) {
-    return ViewportMode.values.byName(explicit.group(1)!);
+    final raw = explicit.group(1)!;
+    if (raw == 'windows') return ViewportMode.desktop;
+    if (raw == 'fhd') return ViewportMode.hd;
+    return ViewportMode.values.byName(raw);
   }
 
   // 2. Nama device yang disebut.
@@ -1369,6 +1396,16 @@ ViewportMode? detectViewportOverride(String prompt) {
   for (final mode in ViewportMode.values) {
     final index = lower.lastIndexOf(mode.name);
     if (index >= 0) hits[index] = mode;
+  }
+  final windowsIndex = lower.lastIndexOf('windows');
+  if (windowsIndex >= 0) hits[windowsIndex] = ViewportMode.desktop;
+
+  for (final word in ['1080p', 'full hd', 'fullhd', 'fhd']) {
+    final idx = lower.lastIndexOf(word);
+    if (idx >= 0) hits[idx] = ViewportMode.hd;
+  }
+  for (final m in RegExp(r'\bhd\b').allMatches(lower)) {
+    hits[m.start] = ViewportMode.hd;
   }
 
   // 3. Lebar px yang disebut (spesifik).
@@ -1378,13 +1415,106 @@ ViewportMode? detectViewportOverride(String prompt) {
     }
   }
 
-  scanPx(r'\b(1280|1440|1920)(\s*px|p)?\b', ViewportMode.desktop);
-  scanPx(r'\b768(\s*px|p)?\b', ViewportMode.tablet);
-  scanPx(r'\b(390|375|414|844)(\s*px|p)?\b', ViewportMode.mobile);
+  scanPx(r'\b(1920|1080|2560)(\s*px|p)?\b', ViewportMode.hd);
+  scanPx(r'\b(1280|1440)(\s*px|p)?\b', ViewportMode.desktop);
+  scanPx(r'\b(768|820|834)(\s*px|p)?\b', ViewportMode.tablet);
+  scanPx(r'\b(390|375|412|414|844)(\s*px|p)?\b', ViewportMode.mobile);
 
   if (hits.isEmpty) return null;
   final lastIndex = hits.keys.reduce((a, b) => a > b ? a : b);
   return hits[lastIndex];
+}
+
+/// Otomatis memilih layout viewport terbaik berdasarkan semantik prompt
+/// (AI auto-layout selection ala Google Stitch).
+ViewportMode detectAutoViewport(String prompt) {
+  final explicit = detectViewportOverride(prompt);
+  if (explicit != null) return explicit;
+
+  final lower = prompt.toLowerCase();
+
+  // 1. Keyword widescreen / HD
+  if (RegExp(
+    r'\b(wallboard|cinema|presentation|widescreen|ultra\s*wide|2k|4k)\b',
+  ).hasMatch(lower)) {
+    return ViewportMode.hd;
+  }
+
+  // 2. Keyword desktop / web / windows / dashboard
+  if (RegExp(
+    r'\b(dashboard|admin|crm|erp|saas|desktop|portal|table|analytics|monitoring|backoffice|cms|spreadsheet|kanban|console|landing\s*page|website|web\s*app|ecommerce\s*web|toko\s*online)\b',
+  ).hasMatch(lower)) {
+    return ViewportMode.desktop;
+  }
+
+  // 3. Keyword tablet / kiosk / POS
+  if (RegExp(
+    r'\b(tablet|ipad|pos|kasir|cashier|kiosk|katalog|restaurant\s*menu|menu\s*restoran|order\s*display)\b',
+  ).hasMatch(lower)) {
+    return ViewportMode.tablet;
+  }
+
+  // 4. Keyword mobile / smartphone
+  if (RegExp(
+    r'\b(mobile|hp|android|ios|iphone|smartphone|app|aplikasi|chat|story|stories|feed|reels|shorts|tiktok|instagram|gojek|grab|uber|delivery|food|tinder|dating|wallet|ewallet|bottom\s*nav|splash|onboarding)\b',
+  ).hasMatch(lower)) {
+    return ViewportMode.mobile;
+  }
+
+  // Default cerdas: jika menyebut web/page/halaman -> desktop, selain itu mobile
+  if (RegExp(r'\b(page|halaman|web|site)\b').hasMatch(lower)) {
+    return ViewportMode.desktop;
+  }
+
+  return ViewportMode.mobile;
+}
+
+/// Ekstrak viewport yang dipilih oleh AI dari dokumen HTML via meta tag atau komentar.
+ViewportMode? detectViewportFromHtml(String html) {
+  final metaMatch = RegExp(
+    "<meta\\s+[^>]*name=[\"']viewport-target[\"']\\s+[^>]*content=[\"']([^\"']+)[\"']",
+    caseSensitive: false,
+  ).firstMatch(html) ?? RegExp(
+    "<meta\\s+[^>]*content=[\"']([^\"']+)[\"']\\s+[^>]*name=[\"']viewport-target[\"']",
+    caseSensitive: false,
+  ).firstMatch(html);
+
+  if (metaMatch != null) {
+    final val = metaMatch.group(1)!.trim().toLowerCase();
+    if (val == 'windows') return ViewportMode.desktop;
+    if (val == 'fhd') return ViewportMode.hd;
+    for (final mode in ViewportMode.values) {
+      if (mode.name == val) return mode;
+    }
+  }
+
+  final widthMatch = RegExp(
+    "<meta\\s+[^>]*name=[\"']viewport-width[\"']\\s+[^>]*content=[\"'](\\d+)[\"']",
+    caseSensitive: false,
+  ).firstMatch(html);
+  if (widthMatch != null) {
+    final w = int.tryParse(widthMatch.group(1)!);
+    if (w != null) {
+      if (w >= 1600) return ViewportMode.hd;
+      if (w >= 1100) return ViewportMode.desktop;
+      if (w >= 600) return ViewportMode.tablet;
+      return ViewportMode.mobile;
+    }
+  }
+
+  final commentMatch = RegExp(
+    r'<!--\s*viewport\s*:\s*(mobile|tablet|desktop|windows|hd)\s*-->',
+    caseSensitive: false,
+  ).firstMatch(html);
+  if (commentMatch != null) {
+    final val = commentMatch.group(1)!.trim().toLowerCase();
+    if (val == 'windows') return ViewportMode.desktop;
+    for (final mode in ViewportMode.values) {
+      if (mode.name == val) return mode;
+    }
+  }
+
+  return null;
 }
 
 /// Hasil deteksi permintaan layar: jumlah blok ```html yang diharapkan + nama

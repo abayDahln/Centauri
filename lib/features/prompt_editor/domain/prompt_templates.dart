@@ -56,7 +56,14 @@ CORE TECHNICAL STANDARDS (Non-Negotiable)
   - https://api.dicebear.com/9.x/{style}/svg?seed={name} (avatars & logos)
   - https://i.pravatar.cc/{size}?u={slug} (user avatars)
   - Always set width/height or aspect-ratio, object-fit: cover, loading="lazy", and an inline onerror fallback so images never show broken. Request 2x display resolution for crisp high-DPI rendering.
-- SIZING & VIEWPORT: Design for the target width specified in [CANVAS TARGET] (e.g., 390px mobile, 768px tablet, 1280px desktop) with ZERO horizontal overflow. Vertical content flows naturally (min-height: 100vh) as the canvas auto-expands.
+- SIZING & VIEWPORT (AUTONOMOUS SELECTION ALA GOOGLE STITCH): Follow Google Stitch standards where you autonomously choose the optimal viewport format based on the design context:
+  - 'mobile' (390px width): smartphone apps, mobile social feeds, chat, onboarding, e-wallets, food delivery.
+  - 'tablet' (768px width): tablet layouts, POS cashier registers, kiosk screens, restaurant menus.
+  - 'desktop' (1280px width): web applications, SaaS platforms, landing pages, CRM/ERP systems, portals.
+  - 'hd' (1920px width): widescreen analytics dashboards, monitoring wallboards, multimedia presentations.
+  If the user explicitly asked for a specific device, viewport, or width in their prompt, you MUST honor the user's explicit request.
+  Declare your chosen viewport in <head> with: <meta name="viewport-target" content="mobile|tablet|desktop|hd">.
+  Build modern, fully responsive and fluid layouts using flexbox, CSS grid, fluid percentages, and media queries with ZERO horizontal overflow. Vertical content flows naturally (min-height: 100vh) as the canvas auto-expands.
 
 DESIGN EXCELLENCE & ANTI-AI-SLOP GUIDELINES
 ---------------------------------------------------------------
@@ -67,90 +74,3 @@ DESIGN EXCELLENCE & ANTI-AI-SLOP GUIDELINES
 
 Review your output before sending: ensure it is fully self-contained, interactive, responsive, visually polished, and strictly aligned with the user's intent.
 ''';
-
-
-/// Design token preset yang bisa dipilih pengguna sebelum generasi (FR-02).
-/// Preset bawaan bersifat tetap; preset kustom disimpan di Hive via
-/// [PresetRepository] dan digabung saat dibaca (Fase 4: Custom Bebas).
-class DesignTokenPreset {
-  const DesignTokenPreset({
-    required this.id,
-    required this.label,
-    required this.promptFragment,
-    this.builtin = true,
-  });
-
-  final String id;
-  final String label;
-  final String promptFragment;
-
-  /// True untuk bawaan (tidak bisa dihapus/diubah, hanya dipakai).
-  final bool builtin;
-
-  DesignTokenPreset copyWith({String? label, String? promptFragment}) {
-    return DesignTokenPreset(
-      id: id,
-      label: label ?? this.label,
-      promptFragment: promptFragment ?? this.promptFragment,
-      builtin: builtin,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'label': label,
-    'promptFragment': promptFragment,
-  };
-
-  static DesignTokenPreset fromJson(Map<String, dynamic> json) {
-    return DesignTokenPreset(
-      id: json['id'] as String? ?? '',
-      label: json['label'] as String? ?? 'Custom',
-      promptFragment: json['promptFragment'] as String? ?? '',
-      builtin: false,
-    );
-  }
-}
-
-const List<DesignTokenPreset> designTokenPresets = [
-  DesignTokenPreset(
-    id: 'current',
-    label: 'Current',
-    promptFragment: 'Design direction: modern premium product aesthetic (Linear/Vercel/Stripe quality). Neutral zinc scale (#09090B / #18181B / #27272A / #3F3F46 / #71717A) with ONE refined accent (#3B82F6), Inter typography, layered soft shadows for real depth, 12-16px radii, subtle 1px borders. Rich and dense, not bare: cards with imagery, gradient accents, badges and clear hierarchy. Support light + dark with a working theme toggle.',
-  ),
-  DesignTokenPreset(
-    id: 'electric',
-    label: 'Electric',
-    promptFragment: 'Design direction: bold vibrant tech. Violet (#8B5CF6) primary with cyan (#22D3EE) highlights, restrained 135deg gradients and glows on hero/CTA surfaces, pill-shaped buttons (999px), glowing focus rings, dark-first with light variant. High energy, saturated accents on deep neutral surfaces, rich layered detail.',
-  ),
-  DesignTokenPreset(
-    id: 'paper',
-    label: 'Paper Light',
-    promptFragment: 'Design direction: warm editorial light. Off-white (#FAFAFA/#F5F5F4) surfaces, hairline borders (#E4E4E7), near-black (#18181B) text, one calm accent, 14-16px radii, magazine-style typography with strong hierarchy, generous whitespace, very soft layered shadows. Rich content with imagery and clear sections - airy but never empty.',
-  ),
-  DesignTokenPreset(
-    id: 'brutalist',
-    label: 'Brutalist',
-    promptFragment: 'Design direction: bold brutalist. Thick 2px charcoal borders (#18181B), hard offset shadows (4px 4px 0), monospace display headings, sharp 0-2px radii, raw visible grid structure, high contrast, confident oversized type, blocky color panels. Loud and dense, never plain.',
-  ),
-  DesignTokenPreset(
-    id: 'material3',
-    label: 'Material 3',
-    promptFragment: 'Design direction: Material Design 3 (Material You). Dynamic tonal palettes with primary/secondary/tertiary roles, tonal surfaces (surface, surface-container-low/high), 4dp grid, M3 type scale (display/headline/title/body/label), large 16-28px radii on cards and full pill shapes on buttons, filled/tonal/elevated button hierarchy, M3 navigation bar or rail for app screens, state layers (hover 8%, pressed 12%) on interactive elements, FAB for primary action. Light + dark tonal schemes with a working theme toggle.',
-  ),
-  DesignTokenPreset(
-    id: 'cupertino',
-    label: 'iOS / Cupertino',
-    promptFragment: 'Design direction: native iOS / Cupertino aesthetic. System background (#F2F2F7 light / #000000 dark), grouped list sections with 10px inset rounded corners, San Francisco-style system typography (large titles 34pt bold, headline/body/callout scale), iOS blue (#007AFF) accents, tab bar with blur translucency at the bottom, large navigation titles, native-feel switches segmented controls and action sheets, 44pt minimum touch targets, subtle separators (#C6C6C8) instead of shadows. Feels like a first-party Apple app.',
-  ),
-  DesignTokenPreset(
-    id: 'minimalist',
-    label: 'Minimalist',
-    promptFragment: 'Design direction: modern minimalist. One neutral scale, one quiet accent, strict 4px spacing rhythm, restrained single-level hierarchy per section, hairline 1px borders, generous whitespace as the main luxury, small uppercase micro-labels with letter-spacing, minimal shadows (one soft ambient layer only), restrained 10-14px radii. Minimal means refined restraint, never empty: every screen still ships full structure (nav, hero, proof, details, FAQ, CTA, footer) with real copy and working controls.',
-  ),
-  DesignTokenPreset(
-    id: 'darkmode',
-    label: 'Dark Mode',
-    promptFragment: 'Design direction: premium dark-first. Deep neutral surfaces (#0A0A0B base, #131316 raised, #1C1C21 overlay), hairline borders (rgba(255,255,255,0.08)), ONE luminous accent with glow reserved for hero/CTA, layered soft shadows for depth on dark, high-contrast text (#FAFAFA primary, #A1A1AA secondary), glass/frosted layers for nav and overlays, subtle grid/noise texture in hero. No pure #000 backgrounds, no neon-everywhere. Must still ship a working light variant via theme toggle.',
-  ),
-];

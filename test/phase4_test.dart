@@ -5,84 +5,9 @@ import 'package:centauri/features/code_exporter/domain/code_transformer.dart';
 import 'package:centauri/features/code_exporter/domain/export_format.dart';
 import 'package:centauri/features/code_exporter/domain/html_to_tailwind.dart';
 import 'package:centauri/features/mcp/data/mcp_server.dart';
-import 'package:centauri/features/prompt_editor/domain/prompt_templates.dart';
-import 'package:centauri/features/prompt_editor/presentation/preset_provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('DesignTokenPreset (Fase 4a)', () {
-    test('builtin presets include new style directions', () {
-      final ids = designTokenPresets.map((p) => p.id).toSet();
-      expect(
-        ids,
-        containsAll([
-          'current',
-          'electric',
-          'paper',
-          'brutalist',
-          'material3',
-          'cupertino',
-          'minimalist',
-          'darkmode',
-        ]),
-      );
-    });
-
-    test('custom preset round-trips through JSON as non-builtin', () {
-      const preset = DesignTokenPreset(
-        id: 'custom_x',
-        label: 'Retro',
-        promptFragment: 'Design direction: retro.',
-        builtin: false,
-      );
-      final restored = DesignTokenPreset.fromJson(preset.toJson());
-      expect(restored.id, 'custom_x');
-      expect(restored.label, 'Retro');
-      expect(restored.builtin, isFalse);
-    });
-  });
-
-  group('PresetNotifier (Fase 4a)', () {
-    test('add/update/delete custom preset without Hive', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      final notifier = container.read(presetProvider.notifier);
-      expect(notifier.state.customPresets, isEmpty);
-
-      final id = notifier.addPreset(
-        label: 'Retro',
-        promptFragment: 'Design direction: retro.',
-      );
-      expect(id, startsWith('custom_'));
-      expect(notifier.state.all.any((p) => p.id == id), isTrue);
-
-      notifier.updatePreset(
-        id: id,
-        label: 'Retro Diner',
-        promptFragment: 'Design direction: retro diner.',
-      );
-      expect(
-        notifier.state.customPresets.single.label,
-        'Retro Diner',
-      );
-      expect(notifier.state.customPresets.single.id, id);
-
-      notifier.deletePreset(id);
-      expect(notifier.state.customPresets, isEmpty);
-    });
-
-    test('effectiveSystemPrompt falls back to builtin', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      expect(
-        container.read(presetProvider).effectiveSystemPrompt,
-        uiSystemPrompt,
-      );
-    });
-  });
-
   group('buildSelectedNodeContext (Fase 4b)', () {
     test('describes tag, box, and styles', () {
       const geometry = NodeGeometry(

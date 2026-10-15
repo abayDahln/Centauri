@@ -225,6 +225,8 @@ class _BoardFrameViewState extends ConsumerState<BoardFrameView> {
       onDragEnd: () => ref.read(canvasProvider.notifier).endFrameDrag(),
       onClearSelection: () =>
           ref.read(canvasProvider.notifier).selectNode(null),
+      onResizeWidth: (newWidth) =>
+          ref.read(canvasProvider.notifier).setFrameWidth(widget.frame.id, newWidth),
       child: !_ready
           ? const _WebviewLoading()
           : (_error != null
@@ -339,6 +341,7 @@ class _FrameCard extends StatelessWidget {
     this.boardPanning = false,
     this.onClearSelection,
     this.onDragEnd,
+    this.onResizeWidth,
   });
 
   final BoardFrame frame;
@@ -356,6 +359,7 @@ class _FrameCard extends StatelessWidget {
 
   final VoidCallback? onClearSelection;
   final VoidCallback? onDragEnd;
+  final ValueChanged<double>? onResizeWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -366,15 +370,11 @@ class _FrameCard extends StatelessWidget {
     // PENTING: layout vs paint dipisah.
     // - `Positioned` TANPA width/height: Stack memberi constraint LONGGAR,
     //   sehingga child menentukan ukurannya sendiri (ukuran LOGIS, mis. 390px)
-    //   apa pun skala board. Kalau Positioned diberi width/height hasil-skala,
-    //   constraint tight memaksa SizedBox logis ikut menyusut/melar -> WebView
-    //   reflow tiap zoom (render tidak konsisten antar level zoom).
-    // - `Transform.scale` meng-scale paint dari kiri-atas (visual ala Figma);
+    //   apa pun skala board.
+    // - `Transform.scale` meng-scale paint dari kiri-atas (visual ala Figma/Stitch);
     //   hit-test tetap benar karena Transform meng-inverse transform saat
     //   hit-testing, jadi drag/tap tetap akurat di area visual kartu.
     final borderWidth = isActive ? 1.5 : 1.0;
-    // Radius dalam sedikit lebih kecil dari radius luar agar border tidak
-    // tertutup clip (penyebab kesan "terpotong" dulu).
     final innerRadius = BorderRadius.all(Radius.circular(12.0 - borderWidth));
 
     return Positioned(
@@ -383,78 +383,104 @@ class _FrameCard extends StatelessWidget {
       child: Transform.scale(
         scale: scale,
         alignment: Alignment.topLeft,
-        // Kualitas filter tinggi agar teks tidak burik saat board di-zoom
-        // (downscale texture WebView di 75% dsb).
         filterQuality: FilterQuality.high,
-        // Kartu berukuran logis; Transform menskalakannya ke ruang layar.
         child: SizedBox(
           width: frame.size.width,
           height: frame.size.height,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.max,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              // Label frame (ikut skala bersama kartu).
-              SizedBox(
-                height: 22,
-                child: _FrameLabel(
-                  frame: frame,
-                  isActive: isActive,
-                  onSelect: onSelect,
-                  onDelete: onDelete,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Expanded(
-                child: MouseRegion(
-                  // Cursor hanya di ATAS kartu frame (bukan area kosong board):
-                  //  - move (panah 4 arah) saat mode pilih/geser: kartu bisa
-                  //    di-drag untuk memindahkan posisinya.
-                  //  - grab saat board yang di-pan (tool hand / Space) di atas
-                  //    kartu; cursor board sendiri menangani sisanya.
-                  cursor: boardPanning
-                      ? SystemMouseCursors.grab
-                      : SystemMouseCursors.move,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.deferToChild,
-                    onTap: onSelect,
-                    // `Transform.scale` meng-inverse transform saat hit-testing,
-                    // jadi `details.delta` SUDAH dalam ruang logis kartu (=
-                    // ruang board). Jangan dibagi `scale` lagi — itu
-                    // menyebabkan drag overshoot (sangat sensitif) di zoom
-                    // < 100%.
-                    onPanUpdate: boardPanning
-                        ? null
-                        : (details) => onDrag(details.delta),
-                    onPanEnd: boardPanning ? null : (_) => onDragEnd?.call(),
-                    // Border + radius digambar di luar clip sehingga tetap
-                    // utuh di semua skala. Isi (WebView) di-clip ke radius
-                    // dalam + dasar putih agar sudut tajam body HTML / flash
-                    // hitam texture tidak bocor ke corner (anti corner hitam).
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.bgSurface,
-                        borderRadius: AppRadius.md,
-                        border: Border.all(
-                          color: isActive
-                              ? AppColors.accentPrimary
-                              : AppColors.borderSubtle,
-                          width: borderWidth,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  // Label frame (ikut skala bersama kartu).
+                  SizedBox(
+                    height: 22,
+                    child: _FrameLabel(
+                      frame: frame,
+                      isActive: isActive,
+                      onSelect: onSelect,
+                      onDelete: onDelete,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: MouseRegion(
+                      cursor: boardPanning
+                          ? SystemMouseCursors.grab
+                          : SystemMouseCursors.move,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.deferToChild,
+                        onTap: onSelect,
+                        onPanUpdate: boardPanning
+                            ? null
+                            : (details) => onDrag(details.delta),
+                        onPanEnd: boardPanning ? null : (_) => onDragEnd?.call(),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.bgSurface,
+                            borderRadius: AppRadius.md,
+                            border: Border.all(
+                              color: isActive
+                                  ? AppColors.accentPrimary
+                                  : AppColors.borderSubtle,
+                              width: borderWidth,
+                            ),
+                            boxShadow: AppColors.shadowRaised,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: innerRadius,
+                            clipBehavior: Clip.antiAlias,
+                            child: ColoredBox(
+                              color: AppColors.bgSurface,
+                              child: RepaintBoundary(child: child),
+                            ),
+                          ),
                         ),
-                        boxShadow: AppColors.shadowRaised,
                       ),
-                      child: ClipRRect(
-                        borderRadius: innerRadius,
-                        clipBehavior: Clip.antiAlias,
-                        child: ColoredBox(
-                          color: AppColors.bgSurface,
-                          child: RepaintBoundary(child: child),
+                    ),
+                  ),
+                ],
+              ),
+              // Dynamic resize handle di sisi kanan frame ala Google Stitch
+              if (isActive && !boardPanning)
+                Positioned(
+                  top: 28,
+                  bottom: 0,
+                  right: -7,
+                  width: 14,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.resizeColumn,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onHorizontalDragUpdate: (details) {
+                        final newWidth = (frame.size.width + details.delta.dx)
+                            .clamp(280.0, 3840.0);
+                        onResizeWidth?.call(newWidth);
+                      },
+                      child: Center(
+                        child: Container(
+                          width: 4,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.accentPrimary,
+                            borderRadius: BorderRadius.circular(2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.accentPrimary.withValues(
+                                  alpha: 0.45,
+                                ),
+                                blurRadius: 4,
+                                spreadRadius: 0.5,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -502,13 +528,63 @@ class _FrameLabel extends StatelessWidget {
             ),
           ),
         ),
-        if (isActive)
+        const SizedBox(width: 4),
+        // Badge info ukuran frame — otomatis dari AI, bukan pilihan manual.
+        _FrameDimensionBadge(frame: frame, isActive: isActive),
+        if (isActive) ...[
+          const SizedBox(width: 4),
           _FrameAction(
             icon: Icons.close,
             tooltip: 'Hapus frame',
             onTap: onDelete,
           ),
+        ],
       ],
+    );
+  }
+}
+
+/// Badge info ukuran frame (read-only).
+/// Ukuran awal sepenuhnya otomatis dari AI berdasarkan prompt user —
+/// tidak ada preset mobile/tablet/desktop manual di sini.
+class _FrameDimensionBadge extends StatelessWidget {
+  const _FrameDimensionBadge({required this.frame, required this.isActive});
+
+  final BoardFrame frame;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = frame.size.width.round();
+    final h = frame.size.height.round();
+    return Tooltip(
+      message: 'Ukuran otomatis dari AI (ubah via prompt, mis. "buat versi mobile")',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.accentPrimary.withValues(alpha: 0.1)
+              : AppColors.bgSunken,
+          borderRadius: AppRadius.sm,
+          border: Border.all(
+            color: isActive
+                ? AppColors.accentPrimary.withValues(alpha: 0.3)
+                : AppColors.borderSubtle,
+            width: 0.8,
+          ),
+        ),
+        child: Text(
+          '$w × $h',
+          style: TextStyle(
+            fontFamily: AppFonts.monoFamily,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: isActive
+                ? AppColors.accentPrimary
+                : AppColors.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }

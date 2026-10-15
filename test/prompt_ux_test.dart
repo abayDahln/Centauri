@@ -78,4 +78,54 @@ void main() {
       expect(container.read(canvasProvider).messages, isEmpty);
     });
   });
+
+  group('retryLastPrompt (UX: coba lagi tanpa ketik ulang)', () {
+    CanvasMessage userMsg(String text) => CanvasMessage(
+      role: ChatRole.user,
+      text: text,
+      displayText: text,
+    );
+    const errMsg = CanvasMessage(
+      role: ChatRole.error,
+      text: 'Tidak dapat terhubung ke endpoint.',
+    );
+
+    test('no-op when there is nothing to retry', () async {
+      final container = makeContainer();
+      final notifier = container.read(canvasProvider.notifier);
+      await notifier.retryLastPrompt();
+      expect(container.read(canvasProvider).messages, isEmpty);
+    });
+
+    test('dangling error without user prompt is left intact', () async {
+      final container = makeContainer();
+      final notifier = container.read(canvasProvider.notifier);
+      await notifier.loadSession(
+        messages: const [errMsg],
+        frames: const [],
+        activeFrameId: null,
+      );
+      await notifier.retryLastPrompt();
+      // Tidak ada prompt user untuk dipakai ulang: pesan tidak disentuh.
+      final messages = container.read(canvasProvider).messages;
+      expect(messages.length, 1);
+      expect(messages.single.role, ChatRole.error);
+    });
+
+    test('reuses last user prompt without duplicating bubbles', () async {
+      final container = makeContainer();
+      final notifier = container.read(canvasProvider.notifier);
+      await notifier.loadSession(
+        messages: [userMsg('buatkan landing page'), errMsg],
+        frames: const [],
+        activeFrameId: null,
+      );
+      await notifier.retryLastPrompt();
+      final messages = container.read(canvasProvider).messages;
+      // Tanpa provider aktif, submit ulang gagal lagi — yang penting hanya
+      // ada tepat 1 pesan error baru, tanpa duplikasi bubble user.
+      expect(messages.length, 1);
+      expect(messages.single.role, ChatRole.error);
+    });
+  });
 }

@@ -52,23 +52,4 @@ void main() {
       );
     });
   });
-
-  group('designTokenPresets', () {
-    test('every fragment defines a design direction', () {
-      for (final preset in designTokenPresets) {
-        expect(preset.id, isNotEmpty);
-        expect(preset.label, isNotEmpty);
-        expect(
-          preset.promptFragment.toLowerCase(),
-          contains('design direction'),
-          reason: 'Preset ${preset.id} harus mendefinisikan arah desain.',
-        );
-      }
-    });
-
-    test('presets have unique ids', () {
-      final ids = designTokenPresets.map((p) => p.id).toSet();
-      expect(ids.length, designTokenPresets.length);
-    });
-  });
 }

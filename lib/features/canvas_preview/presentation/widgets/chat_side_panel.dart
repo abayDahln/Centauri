@@ -62,7 +62,12 @@ class ChatSidePanel extends ConsumerWidget {
           Expanded(
             child: switch (tab) {
               PanelTab.chat => const PromptChatPanel(),
-              PanelTab.history => const HistoryPanel(),
+              // Buka/buat chat dari History langsung mengantar ke tab Chat.
+              PanelTab.history => HistoryPanel(
+                onOpenProject: () => ref
+                    .read(panelTabProvider.notifier)
+                    .select(PanelTab.chat),
+              ),
             },
           ),
         ],
