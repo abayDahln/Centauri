@@ -1,5 +1,37 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:centauri/features/provider_config/data/datasources/ai_api_service.dart';
+import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// Adapter Dio palsu: mencatat request terakhir dan membalas body tetap.
+class _FakeAdapter implements HttpClientAdapter {
+  _FakeAdapter(this.body);
+
+  final dynamic body;
+  RequestOptions? lastRequest;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    lastRequest = options;
+    return ResponseBody.fromString(
+      jsonEncode(body),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
 
 void main() {
   const service = AiApiService();
@@ -213,6 +245,99 @@ void main() {
           ],
         }),
         throwsA(isA<ApiConnectionException>()),
+      );
+    });
+  });
+
+  group('parseModels', () {
+    test('parses OpenAI shape {data:[{id}]} and sorts', () {
+      expect(
+        service.parseModels({
+          'data': [
+            {'id': 'gpt-4o-mini'},
+            {'id': 'gpt-4o'},
+          ],
+        }),
+        ['gpt-4o', 'gpt-4o-mini'],
+      );
+    });
+
+    test('parses Ollama shape {models:[{name}]}', () {
+      expect(
+        service.parseModels({
+          'models': [
+            {'name': 'qwen3'},
+            {'name': 'llama3.2'},
+          ],
+        }),
+        ['llama3.2', 'qwen3'],
+      );
+    });
+
+    test('parses a bare list, dedupes, and reads model field', () {
+      expect(
+        service.parseModels([
+          'x',
+          'x',
+          {'model': 'y'},
+          {'id': '  z  '},
+        ]),
+        ['x', 'y', 'z'],
+      );
+    });
+
+    test('throws on unknown shape', () {
+      expect(
+        () => service.parseModels({'foo': 1}),
+        throwsA(isA<ApiConnectionException>()),
+      );
+    });
+
+    test('throws when no usable ids are found', () {
+      expect(
+        () => service.parseModels({'data': []}),
+        throwsA(isA<ApiConnectionException>()),
+      );
+    });
+  });
+
+  group('listModels', () {
+    const provider = ApiProvider(
+      id: 'p1',
+      name: 'Test',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'm',
+    );
+
+    test('fetches and parses the model list', () async {
+      final adapter = _FakeAdapter({
+        'data': [
+          {'id': 'gpt-4o-mini'},
+          {'id': 'gpt-4o'},
+        ],
+      });
+      final dio = Dio()..httpClientAdapter = adapter;
+      final svc = AiApiService(clientFactory: (_) => dio);
+
+      final models = await svc.listModels(provider);
+
+      expect(models, ['gpt-4o', 'gpt-4o-mini']);
+      expect(
+        adapter.lastRequest!.uri.toString(),
+        'https://api.example.com/v1/models',
+      );
+    });
+
+    test('sends the bearer header when an api key is present', () async {
+      final adapter = _FakeAdapter({'data': [{'id': 'm1'}]});
+      final dio = Dio()..httpClientAdapter = adapter;
+      final svc = AiApiService(clientFactory: (_) => dio);
+
+      await svc.listModels(provider.copyWith(apiKey: 'sk-secret'));
+
+      expect(
+        adapter.lastRequest!.headers['Authorization'],
+        'Bearer sk-secret',
       );
     });
   });

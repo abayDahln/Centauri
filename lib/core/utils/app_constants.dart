@@ -7,6 +7,10 @@ class AppConstants {
   // Secure storage: API key disimpan per-provider, tidak pernah di Hive.
   static const String apiKeyPrefix = 'centauri_provider_api_key_';
 
+  // Secure storage: token OAuth (access/refresh) per-provider, tidak pernah
+  // di Hive (NFR-01).
+  static const String oauthTokenPrefix = 'centauri_provider_oauth_token_';
+
   // Hive boxes.
   static const String providersBoxName = 'centauri_providers';
   static const String metaBoxName = 'centauri_meta';
@@ -33,17 +37,17 @@ class AppConstants {
   static const String testConnectionPath = '/models';
   static const String chatCompletionsPath = '/chat/completions';
 
+  // OAuth: loopback redirect (RFC 8252) untuk desktop Windows.
+  static const String oauthLoopbackHost = '127.0.0.1';
+  static const String oauthRedirectPath = '/callback';
+
+  /// Batas tunggu pengguna menyelesaikan login di browser (OAuth).
+  static const Duration oauthFlowTimeout = Duration(minutes: 5);
+
   // Parameter generasi UI. Temperature lebih tinggi dari chat agar model
   // berani berkreasi desain (bukan output dasar yang seragam). max_tokens
   // sangat besar agar multi-screen (login+home+profile, dst.) tidak terpotong;
   // sebagian provider mengabaikan/menge-clamp-nya ke batas model masing-masing.
   static const double designTemperature = 0.7;
   static const int designMaxTokens = 500000;
-
-  // Preset endpoint umum untuk helper di UI.
-  static const Map<String, String> knownProviderPresets = {
-    'OpenAI': 'https://api.openai.com/v1',
-    'Groq': 'https://api.groq.com/openai/v1',
-    'Ollama (local)': 'http://localhost:11434/v1',
-  };
 }

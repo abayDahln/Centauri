@@ -52,6 +52,7 @@ dependencies:
   super_clipboard: ^0.9.1
   pdf: ^3.13.1
   url_launcher: ^6.3.0
+  crypto: ^3.0.3  # PKCE S256 (SHA-256) untuk OAuth.
 
 dev_dependencies:
   flutter_test:

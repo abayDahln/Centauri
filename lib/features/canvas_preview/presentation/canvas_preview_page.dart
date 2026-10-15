@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/config/routes.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/widgets/stitch_widgets.dart';
 import '../../../core/storage/local_storage_service.dart';
@@ -391,7 +392,7 @@ class _TopBar extends ConsumerWidget {
             SoftIconButton(
               icon: Icons.settings_outlined,
               tooltip: 'Konfigurasi provider',
-              onPressed: () => context.push('/provider-config'),
+              onPressed: () => context.push(AppRoutes.providers),
             ),
             const SizedBox(width: 12),
             if (workspaceActive) ...[
@@ -404,7 +405,7 @@ class _TopBar extends ConsumerWidget {
               const SizedBox(width: 12),
             ],
             InkWell(
-              onTap: () => context.push('/provider-config'),
+              onTap: () => context.push(AppRoutes.providers),
               borderRadius: AppRadius.pill,
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -613,7 +614,7 @@ class _MobileShell extends ConsumerWidget {
           SoftIconButton(
             icon: Icons.settings_outlined,
             tooltip: 'Konfigurasi provider',
-            onPressed: () => context.push('/provider-config'),
+            onPressed: () => context.push(AppRoutes.providers),
           ),
           if (hasUi) ...[
             SoftIconButton(
