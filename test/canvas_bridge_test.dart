@@ -58,5 +58,22 @@ void main() {
       expect(canvasBridgeScript, isNot(contains("removeAttribute('src')")));
       expect(canvasBridgeScript, contains('centauri-fallback'));
     });
+
+    test('mengunci zoom bawaan browser agar isi frame tetap fix', () {
+      // Regresi: pinch/Ctrl+scroll di atas frame men-zoom isi halaman
+      // (double-zoom) karena WebView2/Edge menangani gestur secara native.
+      // Shell harus menonaktifkan pinch-zoom (touch-action) + Ctrl zoom.
+      expect(canvasBridgeScript, contains('centauri-zoom-lock'));
+      expect(canvasBridgeScript, contains('touch-action:pan-x pan-y'));
+      expect(canvasBridgeScript, contains('lockBrowserZoom();'));
+    });
+
+    test('melipat blok kosong raksasa agar frame tanpa white space', () {
+      // Regresi: section/div >= 480px tanpa isi (spacer, min-height berlebih)
+      // membuat frame terlihat punya white space besar. Shell melipatnya
+      // otomatis sebelum melaporkan tinggi konten.
+      expect(canvasBridgeScript, contains('collapseEmptyBlocks'));
+      expect(canvasBridgeScript, contains('collapseEmptyBlocks();'));
+    });
   });
 }

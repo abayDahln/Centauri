@@ -111,6 +111,7 @@ const String canvasBridgeScript = r'''
   function attachPicker() {
     if (!document.body) return;
     hideFrameScrollbars();
+    lockBrowserZoom();
     applySharpnessDefaults();
     ensureOverlay();
     ensureImageFallback();
@@ -204,17 +205,63 @@ const String canvasBridgeScript = r'''
   }
 
   // Laporkan tinggi konten beberapa kali (gambar/font memuat asinkron dapat
-  // mengubah tinggi dokumen setelah load pertama).
+  // mengubah tinggi dokumen setelah load pertama). Blok kosong raksasa juga
+  // dilipat ulang tiap tick (konten JS-inject yang telat bisa mengosongkan /
+  // mengisi blok setelah load).
   function scheduleContentSizeReports() {
+    collapseEmptyBlocks();
     reportContentSize();
     var delays = [150, 400, 900, 1600];
     for (var i = 0; i < delays.length; i++) {
-      setTimeout(function () { reportContentSize(); }, delays[i]);
+      setTimeout(function () { collapseEmptyBlocks(); reportContentSize(); }, delays[i]);
     }
     try {
       var imgs = document.querySelectorAll('img');
       for (var j = 0; j < imgs.length; j++) {
         imgs[j].addEventListener('load', function () { reportContentSize(); });
+      }
+    } catch (e) { /* abaikan */ }
+  }
+
+  // Lipat blok KOSONG yang raksasa: AI kadang menyisakan section/div
+  // setinggi ratusan px tanpa isi (spacer, panel detail kosong sebelum
+  // interaksi, min-height berlebih) sehingga frame terlihat punya "white
+  // space" besar padahal tidak ada yang terpotong — kekosongan itu memang
+  // bagian dari dokumen. Hanya yang aman dilipat: tinggi >= 480px, tanpa
+  // teks, tanpa media/kontrol/iframe, tanpa background-image, dan bukan
+  // overlay/seleksi/elemen terpilih.
+  function collapseEmptyBlocks() {
+    try {
+      if (!document.body) return;
+      var els = document.body.querySelectorAll(
+        'section,div,main,article,aside,header,footer');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (!el || !el.getAttribute) continue;
+        if (el.hasAttribute('data-centauri-overlay')) continue;
+        if (el.id === 'centauri-bridge') continue;
+        if (el.id === 'centauri-scroll-fix' || el.id === 'centauri-sharp' ||
+            el.id === 'centauri-img-fix' || el.id === 'centauri-zoom-lock') {
+          continue;
+        }
+        if (selectedId && el.getAttribute('data-centauri-id') === selectedId) {
+          continue;
+        }
+        var h = el.offsetHeight || 0;
+        if (!(h >= 480)) continue;
+        var txt = '';
+        try { txt = (el.innerText || '').replace(/\s+/g, ' ').trim(); } catch (e) {}
+        if (txt.length > 0) continue;
+        try {
+          if (el.querySelector('img,picture,video,audio,iframe,canvas,svg,' +
+              'input,button,select,textarea,table')) continue;
+        } catch (e) {}
+        try {
+          var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+          var bg = cs ? (cs.backgroundImage || '') : '';
+          if (bg && bg !== 'none') continue;
+        } catch (e) {}
+        try { el.style.display = 'none'; } catch (e) {}
       }
     } catch (e) { /* abaikan */ }
   }
@@ -232,6 +279,44 @@ const String canvasBridgeScript = r'''
         'html{overflow:hidden;}body{overflow:hidden;}' +
         '::-webkit-scrollbar{width:0;height:0;display:none;}' +
         '*{scrollbar-width:none;-ms-overflow-style:none;}';
+    } catch (e) { /* abaikan */ }
+  }
+
+  // Kunci zoom bawaan browser agar isi frame SELALU fix: skala HANYA diatur
+  // board (Transform Flutter / zoomFactor WebView2), bukan halaman.
+  // Tanpa ini, pinch atau Ctrl+scroll tepat di atas frame men-zoom isi
+  // halaman (double-zoom) karena WebView2/Edge menangani gestur secara native
+  // sebelum Flutter sempat melihat event-nya.
+  function lockBrowserZoom() {
+    try {
+      var style = document.getElementById('centauri-zoom-lock');
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'centauri-zoom-lock';
+        (document.head || document.documentElement).appendChild(style);
+      }
+      // touch-action tanpa pinch-zoom menonaktifkan pinch-zoom browser.
+      style.textContent =
+        'html{touch-action:pan-x pan-y !important;}';
+      var guard = function (e) {
+        if (e.ctrlKey || e.metaKey) {
+          try { e.preventDefault(); } catch (err) {}
+        }
+      };
+      // Ctrl+scroll (page zoom) dibatalkan; scroll biasa tetap jalan.
+      window.addEventListener('wheel', guard, { passive: false });
+      // Ctrl plus/minus/nol (keyboard zoom) dibatalkan.
+      window.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) &&
+            (e.key === '+' || e.key === '-' || e.key === '=' ||
+             e.key === '0')) {
+          try { e.preventDefault(); } catch (err) {}
+        }
+      });
+      // Gestur legacy Safari.
+      document.addEventListener('gesturestart', function (e) {
+        try { e.preventDefault(); } catch (err) {}
+      });
     } catch (e) { /* abaikan */ }
   }
 
