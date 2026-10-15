@@ -87,10 +87,11 @@ void main() {
       expect(texts.any((n) => n.label.contains('Hello Centauri')), isTrue);
     });
 
-    test('root frame is selectable and labelled', () {
+    test('root node is the page and is selectable', () {
       final payload = buildDomTreePayload(_sample);
       final root = DomNode.fromJson(payload['root'] as Map<String, dynamic>);
-      expect(root.tag, 'frame');
+      expect(root.tag, 'page');
+      expect(root.label, 'Page');
       expect(root.isText, isFalse);
     });
 

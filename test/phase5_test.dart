@@ -1,16 +1,10 @@
-import 'package:centauri/features/canvas_preview/domain/board_frame.dart';
-import 'package:centauri/features/canvas_preview/presentation/provider/canvas_provider.dart';
-import 'package:flutter/material.dart';
+import 'package:centauri/features/canvas_preview/domain/page.dart';
+import 'package:centauri/features/canvas_preview/presentation/provider/workspace_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-BoardFrame _frame(String id, {String html = '<html></html>'}) => BoardFrame(
-  id: id,
-  title: id,
-  html: html,
-  offset: Offset.zero,
-  size: const Size(390, 844),
-);
+AppPage _page(String id, {String html = ''}) =>
+    AppPage(id: id, name: id, slug: '$id.html', html: html);
 
 void main() {
   ProviderContainer makeContainer() {
@@ -19,51 +13,54 @@ void main() {
     return container;
   }
 
-  group('CanvasNotifier undo/redo (Fase 5a)', () {
-    test('a content change is recorded and undo restores the prior frames', () {
+  group('WorkspaceNotifier undo/redo (Fase 5a)', () {
+    test('a content change is recorded and undo restores prior pages',
+        () async {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
 
-      // Baseline: board kosong (state awal).
       expect(notifier.canUndo, isFalse);
 
-      // Simulasi satu perubahan konten: state kosong -> frame_0.
-      final before = container.read(canvasProvider);
-      notifier.moveFrame('frame_0', Offset.zero); // no-op, tetap aman
-      // Dorong snapshot "sebelum" (kosong) lalu terapkan state baru.
+      // Simulasi satu perubahan konten: state kosong -> 1 halaman.
+      final before = container.read(workspaceProvider);
+      await notifier.loadSession(
+        messages: const [],
+        pages: [_page('page_0')],
+        activePageId: 'page_0',
+      );
       notifier.recordHistory(before);
       expect(notifier.canUndo, isTrue);
 
-      // Undo mengembalikan snapshot kosong.
       expect(notifier.undo(), isTrue);
-      expect(container.read(canvasProvider).frames, isEmpty);
+      expect(container.read(workspaceProvider).pages, isEmpty);
       expect(notifier.canRedo, isTrue);
       expect(notifier.redo(), isTrue);
       expect(notifier.canRedo, isFalse);
     });
 
-    test('loadSession is undoable and restores the previous board', () async {
+    test('loadSession is undoable and restores the previous workspace',
+        () async {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
 
-      final before = container.read(canvasProvider);
+      final before = container.read(workspaceProvider);
       await notifier.loadSession(
         messages: const [],
-        frames: [_frame('frame_0')],
-        activeFrameId: 'frame_0',
+        pages: [_page('page_0')],
+        activePageId: 'page_0',
       );
       notifier.recordHistory(before);
 
-      expect(container.read(canvasProvider).frames.length, 1);
+      expect(container.read(workspaceProvider).pages.length, 1);
       expect(notifier.canUndo, isTrue);
 
       notifier.undo();
-      expect(container.read(canvasProvider).frames, isEmpty);
+      expect(container.read(workspaceProvider).pages, isEmpty);
     });
 
     test('pushUndoSnapshot records current state exactly once', () {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
 
       notifier.pushUndoSnapshot();
       expect(notifier.undoDepth, 1);
@@ -73,7 +70,7 @@ void main() {
 
     test('clearHistory empties stacks', () {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
       notifier.pushUndoSnapshot();
       expect(notifier.canUndo, isTrue);
       notifier.clearHistory();
@@ -83,7 +80,7 @@ void main() {
 
     test('undo on empty stack returns false', () {
       final container = makeContainer();
-      final notifier = container.read(canvasProvider.notifier);
+      final notifier = container.read(workspaceProvider.notifier);
       expect(notifier.undo(), isFalse);
       expect(notifier.redo(), isFalse);
     });

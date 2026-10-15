@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../canvas_preview/data/services/canvas_service_registry.dart';
 import '../../canvas_preview/data/services/canvas_webview_service.dart';
-import '../../canvas_preview/domain/board_frame.dart';
 import '../../canvas_preview/domain/dom_tree.dart';
-import '../../canvas_preview/presentation/provider/canvas_provider.dart';
+import '../../canvas_preview/domain/page.dart';
+import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 
 class McpException implements Exception {
   McpException(this.message, {this.code = -32603});
@@ -17,48 +16,48 @@ class McpException implements Exception {
   String toString() => message;
 }
 
-/// Jembatan antara MCP server dan state aplikasi (Fase 4: Desktop Full).
-/// Baca: langsung dari [canvasProvider].
-/// Tulis: SELALU via jalur yang sama seperti inspector/overlay —
-/// inject JS → minta HTML penuh → rebuild tree → [updateFrameHtml].
+/// Jembatan antara MCP server dan state aplikasi.
+/// Baca: langsung dari [workspaceProvider].
+/// Tulis: SELALU via jalur yang sama seperti seleksi/overlay —
+/// inject JS → minta HTML penuh → rebuild tree → [WorkspaceNotifier.updatePageHtml].
 /// HTML di WebView tetap source of truth; tidak ada state ganda.
 class McpBridge {
   McpBridge(this._container);
 
   final ProviderContainer _container;
 
-  CanvasState get _state => _container.read(canvasProvider);
-  CanvasNotifier get _notifier => _container.read(canvasProvider.notifier);
+  WorkspaceState get _state => _container.read(workspaceProvider);
+  WorkspaceNotifier get _notifier => _container.read(workspaceProvider.notifier);
 
-  BoardFrame _resolveFrame(String? frameId) {
+  AppPage _resolvePage(String? pageId) {
     final state = _state;
-    if (frameId != null) {
-      for (final f in state.frames) {
-        if (f.id == frameId) return f;
+    if (pageId != null) {
+      for (final p in state.pages) {
+        if (p.id == pageId) return p;
       }
-      throw McpException('Frame "$frameId" tidak ditemukan.', code: -32602);
+      throw McpException('Page "$pageId" tidak ditemukan.', code: -32602);
     }
-    final active = state.activeFrame;
+    final active = state.activePage;
     if (active == null) {
       throw McpException(
-        'Belum ada frame aktif. Generate UI dulu atau sertakan frameId.',
+        'Belum ada halaman aktif. Generate UI dulu atau sertakan pageId.',
         code: -32602,
       );
     }
     return active;
   }
 
-  CanvasWebviewService _serviceFor(String frameId) {
-    final service = CanvasServiceRegistry.forFrame(frameId);
+  CanvasWebviewService _serviceFor(String pageId) {
+    final service = CanvasServiceRegistry.forFrame(pageId);
     if (service == null) {
       throw McpException(
-        'WebView frame "$frameId" belum siap. Tunggu sebentar lalu coba lagi.',
+        'WebView halaman "$pageId" belum siap. Tunggu sebentar lalu coba lagi.',
       );
     }
     return service;
   }
 
-  /// Tunggu SATU event bertipe [types] dari frame, dengan timeout.
+  /// Tunggu SATU event bertipe [types] dari halaman, dengan timeout.
   Future<CanvasSelectEvent> _awaitEvent(
     CanvasWebviewService service,
     Set<String> types, {
@@ -69,20 +68,19 @@ class McpBridge {
         .timeout(
           timeout,
           onTimeout: () => throw McpException(
-            'Timeout menunggu WebView (kemungkinan frame sibuk). Coba lagi.',
+            'Timeout menunggu WebView (kemungkinan halaman sibuk). Coba lagi.',
           ),
         );
   }
 
   /// Terapkan mutasi JS lalu sinkronkan HTML + tree ke Dart.
   Future<Map<String, dynamic>> _mutateAndSync({
-    required BoardFrame frame,
+    required AppPage page,
     required Future<void> Function(CanvasWebviewService service) mutate,
   }) async {
-    final service = _serviceFor(frame.id);
+    final service = _serviceFor(page.id);
     final htmlFuture = _awaitEvent(service, {'html'});
     await mutate(service);
-    // Minta dokumen penuh SETELAH mutasi dikirim.
     await service.requestHtml();
     final event = await htmlFuture;
     final html = event.html;
@@ -90,12 +88,12 @@ class McpBridge {
       throw McpException('Sinkronisasi HTML gagal (dokumen kosong).');
     }
     final tree = await buildDomTreeInIsolate(html);
-    _notifier.updateFrameHtml(
-      frameId: frame.id,
+    _notifier.updatePageHtml(
+      pageId: page.id,
       stampedHtml: tree.stampedHtml,
       tree: tree,
     );
-    return {'ok': true, 'frameId': frame.id, 'nodeCount': tree.nodeCount};
+    return {'ok': true, 'pageId': page.id, 'nodeCount': tree.nodeCount};
   }
 
   // ---------------------------------------------------------------- baca --
@@ -103,19 +101,16 @@ class McpBridge {
   Map<String, dynamic> snapshot() {
     final state = _state;
     return {
-      'frames': [
-        for (final f in state.frames)
+      'pages': [
+        for (final p in state.pages)
           {
-            'id': f.id,
-            'title': f.title,
-            'width': f.size.width,
-            'height': f.size.height,
-            'offsetX': f.offset.dx,
-            'offsetY': f.offset.dy,
-            'nodeCount': f.domTree?.nodeCount ?? 0,
+            'id': p.id,
+            'name': p.name,
+            'slug': p.slug,
+            'nodeCount': p.domTree?.nodeCount ?? 0,
           },
       ],
-      'activeFrameId': state.activeFrameId,
+      'activePageId': state.activePageId,
       'selectedNodeId': state.selectedNodeId,
     };
   }
@@ -123,7 +118,7 @@ class McpBridge {
   Map<String, dynamic> getStructure() => {
     'ok': true,
     ...snapshot(),
-    'layers': _state.activeFrame?.domTree?.root.toJson(),
+    'layers': _state.activePage?.domTree?.root.toJson(),
   };
 
   Map<String, dynamic> getSelected() {
@@ -136,7 +131,7 @@ class McpBridge {
     return {
       'ok': true,
       'selected': {
-        'frameId': state.activeFrameId,
+        'pageId': state.activePageId,
         'nodeId': id,
         'tag': geometry.tag,
         'rect': {
@@ -151,26 +146,26 @@ class McpBridge {
   }
 
   Future<Map<String, dynamic>> getNodeHtml(String nodeId) async {
-    final frame = _resolveFrame(null);
-    final service = _serviceFor(frame.id);
+    final page = _resolvePage(null);
+    final service = _serviceFor(page.id);
     final future = _awaitEvent(service, {'outerHtml', 'outerHtmlError'});
     await service.requestOuterHtml(nodeId);
     final event = await future;
     if (event.type != 'outerHtml' || event.html == null) {
       throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
     }
-    return {'ok': true, 'frameId': frame.id, 'nodeId': nodeId, 'html': event.html};
+    return {'ok': true, 'pageId': page.id, 'nodeId': nodeId, 'html': event.html};
   }
 
   // --------------------------------------------------------------- tulis --
 
   Future<Map<String, dynamic>> addNode({
-    String? frameId,
+    String? pageId,
     String? parentId,
     required String html,
     String? position,
   }) async {
-    final frame = _resolveFrame(frameId);
+    final page = _resolvePage(pageId);
     const allowed = {'beforeend', 'afterbegin', 'beforebegin', 'afterend'};
     final pos = (position ?? 'beforeend').trim();
     if (!allowed.contains(pos)) {
@@ -183,37 +178,34 @@ class McpBridge {
       throw McpException('html tidak boleh kosong.', code: -32602);
     }
     if (parentId != null) {
-      final tree = frame.domTree;
+      final tree = page.domTree;
       if (tree == null || tree.findById(parentId) == null) {
         throw McpException('parentId "$parentId" tidak ditemukan.', code: -32602);
       }
     }
     return _mutateAndSync(
-      frame: frame,
+      page: page,
       mutate: (service) =>
           service.addNode(parentId, html.trim(), position: pos),
     );
   }
 
   Future<Map<String, dynamic>> updateNode({
-    String? frameId,
+    String? pageId,
     required String nodeId,
     String? text,
     Map<String, String>? styles,
   }) async {
-    final frame = _resolveFrame(frameId);
-    final tree = frame.domTree;
+    final page = _resolvePage(pageId);
+    final tree = page.domTree;
     if (tree == null || tree.findById(nodeId) == null) {
       throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
     }
     if (text == null && (styles == null || styles.isEmpty)) {
-      throw McpException(
-        'Sertakan "text" dan/atau "styles".',
-        code: -32602,
-      );
+      throw McpException('Sertakan "text" dan/atau "styles".', code: -32602);
     }
     return _mutateAndSync(
-      frame: frame,
+      page: page,
       mutate: (service) async {
         if (text != null) await service.setNodeText(nodeId, text);
         if (styles != null && styles.isNotEmpty) {
@@ -224,62 +216,41 @@ class McpBridge {
   }
 
   Future<Map<String, dynamic>> deleteNode({
-    String? frameId,
+    String? pageId,
     required String nodeId,
   }) async {
-    final frame = _resolveFrame(frameId);
-    final tree = frame.domTree;
+    final page = _resolvePage(pageId);
+    final tree = page.domTree;
     if (tree == null || tree.findById(nodeId) == null) {
       throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
     }
     return _mutateAndSync(
-      frame: frame,
+      page: page,
       mutate: (service) => service.deleteNode(nodeId),
     );
   }
 
-  /// Pindah/ubah ukuran frame ATAU node (satu-satunya tool layout).
-  /// Frame: geser offset board (snap ikut berlaku, garis tampil live).
-  /// Node: delta CSS via inline style (jalur overlay Fase 1).
+  /// Pindah/ubah ukuran satu node (satu-satunya tool layout sekarang).
+  /// Delta CSS via inline style.
   Future<Map<String, dynamic>> rearrangeLayout({
-    String target = 'node',
-    String? frameId,
+    String? pageId,
     String? id,
     double? dx,
     double? dy,
     double? width,
     double? height,
   }) async {
-    if (target == 'frame') {
-      final frame = _resolveFrame(frameId ?? id);
-      final deltaX = dx ?? 0;
-      final deltaY = dy ?? 0;
-      if (deltaX == 0 && deltaY == 0) {
-        throw McpException('Sertakan dx dan/atau dy.', code: -32602);
-      }
-      _notifier.moveFrame(frame.id, Offset(deltaX, deltaY));
-      final updated = _notifierFrame(frame.id);
-      return {
-        'ok': true,
-        'target': 'frame',
-        'frameId': frame.id,
-        'offsetX': updated?.offset.dx,
-        'offsetY': updated?.offset.dy,
-      };
-    }
-
-    // target node (default).
     final nodeId = id;
     if (nodeId == null) {
       throw McpException('Sertakan "id" node.', code: -32602);
     }
-    final frame = _resolveFrame(frameId);
-    final tree = frame.domTree;
+    final page = _resolvePage(pageId);
+    final tree = page.domTree;
     if (tree == null || tree.findById(nodeId) == null) {
       throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
     }
     return _mutateAndSync(
-      frame: frame,
+      page: page,
       mutate: (service) => service.moveResizeNode(
         nodeId,
         dx: dx,
@@ -288,12 +259,5 @@ class McpBridge {
         height: height,
       ),
     );
-  }
-
-  BoardFrame? _notifierFrame(String frameId) {
-    for (final f in _state.frames) {
-      if (f.id == frameId) return f;
-    }
-    return null;
   }
 }

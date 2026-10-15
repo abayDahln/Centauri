@@ -133,7 +133,7 @@ class McpServer {
       'mcp': request.uri.replace(path: '/mcp').toString(),
       'sse': request.uri.replace(path: '/events').toString(),
       'stateVersion': _stateVersion,
-      'canvas': _bridge?.snapshot(),
+      'workspace': _bridge?.snapshot(),
     });
     await request.response.close();
   }
@@ -273,7 +273,7 @@ class McpServer {
           throw McpException('Argumen "html" wajib.', code: -32602);
         }
         return bridge.addNode(
-          frameId: _optString(arguments['frameId']),
+          pageId: _optString(arguments['pageId'] ?? arguments['frameId']),
           parentId: _optString(arguments['parentId']),
           html: html,
           position: _optString(arguments['position']),
@@ -293,7 +293,7 @@ class McpServer {
           };
         }
         return bridge.updateNode(
-          frameId: _optString(arguments['frameId']),
+          pageId: _optString(arguments['pageId'] ?? arguments['frameId']),
           nodeId: nodeId,
           text: _optString(arguments['text']),
           styles: styles,
@@ -304,13 +304,12 @@ class McpServer {
           throw McpException('Argumen "nodeId" wajib.', code: -32602);
         }
         return bridge.deleteNode(
-          frameId: _optString(arguments['frameId']),
+          pageId: _optString(arguments['pageId'] ?? arguments['frameId']),
           nodeId: nodeId,
         );
       case 'rearrange_layout':
         return bridge.rearrangeLayout(
-          target: _optString(arguments['target']) ?? 'node',
-          frameId: _optString(arguments['frameId']),
+          pageId: _optString(arguments['pageId'] ?? arguments['frameId']),
           id: _optString(arguments['id'] ?? arguments['nodeId']),
           dx: _optDouble(arguments['dx']),
           dy: _optDouble(arguments['dy']),
@@ -331,11 +330,12 @@ class McpServer {
       v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '');
 
   /// Skema 7 tools MCP (publik agar bisa diuji + didokumentasikan).
+  /// `frameId` masih diterima sebagai alias legacy untuk `pageId`.
   static List<Map<String, dynamic>> toolSchemas() => [
     {
       'name': 'get_canvas_structure',
       'description':
-          'Baca struktur canvas: daftar frame + layers tree DOM frame aktif.',
+          'Baca struktur workspace: daftar halaman + layers tree DOM halaman aktif.',
       'inputSchema': {'type': 'object', 'properties': {}},
     },
     {
@@ -358,13 +358,14 @@ class McpServer {
     {
       'name': 'add_node',
       'description':
-          'Tambah elemen HTML ke frame aktif (atau frameId). parentId opsional (default body).',
+          'Tambah elemen HTML ke halaman aktif (atau pageId). parentId opsional (default body).',
       'inputSchema': {
         'type': 'object',
         'properties': {
           'html': {'type': 'string'},
           'parentId': {'type': 'string'},
-          'frameId': {'type': 'string'},
+          'pageId': {'type': 'string'},
+          'frameId': {'type': 'string', 'description': 'Deprecated: pakai pageId.'},
           'position': {
             'type': 'string',
             'enum': ['beforeend', 'afterbegin', 'beforebegin', 'afterend'],
@@ -383,19 +384,21 @@ class McpServer {
           'nodeId': {'type': 'string'},
           'text': {'type': 'string'},
           'styles': {'type': 'object'},
-          'frameId': {'type': 'string'},
+          'pageId': {'type': 'string'},
+          'frameId': {'type': 'string', 'description': 'Deprecated: pakai pageId.'},
         },
         'required': ['nodeId'],
       },
     },
     {
       'name': 'delete_node',
-      'description': 'Hapus satu node dari canvas.',
+      'description': 'Hapus satu node dari halaman.',
       'inputSchema': {
         'type': 'object',
         'properties': {
           'nodeId': {'type': 'string'},
-          'frameId': {'type': 'string'},
+          'pageId': {'type': 'string'},
+          'frameId': {'type': 'string', 'description': 'Deprecated: pakai pageId.'},
         },
         'required': ['nodeId'],
       },
@@ -403,16 +406,13 @@ class McpServer {
     {
       'name': 'rearrange_layout',
       'description':
-          'Geser/ubah ukuran frame (target=frame, butuh dx/dy) atau node (target=node, dx/dy delta CSS, width/height absolut).',
+          'Geser/ubah ukuran satu node (dx/dy delta CSS, width/height absolut).',
       'inputSchema': {
         'type': 'object',
         'properties': {
-          'target': {
-            'type': 'string',
-            'enum': ['frame', 'node'],
-          },
           'id': {'type': 'string'},
-          'frameId': {'type': 'string'},
+          'pageId': {'type': 'string'},
+          'frameId': {'type': 'string', 'description': 'Deprecated: pakai pageId.'},
           'dx': {'type': 'number'},
           'dy': {'type': 'number'},
           'width': {'type': 'number'},

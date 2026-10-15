@@ -11,7 +11,7 @@ import '../../../../app/config/theme.dart';
 import '../../../history/presentation/history_provider.dart';
 import '../../../prompt_editor/data/attachment_service.dart';
 import '../../../prompt_editor/domain/attachment.dart';
-import '../provider/canvas_provider.dart';
+import '../provider/workspace_provider.dart';
 import 'attachment_strip.dart';
 import 'chat_side_panel.dart';
 
@@ -47,26 +47,26 @@ class _PromptBarState extends ConsumerState<PromptBar> {
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    final hasAttachments = ref.read(canvasProvider).attachments.isNotEmpty;
+    final hasAttachments = ref.read(workspaceProvider).attachments.isNotEmpty;
     if (text.isEmpty && !hasAttachments) return;
     _controller.clear();
     // Pastikan user melihat percakapan: buka panel & pindah ke tab Chat.
     ref.read(panelTabProvider.notifier).select(PanelTab.chat);
     ref.read(panelVisibleProvider.notifier).show();
     await ref
-        .read(canvasProvider.notifier)
+        .read(workspaceProvider.notifier)
         .submitPrompt(text.isEmpty ? 'Analisa gambar ini.' : text);
     // Auto-save percakapan + board ke riwayat.
     ref.read(historyProvider.notifier).persistCurrent();
   }
 
   /// Hentikan generate yang sedang berjalan (tombol Stop).
-  void _stop() => ref.read(canvasProvider.notifier).cancelGeneration();
+  void _stop() => ref.read(workspaceProvider.notifier).cancelGeneration();
 
   // ------------------------------------------------------- attachment adds --
 
   void _addAttachment(Attachment attachment) {
-    final error = ref.read(canvasProvider.notifier).addAttachment(attachment);
+    final error = ref.read(workspaceProvider.notifier).addAttachment(attachment);
     if (error != null) _toast(error);
   }
 
@@ -162,7 +162,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(canvasProvider);
+    final state = ref.watch(workspaceProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -201,7 +201,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                       AttachmentStrip(
                         attachments: state.attachments,
                         onRemove: (id) => ref
-                            .read(canvasProvider.notifier)
+                            .read(workspaceProvider.notifier)
                             .removeAttachment(id),
                       ),
                       const SizedBox(height: 8),

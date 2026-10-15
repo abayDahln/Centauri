@@ -16,7 +16,7 @@ void main() {
   tearDownAll(() async {
     await Hive.close();
   });
-  testWidgets('Empty board shows chat landing (not the board)', (
+  testWidgets('Empty workspace shows chat landing (not a preview)', (
     tester,
   ) async {
     tester.view
@@ -26,7 +26,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Mulai dengan sebuah prompt'), findsOneWidget);
-    expect(find.text('Board masih kosong'), findsNothing);
+    expect(find.text('Belum ada halaman'), findsNothing);
     expect(
       find.text('What would you like to change or create?'),
       findsOneWidget,
@@ -55,22 +55,24 @@ void main() {
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });
 
-  testWidgets('Board controls hidden until a UI exists', (tester) async {
+  testWidgets('Workspace controls hidden until a page exists', (tester) async {
     tester.view
       ..physicalSize = const Size(4320, 2700)
       ..devicePixelRatio = 3.0;
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    // Prompt bar (input + kirim) tetap ada; kontrol board lain
-    // (grid/fit/clear) hanya saat board aktif.
-    expect(find.byIcon(Icons.grid_4x4), findsNothing);
-    expect(find.byIcon(Icons.fit_screen_outlined), findsNothing);
+    // Prompt bar (input + kirim) tetap ada; kontrol workspace lain
+    // (mode link, ekspor, undo/redo, bersihkan) hanya saat ada halaman.
+    expect(find.byIcon(Icons.touch_app_outlined), findsNothing);
+    expect(find.byIcon(Icons.undo), findsNothing);
+    expect(find.byIcon(Icons.redo), findsNothing);
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
 
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });
 
-  testWidgets('Side panel with Chat/History opens when board empty', (
+  testWidgets('Side panel with Chat/History opens when workspace empty', (
     tester,
   ) async {
     tester.view

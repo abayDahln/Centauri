@@ -53,23 +53,29 @@ class NodeGeometry {
   }
 }
 
-/// Event seleksi yang datang dari canvas (picker di dalam iframe).
+/// Event seleksi yang datang dari preview.
 class CanvasSelectEvent {
   const CanvasSelectEvent({
     required this.type,
     required this.id,
     this.contentHeight,
+    this.contentWidth,
     this.geometry,
     this.dataUrl,
     this.errorMessage,
     this.html,
+    this.href,
+    this.payload,
   });
 
   /// `select` saat elemen diklik, `hover` saat pointer melewatinya,
-  /// `resize` saat dokumen melaporkan tinggi kontennya,
+  /// `size` saat JS melaporkan ukuran dokumen (lebar & tinggi konten),
+  /// `navigate` saat user mengklik `<a href>` (link antar-halaman / eksternal),
   /// `geometry` saat JS melaporkan bbox + computed style satu node,
   /// `png` saat ekspor PNG selesai (dataUrl PNG),
   /// `pngError` saat ekspor PNG gagal,
+  /// `figma` saat ekspor struktur halaman untuk plugin Figma,
+  /// `figmaError` saat ekspor Figma gagal,
   /// `html` saat JS mengirim dokumen penuh (sinkronisasi pasca-mutasi MCP),
   /// `outerHtml` saat JS mengirim HTML satu node.
   final String type;
@@ -77,8 +83,11 @@ class CanvasSelectEvent {
   /// Id node (`data-centauri-id`), null saat hover keluar.
   final String? id;
 
-  /// Tinggi konten dokumen (untuk event `resize`).
+  /// Tinggi konten dokumen (untuk event `size`).
   final double? contentHeight;
+
+  /// Lebar konten dokumen (untuk event `size`).
+  final double? contentWidth;
 
   /// Geometri node (untuk event `geometry`).
   final NodeGeometry? geometry;
@@ -92,12 +101,16 @@ class CanvasSelectEvent {
   /// HTML dokumen penuh (untuk event `html`) atau satu node (`outerHtml`).
   final String? html;
 
+  /// Target link yang diklik (untuk event `navigate`).
+  final String? href;
+
+  /// Payload struktur halaman (untuk event `figma`): tree node + ukuran.
+  final Map<String, dynamic>? payload;
+
   static CanvasSelectEvent? tryParse(Object? raw) {
     // webview_windows (Desktop) men-decode JSON sebelum ke Dart, sehingga
     // listener menerima Map. webview_flutter (mobile) via JS channel
-    // menerima String mentah. Keduanya didukung agar bridge hidup di
-    // semua platform — sebelumnya Map selalu dibuang (return null) dan
-    // seluruh event JS->Dart di Windows mati diam-diam.
+    // menerima String mentah. Keduanya didukung.
     final Map<String, dynamic> decoded;
     if (raw is Map<String, dynamic>) {
       decoded = raw;
@@ -120,6 +133,7 @@ class CanvasSelectEvent {
       if (type is! String) return null;
       final id = decoded['id'];
       final height = decoded['height'];
+      final width = decoded['width'];
       NodeGeometry? geometry;
       if (type == 'geometry' && id is String) {
         geometry = NodeGeometry.tryParse(id, decoded);
@@ -127,14 +141,19 @@ class CanvasSelectEvent {
       final dataUrl = decoded['dataUrl'];
       final message = decoded['message'];
       final html = decoded['html'];
+      final href = decoded['href'];
+      final payload = decoded['payload'];
       return CanvasSelectEvent(
         type: type,
         id: id is String ? id : null,
         contentHeight: height is num ? height.toDouble() : null,
+        contentWidth: width is num ? width.toDouble() : null,
         geometry: geometry,
         dataUrl: dataUrl is String ? dataUrl : null,
         errorMessage: message is String ? message : null,
         html: html is String ? html : null,
+        href: href is String ? href : null,
+        payload: payload is Map ? Map<String, dynamic>.from(payload) : null,
       );
     } on FormatException {
       return null;
@@ -142,24 +161,21 @@ class CanvasSelectEvent {
   }
 }
 
-/// Abstraksi WebView canvas agar implementasi Android (webview_flutter)
+/// Abstraksi WebView preview agar implementasi Android (webview_flutter)
 /// dan Windows (webview_windows) bisa diisolasi per-platform.
 abstract class CanvasWebviewService {
-  /// Inisialisasi controller native + memuat shell HTML.
+  /// Inisialisasi controller native + memuat dokumen.
   Future<void> init();
 
-  /// Render HTML hasil generate. Null = reset canvas ke placeholder.
+  /// Render HTML halaman. Null = reset ke placeholder kosong.
   Future<void> renderHtml(String? html);
 
-  /// Atur lebar viewport canvas (null = lebar penuh). FR-07.
-  Future<void> setViewportWidth(double? widthPx);
-
-  /// Faktor zoom CSS pada stage canvas (1.0 = normal).
-  Future<void> setZoom(double factor);
+  /// Aktif/matikan intersep klik `<a href>` (navigasi antar-halaman).
+  /// Saat mati, klik apa pun menyeleksi elemen (untuk mengedit link).
+  Future<void> setLinkIntercept(bool enabled);
 
   /// Tandai node sebagai terpilih (selection box + scroll into view).
-  /// Implementasi JS juga mengirim balik event `geometry` agar overlay
-  /// native bisa menggambar box yang akurat.
+  /// Implementasi JS juga mengirim balik event `geometry`.
   Future<void> selectNode(String? id);
 
   /// Tandai node sebagai hover (hover box).
@@ -184,9 +200,17 @@ abstract class CanvasWebviewService {
     double? height,
   });
 
-  /// Minta JS merender dokumen frame menjadi PNG via event `png`/`pngError`.
-  /// Hasil tiba asinkron di [selectionEvents] (Fase 3).
+  /// Minta JS merender dokumen halaman menjadi PNG via event `png`/`pngError`.
+  /// Hasil tiba asinkron di [selectionEvents].
   Future<void> requestFramePng({double pixelRatio = 2});
+
+  /// Minta JS melaporkan ukuran dokumen (lebar & tinggi konten) via event
+  /// `size` (dipakai ekspor SVG tanpa viewport fixed).
+  Future<void> requestDocumentSize();
+
+  /// Minta JS mengekspor struktur halaman untuk plugin Figma via event
+  /// `figma`/`figmaError`.
+  Future<void> requestFigmaPayload();
 
   /// Mutasi DOM untuk MCP bridge (Fase 4). Hasil akhir selalu disinkronkan
   /// ulang via [requestHtml] agar HTML tetap source of truth.

@@ -15,19 +15,19 @@ import '../../mcp/data/mcp_bridge.dart';
 import '../../mcp/data/mcp_server.dart';
 import '../../provider_config/presentation/providers/provider_config_provider.dart';
 import '../data/services/canvas_service_registry.dart';
-import 'frame_preview_page.dart';
-import 'provider/canvas_provider.dart';
+import 'provider/workspace_provider.dart';
 import 'widgets/ai_status_indicator.dart';
-import 'widgets/board_canvas.dart';
 import 'widgets/chat_landing.dart';
 import 'widgets/chat_side_panel.dart';
 import 'widgets/code_panel.dart';
-import 'widgets/frame_export_button.dart';
+import 'widgets/page_export_button.dart';
+import 'widgets/page_preview.dart';
+import 'widgets/page_switcher.dart';
 import 'widgets/prompt_bar.dart';
 
-/// Halaman utama board. Menangani:
+/// Halaman utama workspace (UI & prototype builder). Menangani:
 /// - layout adaptif desktop/mobile,
-/// - auto-save debounce ke penyimpanan lokal (Fase 3),
+/// - auto-save debounce ke penyimpanan lokal,
 /// - restore sesi aktif saat aplikasi dibuka (offline-first).
 class CanvasPreviewPage extends ConsumerStatefulWidget {
   const CanvasPreviewPage({super.key});
@@ -38,8 +38,7 @@ class CanvasPreviewPage extends ConsumerStatefulWidget {
 
 class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
   bool _restored = false;
-  final FocusNode _shortcutFocus = FocusNode(debugLabel: 'canvas-shortcuts');
-  bool _spaceHeld = false;
+  final FocusNode _shortcutFocus = FocusNode(debugLabel: 'workspace-shortcuts');
 
   @override
   void dispose() {
@@ -50,9 +49,7 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
   @override
   void initState() {
     super.initState();
-    // Restore sesi aktif (proyek terakhir) sekali saat halaman dibuka.
     WidgetsBinding.instance.addPostFrameCallback((_) => _restoreSession());
-    // MCP server lokal (Fase 4): hanya desktop, background, idempoten.
     WidgetsBinding.instance.addPostFrameCallback((_) => _startMcpServer());
   }
 
@@ -61,27 +58,21 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
       return;
     }
-    // Saat flutter test, jangan nyalakan server: timer heartbeat background
-    // membuat test "pending timer" gagal dan tidak relevan di lingkungan test.
     if (Platform.environment.containsKey('FLUTTER_TEST')) return;
     try {
       await ref
           .read(mcpServerProvider)
           .start(bridge: McpBridge(ref.container));
     } catch (_) {
-      // Server opsional: kegagalan bind tidak boleh mengganggu board.
+      // Server opsional: kegagalan bind tidak boleh mengganggu workspace.
     }
   }
 
   Future<void> _restoreSession() async {
     if (_restored || !mounted) return;
     _restored = true;
-    final canvas = ref.read(canvasProvider);
-    // Bila board sudah berisi sesuatu (mis. hot reload), jangan sentuh.
-    if (canvas.frames.isNotEmpty || canvas.messages.isNotEmpty) return;
-    // Aplikasi harus selalu mulai dari sesi BARU yang kosong, bukan membuka
-    // kembali percakapan terakhir. Hapus proyek aktif tersimpan & kosongkan
-    // board agar riwayat tidak menyorot sesi lama.
+    final workspace = ref.read(workspaceProvider);
+    if (workspace.pages.isNotEmpty || workspace.messages.isNotEmpty) return;
     try {
       await ref.read(projectRepositoryProvider).clearActiveProjectId();
     } catch (_) {
@@ -92,11 +83,7 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Auto-save: setiap perubahan board (frames/pesan/frame aktif) disimpan
-    // ke Hive setelah jeda 2,5 detik tanpa perubahan (Fase 3).
-    // Live sync MCP (Fase 4): perubahan yang sama disiarkan ke klien SSE.
-    // Undo/redo (Fase 5): snapshot konten SEBELUM perubahan masuk stack.
-    ref.listen(canvasProvider, (previous, next) {
+    ref.listen(workspaceProvider, (previous, next) {
       if (previous != null) {
         _recordUndo(ref, previous, next);
       }
@@ -119,54 +106,31 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     );
   }
 
-  /// Catat snapshot untuk undo bila perubahan menyentuh konten board
-  /// (frames / messages / frame aktif) — bukan sekadar zoom/pan/seleksi.
-  void _recordUndo(WidgetRef ref, CanvasState previous, CanvasState next) {
+  /// Catat snapshot untuk undo bila perubahan menyentuh konten workspace
+  /// (pages / messages / halaman aktif) — bukan sekadar seleksi.
+  void _recordUndo(WidgetRef ref, WorkspaceState previous, WorkspaceState next) {
     final contentChanged =
-        !identical(previous.frames, next.frames) ||
+        !identical(previous.pages, next.pages) ||
         !identical(previous.messages, next.messages) ||
-        previous.activeFrameId != next.activeFrameId;
+        previous.activePageId != next.activePageId;
     if (!contentChanged) return;
-    // Jangan catat saat AI sedang men-delete/rewrite board di tengah proses.
     if (next.isGenerating) return;
-    ref.read(canvasProvider.notifier).recordHistory(previous);
+    ref.read(workspaceProvider.notifier).recordHistory(previous);
   }
 
   /// Hotkey global desktop:
   /// Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z / Ctrl+Y redo, Delete/Backspace hapus
-  /// node terpilih (atau frame aktif), Space (tahan) pan sementara, Ctrl +/-/0
-  /// zoom. Edit visual (move/resize/style) TIDAK disediakan — itu tugas AI.
-  ///
-  /// PENTING: hotkey ini TIDAK BOLEH menelan input saat pengguna sedang
-  /// mengetik di TextField (prompt bar, dsb). Kita lepas kendali begitu ada
-  /// field teks yang fokus. Tanpa ini, Backspace/Space tak sampai ke field.
+  /// node terpilih (atau halaman aktif).
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
-    if (_textFieldHasFocus()) {
-      // Beri field teks kendali penuh atas keyboard.
-      _releaseSpacePanIfHeld();
+    if (_textFieldHasFocus()) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
 
     final isCtrl =
         HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
-
-    // Space (tahan) = tool hand sementara (hanya saat fokus bukan di field).
-    if (event.logicalKey == LogicalKeyboardKey.space) {
-      if (event is KeyDownEvent && !_spaceHeld) {
-        _spaceHeld = true;
-        ref.read(canvasProvider.notifier).setTool(BoardTool.hand);
-      } else if (event is KeyUpEvent && _spaceHeld) {
-        _spaceHeld = false;
-        ref.read(canvasProvider.notifier).setTool(BoardTool.select);
-      }
-      return KeyEventResult.handled;
-    }
-
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-      return KeyEventResult.ignored;
-    }
-    final notifier = ref.read(canvasProvider.notifier);
+    final notifier = ref.read(workspaceProvider.notifier);
 
     if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyZ) {
       if (HardwareKeyboard.instance.isShiftPressed) {
@@ -180,35 +144,14 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
       notifier.redo();
       return KeyEventResult.handled;
     }
-    // Ctrl + '+' / '=' zoom in, Ctrl + '-' zoom out, Ctrl + '0' reset.
-    if (isCtrl &&
-        (event.logicalKey == LogicalKeyboardKey.equal ||
-            event.logicalKey == LogicalKeyboardKey.add ||
-            event.logicalKey == LogicalKeyboardKey.numpadAdd)) {
-      notifier.zoomBy(1.2);
-      return KeyEventResult.handled;
-    }
-    if (isCtrl &&
-        (event.logicalKey == LogicalKeyboardKey.minus ||
-            event.logicalKey == LogicalKeyboardKey.numpadSubtract)) {
-      notifier.zoomBy(1 / 1.2);
-      return KeyEventResult.handled;
-    }
-    if (isCtrl &&
-        (event.logicalKey == LogicalKeyboardKey.digit0 ||
-            event.logicalKey == LogicalKeyboardKey.numpad0)) {
-      notifier.resetView();
-      return KeyEventResult.handled;
-    }
     if (event.logicalKey == LogicalKeyboardKey.delete ||
         event.logicalKey == LogicalKeyboardKey.backspace) {
-      final state = ref.read(canvasProvider);
-      // Prioritas: hapus node terpilih; bila tidak ada, hapus frame aktif.
+      final state = ref.read(workspaceProvider);
       if (state.selectedNodeId != null) {
         _deleteSelectedNode();
         return KeyEventResult.handled;
-      } else if (state.activeFrameId != null) {
-        notifier.deleteFrame(state.activeFrameId!);
+      } else if (state.activePageId != null && state.pages.length > 1) {
+        notifier.deletePage(state.activePageId!);
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
@@ -216,15 +159,12 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     return KeyEventResult.ignored;
   }
 
-  /// True bila ada editable text field yang sedang fokus.
   bool _textFieldHasFocus() {
     final focus = FocusManager.instance.primaryFocus;
     if (focus == null) return false;
-    // FocusNode milik board kita sendiri bukan field teks.
     if (identical(focus, _shortcutFocus)) return false;
     final context = focus.context;
     if (context == null) return false;
-    // Cek widget di sepanjang ancestor: EditableText menandakan TextField.
     var isEditable = false;
     context.visitAncestorElements((element) {
       if (element.widget is EditableText) {
@@ -236,20 +176,13 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     return isEditable;
   }
 
-  /// Lepas tool hand bila space sempat tertahan lalu fokus pindah ke field.
-  void _releaseSpacePanIfHeld() {
-    if (!_spaceHeld) return;
-    _spaceHeld = false;
-    ref.read(canvasProvider.notifier).setTool(BoardTool.select);
-  }
-
   /// Hapus node terpilih via service WebView (jalur yang sama seperti MCP).
   Future<void> _deleteSelectedNode() async {
-    final state = ref.read(canvasProvider);
-    final frameId = state.activeFrameId;
+    final state = ref.read(workspaceProvider);
+    final pageId = state.activePageId;
     final nodeId = state.selectedNodeId;
-    if (frameId == null || nodeId == null) return;
-    final service = CanvasServiceRegistry.forFrame(frameId);
+    if (pageId == null || nodeId == null) return;
+    final service = CanvasServiceRegistry.forFrame(pageId);
     if (service == null) return;
     await service.deleteNode(nodeId);
     await service.requestHtml();
@@ -257,13 +190,16 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
 }
 
 /// Live sync MCP di luar widget agar tidak ter-reset oleh rebuild.
-/// Hanya menaikkan versi + broadcast ringan; no-op bila tak ada klien SSE.
 class _McpLiveSync {
-  static void onChanged(WidgetRef ref, CanvasState? previous, CanvasState next) {
+  static void onChanged(
+    WidgetRef ref,
+    WorkspaceState? previous,
+    WorkspaceState next,
+  ) {
     if (previous == null) return;
-    if (identical(previous.frames, next.frames) &&
+    if (identical(previous.pages, next.pages) &&
         identical(previous.messages, next.messages) &&
-        previous.activeFrameId == next.activeFrameId &&
+        previous.activePageId == next.activePageId &&
         previous.selectedNodeId == next.selectedNodeId) {
       return;
     }
@@ -272,6 +208,7 @@ class _McpLiveSync {
     } catch (_) {}
   }
 }
+
 /// Debounce auto-save di luar widget agar tidak ter-reset oleh rebuild.
 class _AutoSaveDebouncer {
   static final _AutoSaveDebouncer _instance = _AutoSaveDebouncer._();
@@ -281,23 +218,21 @@ class _AutoSaveDebouncer {
 
   static void onChanged(
     WidgetRef ref,
-    CanvasState? previous,
-    CanvasState next,
+    WorkspaceState? previous,
+    WorkspaceState next,
   ) {
     _instance._schedule(ref, previous, next);
   }
 
-  void _schedule(WidgetRef ref, CanvasState? previous, CanvasState next) {
-    // Abaikan perubahan yang tidak terkait konten board.
+  void _schedule(WidgetRef ref, WorkspaceState? previous, WorkspaceState next) {
     if (previous != null &&
-        identical(previous.frames, next.frames) &&
+        identical(previous.pages, next.pages) &&
         identical(previous.messages, next.messages) &&
-        previous.activeFrameId == next.activeFrameId) {
+        previous.activePageId == next.activePageId) {
       return;
     }
-    // Jangan simpan saat AI sedang generate; state akhir akan memicu lagi.
     if (next.isGenerating) return;
-    if (next.frames.isEmpty && next.messages.isEmpty) return;
+    if (next.pages.isEmpty && next.messages.isEmpty) return;
 
     _timer?.cancel();
     _timer = Timer(const Duration(milliseconds: 2500), () {
@@ -325,13 +260,12 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
 
   @override
   Widget build(BuildContext context) {
-    final mode = ref.watch(canvasProvider.select((s) => s.outputMode));
+    final mode = ref.watch(workspaceProvider.select((s) => s.outputMode));
     final showChat = ref.watch(panelVisibleProvider);
     final hasUi = ref.watch(
-      canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
+      workspaceProvider.select((s) => s.hasRenderedPage || s.pages.isNotEmpty),
     );
 
-    // Saat board pertama kali muncul, tampilkan panel chat otomatis.
     if (hasUi && !_autoShownChat) {
       _autoShownChat = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -346,7 +280,7 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
       body: Column(
         children: [
           _TopBar(
-            boardActive: hasUi,
+            workspaceActive: hasUi,
             onTogglePrompt: () =>
                 ref.read(panelVisibleProvider.notifier).toggle(),
             onToggleCode: () => setState(() => _showCode = !_showCode),
@@ -360,42 +294,41 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Panel obrolan (Chat · History) di pojok kiri.
                   if (showChat) ...[
                     const SizedBox(width: 320, child: ChatSidePanel()),
                     const SizedBox(width: 12),
                   ],
                   Expanded(
-                    child: Stack(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (hasUi)
-                          const BoardSurface()
-                        else if (!showChat)
-                          // Belum ada UI & panel chat tertutup: tampilkan
-                          // percakapan besar di tengah sebagai landing.
-                          const ChatLanding()
-                        else
-                          // Panel chat terbuka: tengah cukup latar netral.
-                          const _EmptyCanvasHint(),
-                        if (hasUi)
-                          const Positioned(
-                            right: 16,
-                            top: 16,
-                            bottom: 96,
-                            child: _RightToolbar(),
+                        if (hasUi) ...[
+                          const PageSwitcherBar(),
+                          const SizedBox(height: 8),
+                        ],
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              if (hasUi)
+                                const PagePreview()
+                              else if (!showChat)
+                                const ChatLanding()
+                              else
+                                const _EmptyPreviewHint(),
+                              if (hasUi)
+                                const Positioned(
+                                  left: 16,
+                                  top: 16,
+                                  child: _AiStatusPill(),
+                                ),
+                              const Positioned(
+                                left: 16,
+                                right: 16,
+                                bottom: 16,
+                                child: PromptBar(),
+                              ),
+                            ],
                           ),
-                        // Status live AI saat board aktif (generating frame baru).
-                        if (hasUi)
-                          const Positioned(
-                            left: 16,
-                            top: 16,
-                            child: _BoardStatusPill(),
-                          ),
-                        const Positioned(
-                          left: 16,
-                          right: 16,
-                          bottom: 16,
-                          child: PromptBar(),
                         ),
                       ],
                     ),
@@ -423,14 +356,14 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
 
 class _TopBar extends ConsumerWidget {
   const _TopBar({
-    required this.boardActive,
+    required this.workspaceActive,
     required this.onTogglePrompt,
     required this.onToggleCode,
     required this.promptVisible,
     required this.codeVisible,
   });
 
-  final bool boardActive;
+  final bool workspaceActive;
   final VoidCallback onTogglePrompt;
   final VoidCallback onToggleCode;
   final bool promptVisible;
@@ -439,6 +372,8 @@ class _TopBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = ref.watch(providerConfigProvider).value?.activeProvider;
+    final state = ref.watch(workspaceProvider);
+    final notifier = ref.read(workspaceProvider.notifier);
 
     return SizedBox(
       height: AppColors.topBarHeight,
@@ -446,7 +381,6 @@ class _TopBar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: [
-            // Menu: buka/tutup panel kiri (Chat · History).
             SoftIconButton(
               icon: Icons.menu,
               tooltip: 'Panel (Chat · History)',
@@ -454,15 +388,13 @@ class _TopBar extends ConsumerWidget {
               onPressed: onTogglePrompt,
             ),
             const SizedBox(width: 4),
-            // Konfigurasi provider — selalu tersedia.
             SoftIconButton(
               icon: Icons.settings_outlined,
               tooltip: 'Konfigurasi provider',
               onPressed: () => context.push('/provider-config'),
             ),
             const SizedBox(width: 12),
-            // Toggle panel Code (hanya relevan setelah ada UI).
-            if (boardActive) ...[
+            if (workspaceActive) ...[
               SoftIconButton(
                 icon: Icons.code_outlined,
                 tooltip: 'Code',
@@ -504,7 +436,36 @@ class _TopBar extends ConsumerWidget {
               ),
             ),
             const Spacer(),
-            if (boardActive) const _CanvasViewControls(),
+            if (workspaceActive) ...[
+              SoftIconButton(
+                icon: Icons.touch_app_outlined,
+                tooltip: state.linkInterceptEnabled
+                    ? 'Mode: navigasi link (klik untuk mode seleksi)'
+                    : 'Mode: seleksi elemen (klik untuk mode navigasi)',
+                active: state.linkInterceptEnabled,
+                onPressed: notifier.toggleLinkIntercept,
+              ),
+              const SizedBox(width: 8),
+              const PageExportButton(),
+              const SizedBox(width: 8),
+              SoftIconButton(
+                icon: Icons.undo,
+                tooltip: 'Undo (Ctrl+Z)',
+                onPressed: notifier.undo,
+              ),
+              const SizedBox(width: 4),
+              SoftIconButton(
+                icon: Icons.redo,
+                tooltip: 'Redo (Ctrl+Y)',
+                onPressed: notifier.redo,
+              ),
+              const SizedBox(width: 4),
+              SoftIconButton(
+                icon: Icons.delete_outline,
+                tooltip: 'Bersihkan workspace',
+                onPressed: state.pages.isEmpty ? null : notifier.clearWorkspace,
+              ),
+            ],
           ],
         ),
       ),
@@ -512,14 +473,14 @@ class _TopBar extends ConsumerWidget {
   }
 }
 
-/// Pill status AI mengambang di board (muncul saat generating).
-class _BoardStatusPill extends ConsumerWidget {
-  const _BoardStatusPill();
+/// Pill status AI mengambang (muncul saat generating).
+class _AiStatusPill extends ConsumerWidget {
+  const _AiStatusPill();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = ref.watch(
-      canvasProvider.select((s) => s.status != AiStatus.idle),
+      workspaceProvider.select((s) => s.status != AiStatus.idle),
     );
     if (!active) return const SizedBox.shrink();
 
@@ -536,12 +497,11 @@ class _BoardStatusPill extends ConsumerWidget {
         children: [
           const AiStatusIndicator(compact: true),
           const SizedBox(width: 10),
-          // Tombol Stop: hentikan generate yang berjalan.
           Tooltip(
             message: 'Hentikan generate',
             child: InkWell(
               onTap: () =>
-                  ref.read(canvasProvider.notifier).cancelGeneration(),
+                  ref.read(workspaceProvider.notifier).cancelGeneration(),
               borderRadius: AppRadius.pill,
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -582,244 +542,8 @@ class _BoardStatusPill extends ConsumerWidget {
   }
 }
 
-/// Kontrol kanan atas: zoom, grid, fit, bersihkan.
-/// Layout frame sepenuhnya otomatis dari AI (prompt user / auto-select).
-class _CanvasViewControls extends ConsumerWidget {
-  const _CanvasViewControls();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(canvasProvider);
-    final notifier = ref.read(canvasProvider.notifier);
-
-    return Row(
-      children: [
-        _ZoomChip(scale: state.scale),
-        const SizedBox(width: 8),
-        // Ekspor frame aktif (PNG/SVG/PDF, Fase 3).
-        const FrameExportButton(),
-        const SizedBox(width: 4),
-        SoftIconButton(
-          icon: Icons.grid_4x4,
-          tooltip: 'Dot grid',
-          active: state.showGrid,
-          onPressed: notifier.toggleGrid,
-        ),
-        const SizedBox(width: 4),
-        // Snap Fase 2: magnet ke grid + frame lain.
-        SoftIconButton(
-          icon: Icons.align_horizontal_center,
-          tooltip: state.snapEnabled ? 'Snap: aktif' : 'Snap: mati',
-          active: state.snapEnabled,
-          onPressed: notifier.toggleSnap,
-        ),
-        const SizedBox(width: 4),
-        SoftIconButton(
-          icon: Icons.fit_screen_outlined,
-          tooltip: 'Fit ke frame',
-          onPressed: state.frames.isEmpty
-              ? null
-              : () => notifier.centerOnFrames(boardViewportSize(context)),
-        ),
-        const SizedBox(width: 4),
-        // Undo/redo (Fase 5) — juga tersedia lewat Ctrl+Z / Ctrl+Y.
-        SoftIconButton(
-          icon: Icons.undo,
-          tooltip: 'Undo (Ctrl+Z)',
-          onPressed: notifier.undo,
-        ),
-        const SizedBox(width: 4),
-        SoftIconButton(
-          icon: Icons.redo,
-          tooltip: 'Redo (Ctrl+Y)',
-          onPressed: notifier.redo,
-        ),
-        const SizedBox(width: 4),
-        // Pratinjau/prototype mode (Fase 5).
-        SoftIconButton(
-          icon: Icons.play_circle_outline,
-          tooltip: 'Pratinjau (prototype)',
-          onPressed: state.activeFrame == null
-              ? null
-              : () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => FramePreviewPage(
-                      html: state.activeFrame!.html,
-                      title: state.activeFrame!.title,
-                      width: state.activeFrame!.size.width,
-                    ),
-                  ),
-                ),
-        ),
-        const SizedBox(width: 4),
-        SoftIconButton(
-          icon: Icons.delete_outline,
-          tooltip: 'Bersihkan board',
-          onPressed: state.frames.isEmpty ? null : notifier.clearBoard,
-        ),
-      ],
-    );
-  }
-}
-
-class _ZoomChip extends ConsumerWidget {
-  const _ZoomChip({required this.scale});
-
-  final double scale;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final notifier = ref.read(canvasProvider.notifier);
-    final canZoomOut = scale > CanvasState.minScale + 0.0001;
-    final canZoomIn = scale < CanvasState.maxScale - 0.0001;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        borderRadius: AppRadius.pill,
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Row(
-        children: [
-          SoftIconButton(
-            icon: Icons.remove,
-            tooltip: 'Zoom out',
-            size: 28,
-            iconSize: 15,
-            onPressed: canZoomOut
-                ? () => notifier.zoomBy(1 / 1.2)
-                : null,
-          ),
-          InkWell(
-            onTap: notifier.resetView,
-            child: SizedBox(
-              width: 48,
-              child: Center(
-                child: Text(
-                  '${(scale * 100).round()}%',
-                  style: AppText.uiSmall,
-                ),
-              ),
-            ),
-          ),
-          SoftIconButton(
-            icon: Icons.add,
-            tooltip: 'Zoom in',
-            size: 28,
-            iconSize: 15,
-            onPressed: canZoomIn ? () => notifier.zoomBy(1.2) : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Toolbar vertikal kanan (select / pan / komentar / grid).
-class _RightToolbar extends ConsumerWidget {
-  const _RightToolbar();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tool = ref.watch(canvasProvider.select((s) => s.tool));
-    final notifier = ref.read(canvasProvider.notifier);
-
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
-        decoration: BoxDecoration(
-          color: AppColors.bgSurface,
-          borderRadius: AppRadius.pill,
-          border: Border.all(color: AppColors.borderSubtle),
-          boxShadow: AppColors.shadowRaised,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _ToolButton(
-              icon: Icons.near_me_outlined,
-              tooltip: 'Pilih & geser frame',
-              active: tool == BoardTool.select,
-              onTap: () => notifier.setTool(BoardTool.select),
-            ),
-            _ToolButton(
-              icon: Icons.pan_tool_outlined,
-              tooltip: 'Geser board',
-              active: tool == BoardTool.hand,
-              onTap: () => notifier.setTool(BoardTool.hand),
-            ),
-            _ToolButton(
-              icon: Icons.zoom_out_map,
-              tooltip: 'Fit ke frame',
-              onTap: () =>
-                  notifier.centerOnFrames(boardViewportSize(context)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ToolButton extends StatefulWidget {
-  const _ToolButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-    this.active = false,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-  final bool active;
-
-  @override
-  State<_ToolButton> createState() => _ToolButtonState();
-}
-
-class _ToolButtonState extends State<_ToolButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final background = widget.active
-        ? AppColors.accentSoft
-        : _hovered
-        ? AppColors.hoverBg
-        : Colors.transparent;
-    final color = widget.active
-        ? AppColors.accentPrimary
-        : AppColors.textSecondary;
-
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.symmetric(vertical: 2),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: AppRadius.sm,
-            ),
-            child: Icon(widget.icon, size: 18, color: color),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyCanvasHint extends StatelessWidget {
-  const _EmptyCanvasHint();
+class _EmptyPreviewHint extends StatelessWidget {
+  const _EmptyPreviewHint();
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
@@ -863,99 +587,7 @@ class _EmptyCanvasHint extends StatelessWidget {
   }
 }
 
-
 // ------------------------------------------------------------------ mobile --
-
-/// Toolbar vertikal mengambang di mobile (Fase 5): undo/redo + preview mode.
-class _MobileFloatingToolbar extends ConsumerWidget {
-  const _MobileFloatingToolbar();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final canUndo = ref.watch(canvasProvider.select((s) => s.frames.isNotEmpty));
-    final notifier = ref.read(canvasProvider.notifier);
-    final activeFrame = ref.watch(canvasProvider.select((s) => s.activeFrame));
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _FloatIconButton(
-          icon: Icons.undo,
-          tooltip: 'Undo',
-          onTap: canUndo ? notifier.undo : null,
-        ),
-        const SizedBox(height: 6),
-        _FloatIconButton(
-          icon: Icons.redo,
-          tooltip: 'Redo',
-          onTap: canUndo ? notifier.redo : null,
-        ),
-        const SizedBox(height: 6),
-        _FloatIconButton(
-          icon: Icons.play_circle_outline,
-          tooltip: 'Pratinjau (prototype)',
-          onTap: activeFrame == null
-              ? null
-              : () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => FramePreviewPage(
-                      html: activeFrame.html,
-                      title: activeFrame.title,
-                      width: activeFrame.size.width,
-                    ),
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Tombol ikon kecil bergaya kaca untuk toolbar mengambang.
-class _FloatIconButton extends StatelessWidget {
-  const _FloatIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: AppColors.bgSurface,
-        borderRadius: AppRadius.sm,
-        elevation: 2,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadius.sm,
-          child: Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.borderSubtle),
-              borderRadius: AppRadius.sm,
-            ),
-            child: Icon(
-              icon,
-              size: 17,
-              color: enabled
-                  ? AppColors.textPrimary
-                  : AppColors.textDisabled,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _MobileShell extends ConsumerWidget {
   const _MobileShell();
@@ -963,23 +595,20 @@ class _MobileShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasUi = ref.watch(
-      canvasProvider.select((s) => s.hasRenderedFrame || s.frames.isNotEmpty),
+      workspaceProvider.select((s) => s.hasRenderedPage || s.pages.isNotEmpty),
     );
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
       appBar: AppBar(
         toolbarHeight: 52,
-        title: Text(hasUi ? 'Board' : 'Centauri'),
+        title: Text(hasUi ? 'Prototype' : 'Centauri'),
         actions: [
           SoftIconButton(
             icon: Icons.menu,
             tooltip: 'Panel (Chat · History)',
-            onPressed: () => _openSheet(
-              context,
-              const ChatSidePanel(),
-              heightFactor: 0.75,
-            ),
+            onPressed: () =>
+                _openSheet(context, const ChatSidePanel(), heightFactor: 0.75),
           ),
           SoftIconButton(
             icon: Icons.settings_outlined,
@@ -993,34 +622,36 @@ class _MobileShell extends ConsumerWidget {
               onPressed: () =>
                   _openSheet(context, const CodePanel(), heightFactor: 0.8),
             ),
-            // Ekspor frame (PNG/SVG/PDF, Fase 3) via bottom sheet menu.
-            const FrameExportButton(compact: true),
+            const PageExportButton(compact: true),
           ],
           const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
-          // Peringatan storage (sama seperti desktop): app tetap jalan penuh.
           const StorageBanner(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Stack(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (hasUi) const BoardSurface() else const ChatLanding(),
-                  // Toolbar mengambang (Fase 5): undo/redo + preview.
-                  if (hasUi)
-                    const Positioned(
-                      right: 8,
-                      top: 8,
-                      child: _MobileFloatingToolbar(),
+                  if (hasUi) ...[
+                    const PageSwitcherBar(),
+                    const SizedBox(height: 8),
+                  ],
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        if (hasUi) const PagePreview() else const ChatLanding(),
+                        const Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: PromptBar(),
+                        ),
+                      ],
                     ),
-                  const Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: PromptBar(),
                   ),
                 ],
               ),
@@ -1051,17 +682,8 @@ class _MobileShell extends ConsumerWidget {
   }
 }
 
-/// Ukuran viewport board saat ini (untuk perhitungan fit/center).
-Size boardViewportSize(BuildContext context) {
-  final box = BoardSurface.boardViewportKey.currentContext?.findRenderObject()
-      as RenderBox?;
-  if (box != null && box.hasSize) return box.size;
-  return const Size(900, 600);
-}
-
 /// Peringatan bila penyimpanan lokal gagal dibuka (mis. box Hive di-lock
-/// instance app lain). App tetap jalan penuh; tanpa ini kegagalan storage
-/// hanya terlihat sebagai data hilang tanpa sebab.
+/// instance app lain). App tetap jalan penuh.
 class StorageBanner extends ConsumerStatefulWidget {
   const StorageBanner({super.key});
 

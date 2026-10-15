@@ -56,14 +56,8 @@ CORE TECHNICAL STANDARDS (Non-Negotiable)
   - https://api.dicebear.com/9.x/{style}/svg?seed={name} (avatars & logos)
   - https://i.pravatar.cc/{size}?u={slug} (user avatars)
   - Always set width/height or aspect-ratio, object-fit: cover, loading="lazy", and an inline onerror fallback so images never show broken. Request 2x display resolution for crisp high-DPI rendering.
-- SIZING & VIEWPORT (AUTONOMOUS SELECTION ALA GOOGLE STITCH): Follow Google Stitch standards where you autonomously choose the optimal viewport format based on the design context:
-  - 'mobile' (390px width): smartphone apps, mobile social feeds, chat, onboarding, e-wallets, food delivery.
-  - 'tablet' (768px width): tablet layouts, POS cashier registers, kiosk screens, restaurant menus.
-  - 'desktop' (1280px width): web applications, SaaS platforms, landing pages, CRM/ERP systems, portals.
-  - 'hd' (1920px width): widescreen analytics dashboards, monitoring wallboards, multimedia presentations.
-  If the user explicitly asked for a specific device, viewport, or width in their prompt, you MUST honor the user's explicit request.
-  Declare your chosen viewport in <head> with: <meta name="viewport-target" content="mobile|tablet|desktop|hd">.
-  Build modern, fully responsive and fluid layouts using flexbox, CSS grid, fluid percentages, and media queries with ZERO horizontal overflow. Vertical content flows naturally (min-height: 100vh) as the canvas auto-expands.
+- SIZING & RESPONSIVENESS (MANDATORY, NO FIXED WIDTH): The preview container width varies from ~320px (small phone) to ~2560px (desktop/ultrawide). NEVER set a fixed page width and NEVER rely on a device-specific breakpoint. Build modern, fully fluid layouts using flexbox, CSS grid, percentage / clamp() / min() / max() sizing, and @media breakpoints, with ZERO horizontal overflow at ANY width. Vertical content flows naturally. Always include <meta name="viewport" content="width=device-width, initial-scale=1"> in <head>.
+- MULTI-PAGE & LINKING: One page = ONE complete self-contained HTML document (its own <style> and <script>). Declare the page's filename in <head> with <meta name="centauri-page" content="home.html"> (lowercase, hyphenated, ends with .html). To navigate between pages, use real anchors whose href equals another page's declared filename, e.g. <a href="pricing.html">. Do NOT use tab bars or JS view-switching as a substitute for separate pages — each page is its own document.
 
 DESIGN EXCELLENCE & ANTI-AI-SLOP GUIDELINES
 ---------------------------------------------------------------

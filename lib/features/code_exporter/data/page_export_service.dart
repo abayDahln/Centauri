@@ -11,40 +11,32 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../canvas_preview/data/services/canvas_service_registry.dart';
 
-class FrameExportException implements Exception {
-  FrameExportException(this.message);
+class PageExportException implements Exception {
+  PageExportException(this.message);
   final String message;
 
   @override
   String toString() => message;
 }
 
-/// Ekspor frame aktif ke PNG/SVG/PDF (Fase 3, offline-first).
+/// Ekspor halaman aktif ke PNG/SVG/PDF (offline-first).
 /// - SVG: murni Dart (bungkus HTML dalam foreignObject), tanpa WebView.
-/// - PNG: render via WebView frame (`centauriExportPng`) → data URL.
+/// - PNG: render via WebView halaman (`centauriExportPng`) → data URL.
 /// - PDF: bungkus PNG dalam satu halaman PDF (paket `pdf`, murni Dart).
-class FrameExportService {
-  /// Bungkus HTML frame menjadi SVG standalone.
-  /// HTML di-parse lalu diserialisasi sebagai XHTML yang well-formed di
-  /// dalam `foreignObject`, sehingga file .svg yang dibuka langsung di
-  /// browser menampilkan desain aslinya (bukan teks keterangan).
-  /// `<script>` dibuang (tidak dieksekusi di konteks SVG).
-  /// Catatan: gambar/stylesheet eksternal tetap berupa URL (butuh internet
-  /// saat dilihat).
+class PageExportService {
+  /// Bungkus HTML halaman menjadi SVG standalone.
   String buildStandaloneSvg({
     required String html,
     required double width,
     required double height,
   }) {
-    final w = width.isFinite && width > 0 ? width.round() : 390;
-    final h = height.isFinite && height > 0 ? height.round() : 844;
+    final w = width.isFinite && width > 0 ? width.round() : 1440;
+    final h = height.isFinite && height > 0 ? height.round() : 2000;
 
     final document = html_parser.parse(html);
     for (final script in document.querySelectorAll('script')) {
       script.remove();
     }
-    // Serializer `html` menulis isi komentar apa adanya; komentar yang
-    // memuat '<', '--', atau ']]>' bisa merusak dokumen SVG. Buang saja.
     _removeComments(document.documentElement);
     final root = document.documentElement;
     String xhtml;
@@ -56,7 +48,6 @@ class FrameExportService {
           '${document.body?.innerHtml ?? html}'
           '</div>';
     }
-    // Jangan sertakan doctype HTML; tidak valid dalam dokumen SVG.
     xhtml = xhtml.replaceFirst(
       RegExp(r'<!DOCTYPE[^>]*>', caseSensitive: false),
       '',
@@ -82,19 +73,13 @@ class FrameExportService {
     }
   }
 
-  /// Serialized HTML belum tentu XHTML valid. Untuk `<foreignObject>` di
-  /// dokumen SVG (diparse sebagai XML): element tanpa penutup harus
-  /// self-close dan `<style>` butuh namespace xhtml agar CSS ikut diterapkan.
   static const _voidElements = {
     'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
     'link', 'meta', 'param', 'source', 'track', 'wbr',
-    // Bentuk SVG yang lazim ditulis tanpa penutup di HTML.
     'circle', 'ellipse', 'line', 'path', 'polygon', 'polyline', 'rect', 'stop',
     'use',
   };
 
-  /// Isi tag pembuka (tanpa '>' penutup): bagian quoted/unquoted bergantian,
-  /// tanpa '>' telanjang, dan tidak memakan '/' penanda self-closing.
   static String _openTagBody({bool stopBeforeClose = false}) {
     const dq = '"';
     const sq = "'";
@@ -111,7 +96,6 @@ class FrameExportService {
 
   static final _voidTagPattern = () {
     final names = _voidElements.join('|');
-    // Tag yang sudah punya penutup sesuai dilewati.
     return RegExp(
       '<($names)(${_openTagBody(stopBeforeClose: true)})>'
       '(?!\\s*</(?:$names)>)',
@@ -146,13 +130,35 @@ class FrameExportService {
     );
   }
 
-  /// Minta frame aktif merender PNG. Tunggu event `png`/`pngError`
-  /// dari stream service frame tersebut (timeout 20 detik).
-  Future<Uint8List> capturePngBytes(String frameId) async {
-    final service = CanvasServiceRegistry.forFrame(frameId);
+  /// Ukuran dokumen halaman (lebar & tinggi konten) via event `size`.
+  /// Fallback 1440×2000 bila WebView belum siap.
+  Future<({double width, double height})> _documentSize(String pageId) async {
+    final service = CanvasServiceRegistry.forFrame(pageId);
+    if (service == null) return (width: 1440.0, height: 2000.0);
+    try {
+      final future = service.selectionEvents
+          .firstWhere((e) => e.type == 'size')
+          .timeout(const Duration(seconds: 8));
+      await service.requestDocumentSize();
+      final event = await future;
+      final w = event.contentWidth ?? 0;
+      final h = event.contentHeight ?? 0;
+      return (
+        width: w > 0 ? w : 1440.0,
+        height: h > 0 ? h : 2000.0,
+      );
+    } catch (_) {
+      return (width: 1440.0, height: 2000.0);
+    }
+  }
+
+  /// Minta halaman aktif merender PNG. Tunggu event `png`/`pngError`
+  /// dari stream service halaman tersebut (timeout 20 detik).
+  Future<Uint8List> capturePngBytes(String pageId) async {
+    final service = CanvasServiceRegistry.forFrame(pageId);
     if (service == null) {
-      throw FrameExportException(
-        'Frame belum siap (WebView belum terinisialisasi). Tunggu sebentar.',
+      throw PageExportException(
+        'Halaman belum siap (WebView belum terinisialisasi). Tunggu sebentar.',
       );
     }
 
@@ -160,7 +166,7 @@ class FrameExportService {
         .firstWhere((e) => e.type == 'png' || e.type == 'pngError')
         .timeout(
           const Duration(seconds: 20),
-          onTimeout: () => throw FrameExportException(
+          onTimeout: () => throw PageExportException(
             'Ekspor PNG timeout. Coba lagi.',
           ),
         );
@@ -168,22 +174,21 @@ class FrameExportService {
 
     final event = await future;
     if (event.type == 'pngError') {
-      throw FrameExportException(
+      throw PageExportException(
         event.errorMessage ?? 'Ekspor PNG gagal tanpa pesan.',
       );
     }
     final dataUrl = event.dataUrl;
     if (dataUrl == null || !dataUrl.startsWith('data:image/png;base64,')) {
-      throw FrameExportException('Hasil PNG tidak valid.');
+      throw PageExportException('Hasil PNG tidak valid.');
     }
     try {
       return base64Decode(dataUrl.substring('data:image/png;base64,'.length));
     } catch (_) {
-      throw FrameExportException('Hasil PNG rusak (base64 tidak valid).');
+      throw PageExportException('Hasil PNG rusak (base64 tidak valid).');
     }
   }
 
-  /// Bungkus PNG menjadi PDF satu halaman (ukuran mengikuti gambar).
   Future<Uint8List> buildPdfFromPng(Uint8List pngBytes) async {
     final doc = pw.Document();
     final image = pw.MemoryImage(pngBytes);
@@ -212,7 +217,7 @@ class FrameExportService {
       await File(outputPath).writeAsBytes(bytes, flush: true);
       return outputPath;
     } catch (_) {
-      throw FrameExportException(
+      throw PageExportException(
         'Gagal menulis file ke $outputPath. Coba lokasi lain.',
       );
     }
@@ -233,44 +238,47 @@ class FrameExportService {
       await File(outputPath).writeAsString(text, flush: true);
       return outputPath;
     } catch (_) {
-      throw FrameExportException(
+      throw PageExportException(
         'Gagal menulis file ke $outputPath. Coba lokasi lain.',
       );
     }
   }
 
   Future<String?> saveSvg({
-    required String frameTitle,
+    required String pageName,
+    required String pageId,
     required String html,
-    required double width,
-    required double height,
-  }) {
-    final name = _safeName(frameTitle);
+  }) async {
+    final size = await _documentSize(pageId);
     return _saveText(
-      dialogTitle: 'Ekspor frame sebagai SVG',
-      fileName: '$name.svg',
-      text: buildStandaloneSvg(html: html, width: width, height: height),
+      dialogTitle: 'Ekspor halaman sebagai SVG',
+      fileName: '${_safeName(pageName)}.svg',
+      text: buildStandaloneSvg(
+        html: html,
+        width: size.width,
+        height: size.height,
+      ),
     );
   }
 
   Future<String?> savePng({
-    required String frameTitle,
+    required String pageName,
     required Uint8List pngBytes,
   }) {
     return _saveBytes(
-      dialogTitle: 'Ekspor frame sebagai PNG',
-      fileName: '${_safeName(frameTitle)}.png',
+      dialogTitle: 'Ekspor halaman sebagai PNG',
+      fileName: '${_safeName(pageName)}.png',
       bytes: pngBytes,
     );
   }
 
   Future<String?> savePdf({
-    required String frameTitle,
+    required String pageName,
     required Uint8List pdfBytes,
   }) {
     return _saveBytes(
-      dialogTitle: 'Ekspor frame sebagai PDF',
-      fileName: '${_safeName(frameTitle)}.pdf',
+      dialogTitle: 'Ekspor halaman sebagai PDF',
+      fileName: '${_safeName(pageName)}.pdf',
       bytes: pdfBytes,
     );
   }
@@ -281,6 +289,6 @@ class FrameExportService {
         .trim()
         .replaceAll(RegExp(r'\s+'), '-')
         .toLowerCase();
-    return cleaned.isEmpty ? 'centauri-frame' : cleaned;
+    return cleaned.isEmpty ? 'centauri-page' : cleaned;
   }
 }

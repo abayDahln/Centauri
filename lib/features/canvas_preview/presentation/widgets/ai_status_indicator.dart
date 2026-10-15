@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
-import '../provider/canvas_provider.dart';
+import '../provider/workspace_provider.dart';
 
 /// Indikator live status AI (ala Claude/Gemini/ChatGPT): label status yang
 /// berdenyut, titik bergerak, dan penghitung waktu berjalan.
@@ -32,7 +32,7 @@ class _AiStatusIndicatorState extends ConsumerState<AiStatusIndicator>
 
   @override
   Widget build(BuildContext context) {
-    final status = ref.watch(canvasProvider.select((s) => s.status));
+    final status = ref.watch(workspaceProvider.select((s) => s.status));
 
     if (status == AiStatus.idle) return const SizedBox.shrink();
 

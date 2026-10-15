@@ -51,6 +51,7 @@ dependencies:
   desktop_drop: ^0.8.4
   super_clipboard: ^0.9.1
   pdf: ^3.13.1
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

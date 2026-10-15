@@ -1,13 +1,9 @@
 /// Jembatan JS Centauri yang di-inject LANGSUNG ke dokumen konten (tanpa
 /// iframe). Berjalan di dokumen yang dirender AI sendiri, sehingga seleksi,
-/// overlay, dan baca/tulis gaya selalu sinkron dengan HTML yang terlihat.
+/// overlay, navigasi antar-halaman, dan baca/tulis gaya selalu sinkron dengan
+/// HTML yang terlihat.
 ///
-/// Alasan arsitektur: WebView2 memuat dokumen via `NavigateToString`
-/// (origin `about:blank`). Memuat iframe `srcdoc` di dalamnya rapuh —
-/// frame tampil kosong dan bridge mati tanpa error. Dengan meng-inject bridge
-/// ke dokumen konten, `document` adalah dokumen konten itu sendiri.
-///
-/// Kontrak (anti-menyimpang, lihat docs/feature_map.md §7):
+/// Kontrak:
 ///  - id stabil `data-centauri-id` di-stamp di Dart; JS tidak generate id
 ///    (kecuali node baru via MCP yang memakai prefix `m`).
 ///  - JS hanya melaporkan metadata via event, dan menulis inline style.
@@ -24,11 +20,11 @@ const String canvasBridgeScript = r'''
   if (window.__centauriReady) return; // idempoten: jangan dobel listener
   window.__centauriReady = true;
 
-  var designWidth = 0;
   var overlay = null;
   var hoverBox = null;
   var selectBox = null;
   var selectedId = null;
+  var linkIntercept = true;
 
   function sendToHost(payload) {
     try {
@@ -44,8 +40,7 @@ const String canvasBridgeScript = r'''
     } catch (e) { /* host bridge belum siap */ }
   }
 
-  // Laporkan error JS apa pun ke Dart (hardening): agar kegagalan render
-  // terlihat sebagai pesan, bukan frame putih tanpa penjelasan.
+  // Laporkan error JS apa pun ke Dart (hardening).
   window.onerror = function (message, source, line) {
     sendToHost({ type: 'error', message: String(message) +
       (line ? (' @' + line) : '') });
@@ -108,14 +103,25 @@ const String canvasBridgeScript = r'''
     return null;
   }
 
+  // Pastikan dokumen punya <meta name="viewport"> agar fluid di semua ukuran.
+  function ensureViewportMeta() {
+    try {
+      var head = document.head || document.documentElement;
+      if (!head) return;
+      if (document.querySelector('meta[name="viewport"]')) return;
+      var meta = document.createElement('meta');
+      meta.setAttribute('name', 'viewport');
+      meta.setAttribute('content', 'width=device-width, initial-scale=1');
+      head.appendChild(meta);
+    } catch (e) { /* abaikan */ }
+  }
+
   function attachPicker() {
     if (!document.body) return;
-    hideFrameScrollbars();
-    lockBrowserZoom();
+    ensureViewportMeta();
     applySharpnessDefaults();
     ensureOverlay();
     ensureImageFallback();
-    scheduleContentSizeReports();
 
     document.addEventListener('mouseover', function (e) {
       var id = idFromEvent(e);
@@ -130,6 +136,22 @@ const String canvasBridgeScript = r'''
     }, true);
 
     document.addEventListener('click', function (e) {
+      // Mode navigasi: klik <a href> membuka halaman lain (link antar-halaman)
+      // atau link eksternal. Anchor (#...) dibiarkan (browser scroll sendiri).
+      if (linkIntercept) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (a) {
+          var href = a.getAttribute('href') || '';
+          if (href && href.charAt(0) !== '#' &&
+              href.indexOf('javascript:') !== 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            sendToHost({ type: 'navigate', href: href });
+            return;
+          }
+        }
+      }
+      // Mode seleksi: klik elemen untuk memberi konteks ke AI.
       var id = idFromEvent(e);
       if (!id) return;
       e.preventDefault();
@@ -145,7 +167,6 @@ const String canvasBridgeScript = r'''
     }, true);
 
     refreshSelection();
-    // Beri tahu Dart bahwa dokumen siap (frame bisa dianggap ter-render).
     sendToHost({ type: 'ready' });
   }
 
@@ -153,176 +174,7 @@ const String canvasBridgeScript = r'''
     if (selectedId) placeBox(selectBox, rectOf(selectedId));
   }
 
-  // Ukur tinggi konten dokumen lalu laporkan ke Dart agar frame bisa
-  // menyesuaikan tinggi (konten utuh, tanpa scrollbar).
-  // PENTING: pakai tinggi konten RIIL (tepi bawah elemen terakhir), bukan
-  // scrollHeight mentah — `min-height:100vh` membuat scrollHeight selalu ==
-  // tinggi viewport walau konten pendek (mis. form login), sehingga frame
-  // terlihat jauh lebih besar dari UI di dalamnya.
-  function reportContentSize() {
-    try {
-      var docHeight = Math.max(
-        document.body ? document.body.scrollHeight : 0,
-        document.documentElement ? document.documentElement.scrollHeight : 0
-      );
-      var contentBottom = 0;
-      if (document.body) {
-        var kids = document.body.children;
-        for (var i = 0; i < kids.length; i++) {
-          var el = kids[i];
-          if (!el || !el.hasAttribute) continue;
-          if (el.hasAttribute('data-centauri-overlay')) continue;
-          if (el.id === 'centauri-bridge') continue;
-          var tag = el.tagName ? el.tagName.toLowerCase() : '';
-          if (tag === 'script' || tag === 'style') continue;
-          // Tinggi anak bisa berupa min-height:100vh walau isinya lebih
-          // panjang; pakai scrollHeight anak agar konten yang ber-overflow
-          // tetap terhitung (feed panjang, dsb).
-          var elH = Math.max(el.offsetHeight || 0, el.scrollHeight || 0);
-          var bottom = (el.offsetTop || 0) + elH;
-          try {
-            var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
-            if (cs && cs.marginBottom) bottom += parseFloat(cs.marginBottom) || 0;
-          } catch (e) {}
-          if (bottom > contentBottom) contentBottom = bottom;
-        }
-        try {
-          var bcs = window.getComputedStyle ? window.getComputedStyle(document.body) : null;
-          if (bcs) {
-            contentBottom += (parseFloat(bcs.paddingBottom) || 0);
-          }
-        } catch (e) {}
-      }
-      // Ambil tinggi konten RIIL: bila tepi-bawah anak-anak body lebih pendek
-      // dari scrollHeight (kasus min-height:100vh memaksa body setinggi
-      // viewport), pakai contentBottom agar frame tidak lebih besar dari isi.
-      // Bila konten justru lebih tinggi (mis. satu anak ber-overflow), pakai
-      // scrollHeight agar tidak terpotong.
-      var height = docHeight;
-      if (contentBottom > 0) height = contentBottom;
-      if (height > 0) sendToHost({ type: 'resize', height: height });
-    } catch (e) { /* abaikan */ }
-  }
-
-  // Laporkan tinggi konten beberapa kali (gambar/font memuat asinkron dapat
-  // mengubah tinggi dokumen setelah load pertama). Blok kosong raksasa juga
-  // dilipat ulang tiap tick (konten JS-inject yang telat bisa mengosongkan /
-  // mengisi blok setelah load).
-  function scheduleContentSizeReports() {
-    collapseEmptyBlocks();
-    reportContentSize();
-    var delays = [150, 400, 900, 1600];
-    for (var i = 0; i < delays.length; i++) {
-      setTimeout(function () { collapseEmptyBlocks(); reportContentSize(); }, delays[i]);
-    }
-    try {
-      var imgs = document.querySelectorAll('img');
-      for (var j = 0; j < imgs.length; j++) {
-        imgs[j].addEventListener('load', function () { reportContentSize(); });
-      }
-    } catch (e) { /* abaikan */ }
-  }
-
-  // Lipat blok KOSONG yang raksasa: AI kadang menyisakan section/div
-  // setinggi ratusan px tanpa isi (spacer, panel detail kosong sebelum
-  // interaksi, min-height berlebih) sehingga frame terlihat punya "white
-  // space" besar padahal tidak ada yang terpotong — kekosongan itu memang
-  // bagian dari dokumen. Hanya yang aman dilipat: tinggi >= 480px, tanpa
-  // teks, tanpa media/kontrol/iframe, tanpa background-image, dan bukan
-  // overlay/seleksi/elemen terpilih.
-  function collapseEmptyBlocks() {
-    try {
-      if (!document.body) return;
-      var els = document.body.querySelectorAll(
-        'section,div,main,article,aside,header,footer');
-      for (var i = 0; i < els.length; i++) {
-        var el = els[i];
-        if (!el || !el.getAttribute) continue;
-        if (el.hasAttribute('data-centauri-overlay')) continue;
-        if (el.id === 'centauri-bridge') continue;
-        if (el.id === 'centauri-scroll-fix' || el.id === 'centauri-sharp' ||
-            el.id === 'centauri-img-fix' || el.id === 'centauri-zoom-lock') {
-          continue;
-        }
-        if (selectedId && el.getAttribute('data-centauri-id') === selectedId) {
-          continue;
-        }
-        var h = el.offsetHeight || 0;
-        if (!(h >= 480)) continue;
-        var txt = '';
-        try { txt = (el.innerText || '').replace(/\s+/g, ' ').trim(); } catch (e) {}
-        if (txt.length > 0) continue;
-        try {
-          if (el.querySelector('img,picture,video,audio,iframe,canvas,svg,' +
-              'input,button,select,textarea,table')) continue;
-        } catch (e) {}
-        try {
-          var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
-          var bg = cs ? (cs.backgroundImage || '') : '';
-          if (bg && bg !== 'none') continue;
-        } catch (e) {}
-        try { el.style.display = 'none'; } catch (e) {}
-      }
-    } catch (e) { /* abaikan */ }
-  }
-
-  // Sembunyikan scrollbar dokumen yang dirender agar UI tampil bersih.
-  function hideFrameScrollbars() {
-    try {
-      var style = document.getElementById('centauri-scroll-fix');
-      if (!style) {
-        style = document.createElement('style');
-        style.id = 'centauri-scroll-fix';
-        (document.head || document.documentElement).appendChild(style);
-      }
-      style.textContent =
-        'html{overflow:hidden;}body{overflow:hidden;}' +
-        '::-webkit-scrollbar{width:0;height:0;display:none;}' +
-        '*{scrollbar-width:none;-ms-overflow-style:none;}';
-    } catch (e) { /* abaikan */ }
-  }
-
-  // Kunci zoom bawaan browser agar isi frame SELALU fix: skala HANYA diatur
-  // board (Transform Flutter / zoomFactor WebView2), bukan halaman.
-  // Tanpa ini, pinch atau Ctrl+scroll tepat di atas frame men-zoom isi
-  // halaman (double-zoom) karena WebView2/Edge menangani gestur secara native
-  // sebelum Flutter sempat melihat event-nya.
-  function lockBrowserZoom() {
-    try {
-      var style = document.getElementById('centauri-zoom-lock');
-      if (!style) {
-        style = document.createElement('style');
-        style.id = 'centauri-zoom-lock';
-        (document.head || document.documentElement).appendChild(style);
-      }
-      // touch-action tanpa pinch-zoom menonaktifkan pinch-zoom browser.
-      style.textContent =
-        'html{touch-action:pan-x pan-y !important;}';
-      var guard = function (e) {
-        if (e.ctrlKey || e.metaKey) {
-          try { e.preventDefault(); } catch (err) {}
-        }
-      };
-      // Ctrl+scroll (page zoom) dibatalkan; scroll biasa tetap jalan.
-      window.addEventListener('wheel', guard, { passive: false });
-      // Ctrl plus/minus/nol (keyboard zoom) dibatalkan.
-      window.addEventListener('keydown', function (e) {
-        if ((e.ctrlKey || e.metaKey) &&
-            (e.key === '+' || e.key === '-' || e.key === '=' ||
-             e.key === '0')) {
-          try { e.preventDefault(); } catch (err) {}
-        }
-      });
-      // Gestur legacy Safari.
-      document.addEventListener('gesturestart', function (e) {
-        try { e.preventDefault(); } catch (err) {}
-      });
-    } catch (e) { /* abaikan */ }
-  }
-
-  // Default ketajaman render: font anti-alias + teks legible agar hasil
-  // tidak burik saat board di-zoom (downscale texture). Non-breaking:
-  // hanya smoothing, tidak mengubah layout/warna.
+  // Default ketajaman render: font anti-alias + teks legible.
   function applySharpnessDefaults() {
     try {
       var style = document.getElementById('centauri-sharp');
@@ -340,10 +192,7 @@ const String canvasBridgeScript = r'''
   }
 
   // Jaring pengaman gambar: bila sebuah <img> gagal dimuat, beri latar gradien
-  // lembut agar UI tidak menampilkan kotak rusak. PENTING: `src` TIDAK dihapus
-  // (menghapus src memunculkan ikon rusak + teks alt; itu yang terjadi dulu).
-  // Cukup tambah kelas fallback yang mengisi latar; gambar (bila sempat
-  // berhasil dimuat) tetap menutupinya.
+  // lembut agar UI tidak menampilkan kotak rusak. `src` TIDAK dihapus.
   function ensureImageFallback() {
     try {
       if (document.getElementById('centauri-img-fix')) return;
@@ -359,7 +208,6 @@ const String canvasBridgeScript = r'''
         (function (img) {
           if (img.dataset.centauriImg) return;
           img.dataset.centauriImg = '1';
-          // Sudah selesai tapi tanpa piksel (gagal) -> tandai langsung.
           if (img.complete && img.naturalWidth === 0) {
             img.classList.add('centauri-fallback');
             return;
@@ -372,7 +220,7 @@ const String canvasBridgeScript = r'''
     } catch (e) { /* abaikan */ }
   }
 
-  // Dipanggil dari Dart saat tree memilih / hover node.
+  // Dipanggil dari Dart saat memilih / hover node.
   function centauriSelect(id) {
     selectedId = id;
     if (!id) { if (selectBox) selectBox.style.display = 'none'; return; }
@@ -389,9 +237,10 @@ const String canvasBridgeScript = r'''
     placeBox(hoverBox, rectOf(id));
   }
 
-  // Fase 1+2 — JS bridge metadata (HTML tetap source of truth).
-  // Daftar props dibaca via getComputedStyle untuk inspector (Fase 2).
-  // Selalu sertakan juga inline style bila computed kosong.
+  function centauriSetLinkIntercept(enabled) {
+    linkIntercept = !!enabled;
+  }
+
   var __centauriWatchedProps = ['display', 'position', 'left', 'top',
     'width', 'height', 'margin', 'marginTop', 'marginRight', 'marginBottom',
     'marginLeft', 'padding', 'paddingTop', 'paddingRight', 'paddingBottom',
@@ -415,8 +264,6 @@ const String canvasBridgeScript = r'''
       try { styles['tag'] = el.tagName ? el.tagName.toLowerCase() : ''; }
       catch (e) {}
     }
-    // Inline style menang: lebih akurat untuk apa yang akan diedit inspector
-    // (computed bisa normalisasi warna/font menjadi bentuk lain).
     try {
       for (var j = 0; j < __centauriWatchedProps.length; j++) {
         var kk = __centauriWatchedProps[j];
@@ -432,12 +279,11 @@ const String canvasBridgeScript = r'''
       rect: { x: r.left, y: r.top, w: r.width, h: r.height },
       styles: styles };
     sendToHost(payload);
-    // Jaga box seleksi tetap sinkron setelah inspect dari layers panel.
     placeBox(selectBox, { x: r.left, y: r.top, w: r.width, h: r.height });
     return payload;
   }
 
-  // Satu-satunya jalur tulis Fase 1: set inline style, bukan scene graph.
+  // Satu-satunya jalur tulis: set inline style, bukan scene graph.
   function centauriApplyStyle(id, patch) {
     if (!id || !patch) return false;
     var el = document.querySelector('[data-centauri-id="' + id + '"]');
@@ -446,7 +292,6 @@ const String canvasBridgeScript = r'''
       try { el.style[k] = patch[k]; } catch (e) {}
     }
     placeBox(selectBox, rectOf(id));
-    reportContentSize();
     return true;
   }
 
@@ -458,8 +303,6 @@ const String canvasBridgeScript = r'''
       var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
       var pos = cs ? cs.position : '';
       if (pos === 'static') el.style.position = 'relative';
-      // Move sebagai DELTA (aman untuk flow layout): left/top adalah offset
-      // dari posisi normal, jadi tambah, jangan set absolut.
       if (box.dx) {
         var cur = parseFloat(el.style.left) || 0;
         el.style.left = (cur + box.dx) + 'px';
@@ -472,41 +315,22 @@ const String canvasBridgeScript = r'''
       if (box.h !== undefined && box.h !== null) el.style.height = box.h + 'px';
     } catch (e) { return false; }
     placeBox(selectBox, rectOf(id));
-    reportContentSize();
-    // Konfirmasi balik agar overlay native akurat.
     setTimeout(function () { centauriInspect(id); }, 60);
     return true;
   }
 
-  // Lebar CSS desain (mis. 390px). Lebar ini FIXED dan tidak boleh berubah
-  // saat board di-zoom: zoom hanya memperbesar/memperkecil tampilan, bukan
-  // meng-reflow layout. Pada Windows, skala board ditangani oleh zoomFactor
-  // WebView2, jadi dokumen selalu 100%. Pada mobile (tanpa zoomFactor native)
-  // skala diterapkan lewat transform CSS di setZoom.
-  function setViewport(width) {
-    designWidth = width || 0;
-    if (window.__centauriNativeZoom) return; // native zoom mengurus skala
-    var el = document.documentElement;
-    el.style.width = (width ? width + 'px' : '100%');
-    el.style.maxWidth = (width ? width + 'px' : '100%');
+  // Ukuran dokumen (dipakai ekspor SVG tanpa viewport fixed).
+  function centauriGetSize() {
+    try {
+      var w = Math.max(document.body ? document.body.scrollWidth : 0,
+        document.documentElement ? document.documentElement.scrollWidth : 0);
+      var h = Math.max(document.body ? document.body.scrollHeight : 0,
+        document.documentElement ? document.documentElement.scrollHeight : 0);
+      sendToHost({ type: 'size', width: w, height: h });
+    } catch (e) {}
   }
 
-  function setZoom(factor) {
-    if (window.__centauriNativeZoom) return; // native zoom mengurus skala
-    // Fallback (mobile): skala via transform dari kiri atas.
-    var el = document.documentElement;
-    var f = factor || 1;
-    el.style.transformOrigin = 'top left';
-    el.style.transform = (f !== 1) ? 'scale(' + f + ')' : 'none';
-  }
-
-  // Ditandai host Windows yang memakai zoomFactor native WebView2.
-  function centauriSetNativeZoom(enabled) {
-    window.__centauriNativeZoom = !!enabled;
-  }
-
-  // Fase 4 — mutasi DOM untuk MCP bridge (external agent).
-  // Semua tulis tetap inline di DOM; Dart sinkron ulang via centauriGetHtml.
+  // Mutasi DOM untuk MCP bridge (external agent).
   function __centauriQuery(id) {
     if (!id) return null;
     var el = document.querySelector('[data-centauri-id="' + id + '"]');
@@ -515,7 +339,6 @@ const String canvasBridgeScript = r'''
 
   function __centauriSync() {
     placeBox(selectBox, selectedId ? rectOf(selectedId) : null);
-    reportContentSize();
     return true;
   }
 
@@ -526,8 +349,6 @@ const String canvasBridgeScript = r'''
         ? document.querySelector('[data-centauri-id="' + parentId + '"]')
         : document.body;
       if (!parent) return false;
-      // Stamp id unik sisi-JS untuk node baru (prefix m agar tak bentrok
-      // dengan counter Dart n*); Dart me-rebuild tree dari HTML hasil.
       var stamp = 'm' + Date.now().toString(36);
       var tpl = document.createElement('template');
       tpl.innerHTML = html.trim();
@@ -573,15 +394,14 @@ const String canvasBridgeScript = r'''
     } catch (e) { return false; }
   }
 
-  // Buang elemen internal (overlay seleksi + script bridge) sebelum HTML
-  // dikirim/diekspor, agar tidak bocor ke hasil simpan.
+  // Buang elemen internal (overlay + style/script bridge) sebelum HTML dikirim.
   function __centauriCleanClone() {
     var clone = document.documentElement.cloneNode(true);
     var junk = clone.querySelectorAll('[data-centauri-overlay]');
     for (var i = 0; i < junk.length; i++) {
       if (junk[i].parentNode) junk[i].parentNode.removeChild(junk[i]);
     }
-    var extras = ['#centauri-scroll-fix', '#centauri-img-fix', '#centauri-sharp', '#centauri-bridge'];
+    var extras = ['#centauri-img-fix', '#centauri-sharp', '#centauri-bridge'];
     for (var j = 0; j < extras.length; j++) {
       var node = clone.querySelector(extras[j]);
       if (node && node.parentNode) node.parentNode.removeChild(node);
@@ -589,7 +409,6 @@ const String canvasBridgeScript = r'''
     return clone;
   }
 
-  // Kirim HTML dokumen penuh (untuk sinkronisasi Dart pasca-mutasi).
   function centauriGetHtml() {
     if (!document.documentElement) return null;
     try {
@@ -621,9 +440,7 @@ const String canvasBridgeScript = r'''
     }
   }
 
-  // Fase 3 — ekspor PNG dokumen via SVG foreignObject → canvas.
-  // Gambar eksternal di-inline ke data URL dulu (fetch → blob) supaya canvas
-  // tidak di-taint oleh sumber cross-origin (toDataURL SecurityError).
+  // Ekspor PNG dokumen via SVG foreignObject → canvas.
   function centauriExportPng(pixelRatio) {
     if (!document.documentElement) {
       sendToHost({ type: 'pngError', message: 'Dokumen belum siap.' });
@@ -641,7 +458,6 @@ const String canvasBridgeScript = r'''
         sendToHost({ type: 'pngError', message: 'Ukuran dokumen nol.' });
         return;
       }
-      // Batasi piksel agar tidak OOM pada dokumen sangat panjang.
       var maxPixels = 4096 * 4096;
       while (w * scale * h * scale > maxPixels && scale > 1) scale -= 0.25;
 
@@ -689,7 +505,6 @@ const String canvasBridgeScript = r'''
         img.src = blobUrl;
       });
 
-      // Kumpulkan URL gambar eksternal (img src + background inline style).
       var urls = {};
       var nodes = clone.querySelectorAll('img, [style]');
       for (var j = 0; j < nodes.length; j++) {
@@ -739,10 +554,7 @@ const String canvasBridgeScript = r'''
           .then(guard(function (dataUrl) {
             if (dataUrl) swapImage(url, dataUrl);
           }))
-          .catch(function () {
-            // Gambar gagal di-inline (server tanpa CORS): biarkan apa adanya;
-            // rasterize tetap dicoba dan pngError dilaporkan bila tainted.
-          })
+          .catch(function () { /* biarkan apa adanya */ })
           .then(finishOne, finishOne);
       });
     } catch (e) {
@@ -751,23 +563,120 @@ const String canvasBridgeScript = r'''
     }
   }
 
-  // Ekspos API ke Dart (window.centauriXxx).
+  // Ekspor struktur halaman ke payload Figma (dipakai plugin companion).
+  // Menghasilkan tree node dengan bbox + computed style + teks langsung,
+  // agar plugin bisa merekonstruksi frame/layer yang bisa diedit.
+  var __figmaStyleKeys = ['backgroundColor', 'color', 'fontSize', 'fontWeight',
+    'fontFamily', 'lineHeight', 'letterSpacing', 'textAlign', 'borderRadius',
+    'borderWidth', 'borderStyle', 'borderColor', 'opacity', 'display',
+    'flexDirection', 'justifyContent', 'alignItems', 'gap', 'paddingTop',
+    'paddingRight', 'paddingBottom', 'paddingLeft', 'boxShadow', 'overflow'];
+
+  function __figmaStyles(el) {
+    var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+    var out = {};
+    if (!cs) return out;
+    for (var i = 0; i < __figmaStyleKeys.length; i++) {
+      var k = __figmaStyleKeys[i];
+      try { out[k] = cs[k] || ''; } catch (e) { out[k] = ''; }
+    }
+    return out;
+  }
+
+  function __figmaLabel(el, tag) {
+    if (el.id) return tag + '#' + el.id;
+    var cls = el.className ? String(el.className).trim() : '';
+    if (cls) return tag + '.' + cls.split(/\s+/)[0];
+    return tag;
+  }
+
+  function __figmaNode(el, depth) {
+    var tag = el.tagName ? el.tagName.toLowerCase() : 'element';
+    var r = el.getBoundingClientRect();
+    var sx = window.scrollX || 0;
+    var sy = window.scrollY || 0;
+    var children = [];
+    var kids = el.children || [];
+    for (var i = 0; i < kids.length; i++) {
+      var child = kids[i];
+      var ct = child.tagName ? child.tagName.toLowerCase() : '';
+      if (ct === 'script' || ct === 'style' || ct === 'meta' ||
+          ct === 'link' || ct === 'noscript' || ct === 'template') continue;
+      if (child.getAttribute && child.getAttribute('data-centauri-overlay')) continue;
+      children.push(__figmaNode(child, depth + 1));
+    }
+    var text = '';
+    var nodes = el.childNodes || [];
+    for (var j = 0; j < nodes.length; j++) {
+      if (nodes[j].nodeType === 3) {
+        var t = nodes[j].data.replace(/\s+/g, ' ').trim();
+        if (t) text += (text ? ' ' : '') + t;
+      }
+    }
+    return {
+      id: (el.getAttribute && el.getAttribute('data-centauri-id')) || '',
+      tag: tag,
+      name: __figmaLabel(el, tag),
+      rect: { x: r.left + sx, y: r.top + sy, w: r.width, h: r.height },
+      styles: __figmaStyles(el),
+      text: text,
+      children: children
+    };
+  }
+
+  function centauriExportFigma() {
+    if (!document.body) {
+      sendToHost({ type: 'figmaError', message: 'Dokumen belum siap.' });
+      return;
+    }
+    try {
+      var w = Math.max(document.body.scrollWidth || 0,
+        document.documentElement ? document.documentElement.scrollWidth || 0 : 0);
+      var h = Math.max(document.body.scrollHeight || 0,
+        document.documentElement ? document.documentElement.scrollHeight || 0 : 0);
+      var nodes = [];
+      var kids = document.body.children || [];
+      for (var i = 0; i < kids.length; i++) {
+        var el = kids[i];
+        var t = el.tagName ? el.tagName.toLowerCase() : '';
+        if (t === 'script' || t === 'style' || t === 'meta' ||
+            t === 'link' || t === 'noscript') continue;
+        if (el.getAttribute && el.getAttribute('data-centauri-overlay')) continue;
+        nodes.push(__figmaNode(el, 0));
+      }
+      var pageMeta = document.querySelector('meta[name="centauri-page"]');
+      sendToHost({ type: 'figma', payload: {
+        app: 'centauri',
+        format: 'centauri-figma',
+        version: 1,
+        page: {
+          name: document.title || '',
+          slug: pageMeta ? (pageMeta.getAttribute('content') || '') : '',
+          width: w,
+          height: h
+        },
+        nodes: nodes
+      }});
+    } catch (e) {
+      sendToHost({ type: 'figmaError',
+        message: 'Ekspor Figma gagal: ' + (e && e.message ? e.message : e) });
+    }
+  }
+
   window.centauriSelect = centauriSelect;
   window.centauriHover = centauriHover;
   window.centauriInspect = centauriInspect;
   window.centauriApplyStyle = centauriApplyStyle;
   window.centauriMoveResize = centauriMoveResize;
-  window.centauriSetNativeZoom = centauriSetNativeZoom;
+  window.centauriSetLinkIntercept = centauriSetLinkIntercept;
+  window.centauriGetSize = centauriGetSize;
   window.centauriAddNode = centauriAddNode;
   window.centauriSetText = centauriSetText;
   window.centauriDeleteNode = centauriDeleteNode;
   window.centauriGetHtml = centauriGetHtml;
   window.centauriGetOuterHtml = centauriGetOuterHtml;
   window.centauriExportPng = centauriExportPng;
-  window.setViewport = setViewport;
-  window.setZoom = setZoom;
-  window.clearCanvas = function () { /* tidak dipakai: Dart memuat HTML baru */ };
-  window.renderCanvas = function () { /* tidak dipakai: Dart memuat HTML baru */ };
+  window.centauriExportFigma = centauriExportFigma;
 
   function boot() {
     if (document.body) {
@@ -784,21 +693,11 @@ const String canvasBridgeScript = r'''
 
 /// Menyuntikkan [canvasBridgeScript] ke dalam [html] sebagai `<script>`
 /// tepat sebelum `</body>` (fallback: sebelum `</html>`, terakhir: append).
-/// [nativeZoom] menandai shell bahwa skala ditangani zoomFactor native
-/// (Windows), sehingga setViewport/setZoom tidak menerapkan transform CSS.
 ///
 /// Script diberi id [_bridgeScriptId] agar bisa dibuang saat ekspor/sinkron.
-String injectBridge(String html, {required bool nativeZoom}) {
-  final buffer = StringBuffer()
-    ..write('<script id="')
-    ..write(_bridgeScriptId)
-    ..write('">\n')
-    ..write('window.__centauriNativeZoom = ')
-    ..write(nativeZoom ? 'true' : 'false')
-    ..write(';\n')
-    ..write(canvasBridgeScript)
-    ..write('\n</script>\n');
-  final injection = buffer.toString();
+String injectBridge(String html) {
+  final injection =
+      '<script id="$_bridgeScriptId">\n$canvasBridgeScript\n</script>\n';
 
   final lower = html.toLowerCase();
   final bodyClose = lower.lastIndexOf('</body>');

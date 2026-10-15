@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
-import '../../canvas_preview/presentation/provider/canvas_provider.dart';
+import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import 'code_export_view.dart';
 
 /// Screen standalone ekspor kode (route '/code-export').
@@ -12,7 +12,7 @@ class CodeExporterPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final htmlSource = ref.watch(canvasProvider).activeFrame?.html;
+    final htmlSource = ref.watch(workspaceProvider).activePage?.html;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ekspor Kode')),

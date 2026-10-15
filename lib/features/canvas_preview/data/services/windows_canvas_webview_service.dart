@@ -35,8 +35,6 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   bool _ready = false;
   bool _disposed = false;
   String? _pendingHtml;
-  double? _pendingViewportWidth;
-  double _pendingZoom = 1;
 
   /// Host virtual unik per-instance + folder temp-nya. Dipetakan dengan
   /// [WebviewController.addVirtualHostNameMapping] agar dokumen punya origin
@@ -156,45 +154,34 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
       return;
     }
 
-    // Inject bridge (native zoom aktif di Windows) lalu muat sebagai dokumen
-    // konten nyata. Origin web (https://host-virtual) membuat gambar
-    // eksternal dapat dimuat (bukan `about:blank` yang memblokir subresource).
-    final document = injectBridge(html, nativeZoom: true);
+    // Inject bridge lalu muat sebagai dokumen konten nyata. Origin web
+    // (https://host-virtual) membuat gambar eksternal dapat dimuat.
+    final document = injectBridge(html);
 
     _navigationCompleter = Completer<void>();
     await _loadDocument(document);
-    // Tunggu navigasi selesai agar setViewport/setZoom tidak balapan dengan
-    // pemuatan dokumen (dulu `_waitForDomReady` bisa selesai prematur).
     await _navigationCompleter!.future.timeout(
       const Duration(seconds: 8),
       onTimeout: () {},
     );
-
-    // Terapkan state tampilan yang mungkin sudah berubah.
-    await setViewportWidth(_pendingViewportWidth);
-    await setZoom(_pendingZoom);
   }
 
   @override
-  Future<void> setViewportWidth(double? widthPx) async {
-    _pendingViewportWidth = widthPx;
+  Future<void> setLinkIntercept(bool enabled) async {
     if (!_ready || _disposed) return;
-    await _safeExecute('window.setViewport(${widthPx ?? 'null'})');
+    await _safeExecute('window.centauriSetLinkIntercept(${enabled ? 'true' : 'false'})');
   }
 
   @override
-  Future<void> setZoom(double factor) async {
-    _pendingZoom = factor;
+  Future<void> requestDocumentSize() async {
     if (!_ready || _disposed) return;
-    // ZoomFactor WebView2 menskalakan piksel CSS: viewport CSS menjadi
-    // (lebar widget * dpr) / (dpr * factor), sehingga desain tetap pada lebar
-    // CSS aslinya namun dirender tajam saat board di-zoom.
-    final clamped = factor.clamp(0.1, 5.0);
-    try {
-      await _controller.setZoomFactor(clamped);
-    } catch (e) {
-      debugPrint('[canvas] setZoomFactor gagal: $e');
-    }
+    await _safeExecute('window.centauriGetSize()');
+  }
+
+  @override
+  Future<void> requestFigmaPayload() async {
+    if (!_ready || _disposed) return;
+    await _safeExecute('window.centauriExportFigma()');
   }
 
   @override

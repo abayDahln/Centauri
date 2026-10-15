@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
 import '../../../prompt_editor/domain/attachment.dart';
-import '../provider/canvas_provider.dart';
+import '../provider/workspace_provider.dart';
 import 'ai_status_indicator.dart';
 import 'attachment_preview_dialog.dart';
 import 'markdown_message.dart';
@@ -15,7 +15,7 @@ class ChatLanding extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(canvasProvider);
+    final state = ref.watch(workspaceProvider);
     final messages = state.messages;
 
     return Container(
