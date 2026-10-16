@@ -6,29 +6,15 @@ import '../../../app/config/routes.dart';
 import '../../../app/config/theme.dart';
 import '../../canvas_preview/presentation/widgets/skeleton.dart';
 import '../../mcp/presentation/mcp_status_section.dart';
-import '../domain/catalog/catalog_selection.dart';
 import '../domain/entities/api_provider.dart';
-import 'provider_navigation_args.dart';
 import 'providers/provider_config_provider.dart';
-import 'widgets/centauri_table.dart';
 import 'widgets/delete_provider_dialog.dart';
 
-/// Layar daftar provider: tabel provider tersimpan + aksi tambah/edit/hapus.
+/// Layar daftar provider: list kartu provider tersimpan + aksi tambah/hapus.
 ///
-/// Merupakan pintu masuk ke layar detail (tambah/edit) dan layar katalog.
+/// Merupakan pintu masuk ke layar tambah provider dan detail/edit provider.
 class ProviderListPage extends ConsumerWidget {
   const ProviderListPage({super.key});
-
-  Future<void> _openCatalog(BuildContext context) async {
-    final selection = await context.push<CatalogSelection>(
-      AppRoutes.providersCatalog,
-    );
-    if (selection == null || !context.mounted) return;
-    context.push(
-      AppRoutes.providerNew,
-      extra: ProviderDetailArgs(selection: selection),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -83,11 +69,6 @@ class ProviderListPage extends ConsumerWidget {
   Widget _buildActions(BuildContext context) {
     return Row(
       children: [
-        OutlinedButton.icon(
-          onPressed: () => _openCatalog(context),
-          icon: const Icon(Icons.apps, size: 16),
-          label: const Text('Dari Katalog', style: TextStyle(fontSize: 13)),
-        ),
         const Spacer(),
         ElevatedButton.icon(
           onPressed: () => context.push(AppRoutes.providerNew),
@@ -174,93 +155,97 @@ class ProviderListPage extends ConsumerWidget {
     final oauthStatus =
         asyncState.value?.oauthStatus ?? const <String, OAuthStatus>{};
 
-    return CentauriTable<ApiProvider>(
-      columns: [
-        CentauriTableColumn<ApiProvider>(
-          label: 'Provider',
-          flex: 4,
-          cell: (_, provider) => _nameCell(provider),
-        ),
-        CentauriTableColumn<ApiProvider>(
-          label: 'Model',
-          flex: 3,
-          cell: (_, provider) => _mono(provider.model),
-        ),
-        CentauriTableColumn<ApiProvider>(
-          label: 'Autentikasi',
-          flex: 3,
-          cell: (_, provider) => _authCell(
-            provider,
-            oauthStatus[provider.id] ?? OAuthStatus.none,
-          ),
-        ),
-        CentauriTableColumn<ApiProvider>(
-          label: 'Aksi',
-          width: 140,
-          alignment: Alignment.centerRight,
-          cell: (context, provider) => _actionsCell(
+    // List kartu vertikal (bukan tabel) agar teks panjang seperti Base URL
+    // dan nama model tampil penuh tanpa terpotong.
+    return Column(
+      children: [
+        for (var i = 0; i < providers.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          _providerCard(
             context,
             ref,
-            provider,
-            provider.id == activeProviderId,
+            providers[i],
+            providers[i].id == activeProviderId,
+            oauthStatus[providers[i].id] ?? OAuthStatus.none,
           ),
-        ),
-      ],
-      rows: providers,
-      rowKey: (provider) => provider.id,
-      onRowTap: (provider) =>
-          context.push(AppRoutes.providerDetail(provider.id)),
-      isActive: (provider) => provider.id == activeProviderId,
-    );
-  }
-
-  Widget _nameCell(ApiProvider provider) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                provider.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                provider.baseUrl,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: AppFonts.monoFamily,
-                  fontFamilyFallback: AppFonts.monoFallback,
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ],
     );
   }
 
-  Widget _mono(String text) {
-    return Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        fontFamily: AppFonts.monoFamily,
-        fontFamilyFallback: AppFonts.monoFallback,
-        fontSize: 11,
-        color: AppColors.textSecondary,
+  Widget _providerCard(
+    BuildContext context,
+    WidgetRef ref,
+    ApiProvider provider,
+    bool isActive,
+    OAuthStatus status,
+  ) {
+    return InkWell(
+      onTap: () => context.push(AppRoutes.providerDetail(provider.id)),
+      borderRadius: AppRadius.md,
+      hoverColor: AppColors.hoverBg,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          border: Border.all(
+            color: isActive ? AppColors.accentPrimary : AppColors.borderSubtle,
+            width: isActive ? 1.5 : 1,
+          ),
+          borderRadius: AppRadius.md,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        provider.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (provider.baseUrl.trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          provider.baseUrl,
+                          style: const TextStyle(
+                            fontFamily: AppFonts.monoFamily,
+                            fontFamilyFallback: AppFonts.monoFallback,
+                            fontSize: 11,
+                            height: 1.5,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _actionsCell(context, ref, provider, isActive),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _authCell(provider, status),
+                if (provider.model.trim().isNotEmpty)
+                  _chip(provider.model, AppColors.textSecondary),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

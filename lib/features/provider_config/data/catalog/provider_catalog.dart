@@ -320,7 +320,7 @@ class ProviderCatalog {
       id: 'chutes',
       name: 'Chutes',
       category: ProviderCategory.apiKey,
-      baseUrl: 'https://llm.chutes.ai/v1',
+      baseUrl: 'https://api.chutes.ai/v1',
       defaultModel: 'deepseek-ai/DeepSeek-V3',
       icon: Icons.memory,
       brandColor: Color(0xFF1E88E5),
@@ -353,6 +353,18 @@ class ProviderCatalog {
       website: 'https://commandcode.ai',
       apiKeyUrl: 'https://commandcode.ai/studio/',
       note: 'Provider API OpenAI-compat (butuh paket berbayar)',
+    ),
+    ProviderCatalogEntry(
+      id: 'kiro-ai',
+      name: 'Kiro AI',
+      category: ProviderCategory.apiKey,
+      baseUrl: 'http://localhost:3000/v1',
+      defaultModel: 'kiro',
+      icon: Icons.assistant,
+      brandColor: Color(0xFF9046FF),
+      textIcon: 'KR',
+      website: 'https://kiro.dev',
+      note: 'Via kiro-openai-proxy lokal (OpenAI-compat)',
     ),
 
     // -------------------------------------------------------------- lokal --

@@ -108,7 +108,8 @@ class _ProviderCardState extends State<ProviderCard> {
   }
 }
 
-/// Tile logo provider: ikon brand (SimpleIcons) atau inisial teks.
+/// Tile logo provider: ikon aset PNG (`assets/icons/`) bila tersedia, lalu
+/// ikon brand (SimpleIcons), atau inisial teks sebagai fallback.
 class ProviderLogo extends StatelessWidget {
   const ProviderLogo({super.key, required this.logo});
 
@@ -116,6 +117,7 @@ class ProviderLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final assetPath = logo.assetPath;
     return Container(
       width: 40,
       height: 40,
@@ -124,16 +126,31 @@ class ProviderLogo extends StatelessWidget {
         borderRadius: AppRadius.md,
       ),
       alignment: Alignment.center,
-      child: logo.brandIcon != null
-          ? Icon(logo.brandIcon, size: 22, color: logo.color)
-          : Text(
-              logo.textIcon,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: logo.color,
+      child: assetPath != null
+          ? ClipRRect(
+              borderRadius: AppRadius.sm,
+              child: Image.asset(
+                assetPath,
+                width: 28,
+                height: 28,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _fallbackText(),
               ),
-            ),
+            )
+          : logo.brandIcon != null
+              ? Icon(logo.brandIcon, size: 22, color: logo.color)
+              : _fallbackText(),
+    );
+  }
+
+  Widget _fallbackText() {
+    return Text(
+      logo.textIcon,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: logo.color,
+      ),
     );
   }
 }

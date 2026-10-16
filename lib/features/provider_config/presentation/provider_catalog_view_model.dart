@@ -9,16 +9,21 @@ import '../domain/oauth/oauth_provider_preset.dart';
 
 /// Data logo satu provider untuk [ProviderLogo].
 ///
-/// [brandIcon] diisi logo brand asli (SimpleIcons) bila tersedia; jika null,
-/// kartu menampilkan [textIcon] sebagai fallback bebas-asset.
+/// Prioritas render: [assetPath] (ikon PNG dari `assets/icons/`) → [brandIcon]
+/// (logo brand SimpleIcons) → [textIcon] sebagai fallback bebas-asset.
 class ProviderLogoData {
   const ProviderLogoData({
     required this.color,
     required this.textIcon,
     this.brandIcon,
+    this.assetPath,
   });
 
   final IconData? brandIcon;
+
+  /// Path aset ikon, mis. `assets/icons/claude.png`. Null bila memakai
+  /// [brandIcon] atau [textIcon].
+  final String? assetPath;
   final Color color;
   final String textIcon;
 }
@@ -77,16 +82,22 @@ class ProviderCatalogViewModel {
         'codebuddy',
         'zai-glm',
         'grok-cli',
-        'kiro',
       ],
     ),
     (
       title: 'Free Tier',
-      ids: ['opencode', 'openrouter', 'nvidia', 'ollama-cloud', 'google-gemini'],
+      ids: ['opencode', 'openrouter', 'nvidia', 'ollama-cloud', 'gemini'],
     ),
     (
       title: 'API Key',
-      ids: ['command-code', 'groq', 'minimax', 'mistral', 'custom-api'],
+      ids: [
+        'command-code',
+        'groq',
+        'minimax',
+        'mistral',
+        'kiro-ai',
+        'custom-api',
+      ],
     ),
   ];
 
@@ -132,7 +143,7 @@ class ProviderCatalogViewModel {
   }
 
   static String _displayName(String id, String fallback) =>
-      id == 'google-gemini' ? 'Gemini' : fallback;
+      id == 'google-gemini' || id == 'gemini' ? 'Gemini' : fallback;
 
   static String _presetSubtitle(OAuthProviderPreset preset) =>
       preset.isTokenOnly ? 'Login • token saja' : 'Login OAuth';
@@ -146,9 +157,9 @@ class ProviderCatalogViewModel {
     switch (id) {
       case 'claude-code':
         return const ProviderLogoData(
-          brandIcon: SimpleIcons.claude,
           color: Color(0xFFD97757),
           textIcon: 'CL',
+          assetPath: 'assets/icons/claude.png',
         );
       case 'github-copilot':
         return const ProviderLogoData(
@@ -164,9 +175,9 @@ class ProviderCatalogViewModel {
         );
       case 'cline':
         return const ProviderLogoData(
-          brandIcon: SimpleIcons.cline,
           color: Color(0xFF14B8A6),
           textIcon: 'CL',
+          assetPath: 'assets/icons/cline.png',
         );
       case 'opencode':
         return const ProviderLogoData(
@@ -193,6 +204,7 @@ class ProviderCatalogViewModel {
           textIcon: 'OL',
         );
       case 'google-gemini':
+      case 'gemini':
         return const ProviderLogoData(
           brandIcon: SimpleIcons.googlegemini,
           color: Color(0xFF4285F4),
@@ -211,25 +223,66 @@ class ProviderCatalogViewModel {
           textIcon: 'MI',
         );
       case 'antigravity':
-        return const ProviderLogoData(color: Color(0xFF7C4DFF), textIcon: 'AG');
+        return const ProviderLogoData(
+          color: Color(0xFF7C4DFF),
+          textIcon: 'AG',
+          assetPath: 'assets/icons/antigravity.png',
+        );
       case 'qoder':
-        return const ProviderLogoData(color: Color(0xFF5B5BD6), textIcon: 'Q');
+        return const ProviderLogoData(
+          color: Color(0xFF5B5BD6),
+          textIcon: 'Q',
+          assetPath: 'assets/icons/qoder.png',
+        );
       case 'openai-codex':
-        return const ProviderLogoData(color: Color(0xFF10A37F), textIcon: 'CX');
+        return const ProviderLogoData(
+          color: Color(0xFF10A37F),
+          textIcon: 'CX',
+          assetPath: 'assets/icons/codex.png',
+        );
       case 'kilo-code':
-        return const ProviderLogoData(color: Color(0xFFFF6B35), textIcon: 'KC');
+        return const ProviderLogoData(
+          color: Color(0xFFFF6B35),
+          textIcon: 'KC',
+          assetPath: 'assets/icons/kilo.png',
+        );
       case 'codebuddy':
-        return const ProviderLogoData(color: Color(0xFF0052D9), textIcon: 'CB');
+        return const ProviderLogoData(
+          color: Color(0xFF0052D9),
+          textIcon: 'CB',
+          assetPath: 'assets/icons/codebuddy.png',
+        );
       case 'zai-glm':
-        return const ProviderLogoData(color: Color(0xFF4E5AF2), textIcon: 'GL');
+        return const ProviderLogoData(
+          color: Color(0xFF4E5AF2),
+          textIcon: 'GL',
+          assetPath: 'assets/icons/zai.png',
+        );
       case 'grok-cli':
-        return const ProviderLogoData(color: Color(0xFF1A1A1A), textIcon: 'GK');
+        return const ProviderLogoData(
+          color: Color(0xFF1A1A1A),
+          textIcon: 'GK',
+          assetPath: 'assets/icons/grok.png',
+        );
       case 'kiro':
-        return const ProviderLogoData(color: Color(0xFF9046FF), textIcon: 'KR');
+      case 'kiro-ai':
+        return const ProviderLogoData(
+          color: Color(0xFF9046FF),
+          textIcon: 'KR',
+          assetPath: 'assets/icons/kiro.png',
+        );
       case 'command-code':
-        return const ProviderLogoData(color: Color(0xFF6D28D9), textIcon: 'CC');
+        return const ProviderLogoData(
+          color: Color(0xFF6D28D9),
+          textIcon: 'CC',
+          assetPath: 'assets/icons/commandcode.png',
+        );
       case 'groq':
-        return const ProviderLogoData(color: Color(0xFFF55036), textIcon: 'GQ');
+        return const ProviderLogoData(
+          color: Color(0xFFF55036),
+          textIcon: 'GQ',
+          assetPath: 'assets/icons/groq.png',
+        );
       case 'custom-api':
         return const ProviderLogoData(color: Color(0xFF5F6368), textIcon: 'CU');
       default:
