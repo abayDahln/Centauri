@@ -1,4 +1,18 @@
-/// Konfigurasi OAuth 2.0 (Authorization Code + PKCE) untuk sebuah provider.
+import 'oauth_flow.dart';
+
+/// Konfigurasi OAuth 2.0 untuk sebuah provider.
+///
+/// Mendukung dua alur ([flow]):
+///  - [OAuthFlow.authorizationCode] (default): Authorization Code + PKCE via
+///    redirect loopback.
+///  - [OAuthFlow.deviceCode]: Device Authorization Grant (RFC 8628) atau
+///    dialek custom ([deviceFlowStyle]).
+///
+/// Untuk device flow, [authorizationUrl] dipakai sebagai:
+///  - RFC 8628: endpoint `device_authorization` (di-POST untuk minta kode);
+///  - Qoder: base login URL (parameter challenge/machine_id/nonce ditambah
+///    lokal oleh klien).
+/// [tokenUrl] menjadi endpoint polling token pada kedua dialek.
 ///
 /// Catatan keamanan: [clientId] untuk klien publik PKCE bersifat non-rahasia,
 /// jadi aman diserialisasi ke Hive. [clientSecret] (bila ada) TIDAK disimpan
@@ -16,12 +30,21 @@ class OAuthConfig {
     this.extraTokenParams = const {},
     this.usePkce = true,
     this.isExperimental = false,
+    this.flow = OAuthFlow.authorizationCode,
+    this.deviceFlowStyle = DeviceFlowStyle.rfc8628,
+    this.tokenExchange = TokenExchangeStyle.none,
+    this.tokenBodyFormat = TokenBodyFormat.form,
+    this.callbackPath,
+    this.importSource,
+    this.isTokenOnly = false,
   });
 
-  /// Endpoint otorisasi (tempat browser diarahkan).
+  /// Endpoint otorisasi (Authorization Code) / device_authorization (RFC 8628)
+  /// / base login URL (Qoder). Lihat catatan kelas.
   final String authorizationUrl;
 
-  /// Endpoint tukar token (code → access/refresh token).
+  /// Endpoint tukar token (code → access/refresh token) atau endpoint polling
+  /// device token.
   final String tokenUrl;
 
   /// Client id publik PKCE.
@@ -54,6 +77,31 @@ class OAuthConfig {
   /// sehingga UI wajib menampilkan peringatan.
   final bool isExperimental;
 
+  /// Alur OAuth yang dipakai. Default [OAuthFlow.authorizationCode].
+  final OAuthFlow flow;
+
+  /// Dialek device flow. Hanya relevan bila [flow] == [OAuthFlow.deviceCode].
+  final DeviceFlowStyle deviceFlowStyle;
+
+  /// Langkah tukar-token tambahan setelah token utama diperoleh.
+  final TokenExchangeStyle tokenExchange;
+
+  /// Format body saat menukar token (form-urlencoded atau JSON).
+  final TokenBodyFormat tokenBodyFormat;
+
+  /// Path callback loopback khusus (mis. `/auth/callback`). Null = default
+  /// (`AppConstants.oauthRedirectPath`).
+  final String? callbackPath;
+
+  /// Sumber impor token lokal (hanya relevan bila [flow] ==
+  /// [OAuthFlow.importToken]).
+  final ImportSource? importSource;
+
+  /// Provider yang hanya dipakai untuk memperoleh token (tidak untuk chat).
+  /// Base URL / model tidak wajib. Contoh: Qoder (API-nya bukan
+  /// OpenAI-compatible sehingga chat belum didukung).
+  final bool isTokenOnly;
+
   OAuthConfig copyWith({
     String? authorizationUrl,
     String? tokenUrl,
@@ -66,6 +114,13 @@ class OAuthConfig {
     Map<String, String>? extraTokenParams,
     bool? usePkce,
     bool? isExperimental,
+    OAuthFlow? flow,
+    DeviceFlowStyle? deviceFlowStyle,
+    TokenExchangeStyle? tokenExchange,
+    TokenBodyFormat? tokenBodyFormat,
+    String? callbackPath,
+    ImportSource? importSource,
+    bool? isTokenOnly,
   }) {
     return OAuthConfig(
       authorizationUrl: authorizationUrl ?? this.authorizationUrl,
@@ -79,6 +134,13 @@ class OAuthConfig {
       extraTokenParams: extraTokenParams ?? this.extraTokenParams,
       usePkce: usePkce ?? this.usePkce,
       isExperimental: isExperimental ?? this.isExperimental,
+      flow: flow ?? this.flow,
+      deviceFlowStyle: deviceFlowStyle ?? this.deviceFlowStyle,
+      tokenExchange: tokenExchange ?? this.tokenExchange,
+      tokenBodyFormat: tokenBodyFormat ?? this.tokenBodyFormat,
+      callbackPath: callbackPath ?? this.callbackPath,
+      importSource: importSource ?? this.importSource,
+      isTokenOnly: isTokenOnly ?? this.isTokenOnly,
     );
   }
 
@@ -94,6 +156,13 @@ class OAuthConfig {
     if (extraTokenParams.isNotEmpty) 'extraTokenParams': extraTokenParams,
     'usePkce': usePkce,
     'isExperimental': isExperimental,
+    'flow': flow.name,
+    'deviceFlowStyle': deviceFlowStyle.name,
+    'tokenExchange': tokenExchange.name,
+    'tokenBodyFormat': tokenBodyFormat.name,
+    if (callbackPath != null) 'callbackPath': callbackPath,
+    if (importSource != null) 'importSource': importSource!.name,
+    'isTokenOnly': isTokenOnly,
   };
 
   factory OAuthConfig.fromJson(Map<String, dynamic> json) => OAuthConfig(
@@ -118,5 +187,47 @@ class OAuthConfig {
         const {},
     usePkce: json['usePkce'] as bool? ?? true,
     isExperimental: json['isExperimental'] as bool? ?? false,
+    flow: _flowFromName(json['flow'] as String?),
+    deviceFlowStyle: _deviceFlowStyleFromName(
+      json['deviceFlowStyle'] as String?,
+    ),
+    tokenExchange: _tokenExchangeFromName(json['tokenExchange'] as String?),
+    tokenBodyFormat: _tokenBodyFormatFromName(
+      json['tokenBodyFormat'] as String?,
+    ),
+    callbackPath: json['callbackPath'] as String?,
+    importSource: _importSourceFromName(json['importSource'] as String?),
+    isTokenOnly: json['isTokenOnly'] as bool? ?? false,
   );
+
+  static OAuthFlow _flowFromName(String? name) => OAuthFlow.values.firstWhere(
+    (f) => f.name == name,
+    orElse: () => OAuthFlow.authorizationCode,
+  );
+
+  static DeviceFlowStyle _deviceFlowStyleFromName(String? name) =>
+      DeviceFlowStyle.values.firstWhere(
+        (s) => s.name == name,
+        orElse: () => DeviceFlowStyle.rfc8628,
+      );
+
+  static TokenExchangeStyle _tokenExchangeFromName(String? name) =>
+      TokenExchangeStyle.values.firstWhere(
+        (s) => s.name == name,
+        orElse: () => TokenExchangeStyle.none,
+      );
+
+  static TokenBodyFormat _tokenBodyFormatFromName(String? name) =>
+      TokenBodyFormat.values.firstWhere(
+        (s) => s.name == name,
+        orElse: () => TokenBodyFormat.form,
+      );
+
+  static ImportSource? _importSourceFromName(String? name) {
+    if (name == null) return null;
+    for (final source in ImportSource.values) {
+      if (source.name == name) return source;
+    }
+    return null;
+  }
 }

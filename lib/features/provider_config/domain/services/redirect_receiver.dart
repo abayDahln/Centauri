@@ -23,7 +23,9 @@ class OAuthRedirectResult {
 abstract class RedirectReceiver {
   /// Mulai menerima callback dan kembalikan redirect URI yang harus dipakai
   /// pada authorization request. [port] null = ephemeral (port acak).
-  Future<Uri> start({int? port});
+  /// [path] menimpa path callback default (mis. `/auth/callback`); null =
+  /// default (`AppConstants.oauthRedirectPath`).
+  Future<Uri> start({int? port, String? path});
 
   /// Tunggu sampai callback diterima atau [timeout] tercapai.
   Future<OAuthRedirectResult> waitForCallback({required Duration timeout});

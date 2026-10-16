@@ -57,6 +57,32 @@ class ProviderCatalog {
       note: 'Ada banyak model gratis',
     ),
     ProviderCatalogEntry(
+      id: 'opencode',
+      name: 'OpenCode',
+      category: ProviderCategory.freeTier,
+      baseUrl: 'https://opencode.ai/zen/v1',
+      defaultModel: 'qwen3-coder',
+      icon: Icons.terminal,
+      brandColor: Color(0xFF1A1A1A),
+      textIcon: 'OC',
+      website: 'https://opencode.ai',
+      apiKeyUrl: 'https://opencode.ai/auth',
+      note: 'OpenCode Zen gateway (OpenAI-compat)',
+    ),
+    ProviderCatalogEntry(
+      id: 'ollama-cloud',
+      name: 'Ollama Cloud',
+      category: ProviderCategory.freeTier,
+      baseUrl: 'https://ollama.com/v1',
+      defaultModel: 'gpt-oss:120b',
+      icon: Icons.cloud,
+      brandColor: Color(0xFF333333),
+      textIcon: 'OL',
+      website: 'https://ollama.com',
+      apiKeyUrl: 'https://ollama.com/settings/keys',
+      note: 'Model cloud terhosting via endpoint OpenAI-compat',
+    ),
+    ProviderCatalogEntry(
       id: 'groq',
       name: 'Groq',
       category: ProviderCategory.freeTier,
@@ -315,6 +341,20 @@ class ProviderCatalog {
       apiKeyUrl: 'https://featherless.ai/account/api-keys',
     ),
 
+    ProviderCatalogEntry(
+      id: 'command-code',
+      name: 'Command Code',
+      category: ProviderCategory.apiKey,
+      baseUrl: 'https://api.commandcode.ai/provider/v1',
+      defaultModel: 'deepseek/deepseek-v4-flash',
+      icon: Icons.terminal,
+      brandColor: Color(0xFF6D28D9),
+      textIcon: 'CC',
+      website: 'https://commandcode.ai',
+      apiKeyUrl: 'https://commandcode.ai/studio/',
+      note: 'Provider API OpenAI-compat (butuh paket berbayar)',
+    ),
+
     // -------------------------------------------------------------- lokal --
     ProviderCatalogEntry(
       id: 'ollama',
@@ -366,7 +406,22 @@ class ProviderCatalog {
     ),
   ];
 
+  /// Kartu sintetis "Custom API": sengaja di luar [all] karena tidak punya
+  /// endpoint bawaan — pengguna mengisi Base URL & model sendiri.
+  static const ProviderCatalogEntry customApi = ProviderCatalogEntry(
+    id: 'custom-api',
+    name: 'Custom API',
+    category: ProviderCategory.apiKey,
+    baseUrl: '',
+    defaultModel: '',
+    icon: Icons.tune,
+    brandColor: Color(0xFF5F6368),
+    textIcon: 'CU',
+    note: 'Isi Base URL & model sendiri',
+  );
+
   static ProviderCatalogEntry? byId(String id) {
+    if (id == customApi.id) return customApi;
     for (final entry in all) {
       if (entry.id == id) return entry;
     }
