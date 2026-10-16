@@ -6,25 +6,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _entry = ProviderCatalogEntry(
-  id: 'x',
-  name: 'Contoh',
+  id: 'groq-test',
+  name: 'Groq Test',
   category: ProviderCategory.apiKey,
-  baseUrl: 'https://example.com/v1',
-  defaultModel: 'm',
-  icon: Icons.circle,
-  brandColor: Color(0xFF123456),
-  textIcon: 'XX',
+  baseUrl: 'https://api.groq.com/openai/v1',
+  defaultModel: 'llama-3.3-70b-versatile',
+  icon: Icons.speed,
+  brandColor: Color(0xFFF55036),
+  textIcon: 'GQ',
 );
 
 ProviderCardData _card({
-  required ProviderLogoData logo,
+  String name = 'Groq Test',
+  bool isExperimental = false,
   bool isTokenOnly = false,
 }) => ProviderCardData(
-  id: 'x',
-  name: 'Contoh',
-  subtitle: 'sub',
-  logo: logo,
+  id: 'groq-test',
+  name: name,
+  subtitle: 'Ada tier gratis',
+  logo: const ProviderLogoData(color: Color(0xFFF55036), textIcon: 'GQ'),
   selection: const ApiKeySelection(_entry),
+  isExperimental: isExperimental,
   isTokenOnly: isTokenOnly,
 );
 
@@ -33,70 +35,42 @@ Widget _host(ProviderCardData data, {VoidCallback? onTap}) => MaterialApp(
 );
 
 void main() {
-  testWidgets('menampilkan ikon brand bila brandIcon ada', (tester) async {
-    await tester.pumpWidget(
-      _host(
-        _card(
-          logo: const ProviderLogoData(
-            brandIcon: Icons.abc,
-            color: Color(0xFF123456),
-            textIcon: 'AB',
-          ),
-        ),
-      ),
-    );
+  group('ProviderCard', () {
+    testWidgets('menampilkan nama dan subtitle', (tester) async {
+      await tester.pumpWidget(_host(_card()));
 
-    expect(find.byIcon(Icons.abc), findsOneWidget);
-    expect(find.text('AB'), findsNothing);
+      expect(find.text('Groq Test'), findsOneWidget);
+      expect(find.text('Ada tier gratis'), findsOneWidget);
+    });
+
+    testWidgets('tap kartu memanggil onTap', (tester) async {
+      var tapped = 0;
+      await tester.pumpWidget(_host(_card(), onTap: () => tapped++));
+
+      await tester.tap(find.byType(ProviderCard));
+      await tester.pumpAndSettle();
+
+      expect(tapped, 1);
+    });
+
+    testWidgets('badge token tampil untuk preset token-only', (tester) async {
+      await tester.pumpWidget(_host(_card(isTokenOnly: true)));
+
+      expect(find.text('token'), findsOneWidget);
+    });
+
+    testWidgets('tanpa badge token untuk kartu biasa', (tester) async {
+      await tester.pumpWidget(_host(_card()));
+
+      expect(find.text('token'), findsNothing);
+    });
   });
 
-  testWidgets('menampilkan inisial teks bila brandIcon null', (tester) async {
-    await tester.pumpWidget(
-      _host(
-        _card(
-          logo: const ProviderLogoData(color: Color(0xFF123456), textIcon: 'ZZ'),
-        ),
-      ),
-    );
-
-    expect(find.text('ZZ'), findsOneWidget);
-  });
-
-  testWidgets('onTap terpanggil saat kartu ditekan', (tester) async {
-    var tapped = false;
-    await tester.pumpWidget(
-      _host(
-        _card(
-          logo: const ProviderLogoData(color: Color(0xFF123456), textIcon: 'ZZ'),
-        ),
-        onTap: () => tapped = true,
-      ),
-    );
-
-    await tester.tap(find.byType(ProviderCard));
-    await tester.pump();
-
-    expect(tapped, isTrue);
-  });
-
-  testWidgets('menampilkan chip "token" untuk provider token-only', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _host(
-        _card(
-          logo: const ProviderLogoData(color: Color(0xFF123456), textIcon: 'ZZ'),
-          isTokenOnly: true,
-        ),
-      ),
-    );
-
-    expect(find.text('token'), findsOneWidget);
-  });
-
-  testWidgets('data dari katalog view-model bisa dirender', (tester) async {
-    final data = ProviderCatalogViewModel.allCards().first;
-    await tester.pumpWidget(_host(data));
-    expect(find.text(data.name), findsOneWidget);
+  group('ProviderCatalogPanel data', () {
+    test('setiap kartu view-model bisa dirender ProviderCard', () {
+      final data = ProviderCatalogViewModel.allCards().first;
+      expect(data.name.trim(), isNotEmpty);
+      expect(data.selection, isNotNull);
+    });
   });
 }

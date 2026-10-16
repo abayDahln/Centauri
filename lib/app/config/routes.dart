@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import '../../features/canvas_preview/presentation/canvas_preview_page.dart';
 import '../../features/code_exporter/presentation/code_exporter_page.dart';
 import '../../features/provider_config/presentation/model_picker_page.dart';
-import '../../features/provider_config/presentation/provider_catalog_page.dart';
 import '../../features/provider_config/presentation/provider_detail_page.dart';
 import '../../features/provider_config/presentation/provider_list_page.dart';
 import '../../features/provider_config/presentation/provider_navigation_args.dart';
@@ -17,11 +16,8 @@ class AppRoutes {
   /// Daftar provider tersimpan (pintu masuk konfigurasi).
   static const String providers = '/providers';
 
-  /// Formulir tambah provider baru.
+  /// Formulir tambah provider baru (manual: API Key / OAuth).
   static const String providerNew = '/providers/new';
-
-  /// Katalog provider siap-pakai (menutup layar dengan `CatalogSelection`).
-  static const String providersCatalog = '/providers/catalog';
 
   /// Pemilih model live (`GET /models`) untuk satu provider draft.
   static const String providersModels = '/providers/models';
@@ -46,10 +42,6 @@ final GoRouter appRouter = GoRouter(
           path: 'new',
           builder: (_, state) =>
               ProviderDetailPage(args: state.extra as ProviderDetailArgs?),
-        ),
-        GoRoute(
-          path: 'catalog',
-          builder: (_, _) => const ProviderCatalogPage(),
         ),
         GoRoute(
           path: 'models',

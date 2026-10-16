@@ -20,13 +20,14 @@ import 'provider_navigation_args.dart';
 import 'providers/provider_config_provider.dart';
 import 'widgets/delete_provider_dialog.dart';
 import 'widgets/device_connect_dialog.dart';
+import 'widgets/provider_catalog_panel.dart';
 
-/// Layar detail provider: formulir tambah/edit lengkap dengan OAuth.
+/// Layar detail provider: formulir tambah manual / edit lengkap dengan OAuth.
 ///
 /// Menerima salah satu dari:
 ///  - [providerId] — provider tersimpan yang akan diedit (dari rute
 ///    `/providers/:id`);
-///  - [args] — draft/pilihan katalog yang diteruskan lewat `extra` go_router.
+///  - [args] — draft yang diteruskan lewat `extra` go_router.
 class ProviderDetailPage extends ConsumerStatefulWidget {
   const ProviderDetailPage({super.key, this.providerId, this.args});
 
@@ -136,26 +137,66 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     return OAuthProviderPresets.custom;
   }
 
-  /// Preset hanya untuk memperoleh token (chat belum didukung) — Base URL &
-  /// model tidak relevan.
-  bool get _isTokenOnly =>
-      _authType == AuthType.oauth && _preset.isTokenOnly;
+  /// Preset yang mendukung dua metode auth sekaligus (OAuth + API Key/PAT).
+  /// Dipakai untuk provider yang menyediakan keduanya, mis. Qoder (OAuth +
+  /// PAT) dan Zai GLM (OAuth + API Key). Untuk preset ini form menampilkan
+  /// field API Key di samping section OAuth tanpa tab bar.
+  static const _dualAuthPresetIds = {'qoder', 'zai-glm'};
 
-  /// Field Base URL hanya perlu untuk API Key (mis. OpenRouter, OpenCode) dan
-  /// Custom OAuth. Preset OAuth lain sudah membawa Base URL-nya sendiri, jadi
-  /// tidak ditampilkan dan diambil otomatis dari preset.
-  bool get _showBaseUrlField => _authType == AuthType.apiKey || _preset.isCustom;
+  /// True bila form menampilkan field API Key sekaligus section OAuth.
+  bool get _supportsBothAuth =>
+      _authType == AuthType.oauth && _dualAuthPresetIds.contains(_preset.id);
+
+  /// True bila pengguna mengisi API Key/PAT pada provider dual-auth.
+  /// Dipakai untuk menonaktifkan validasi token-only (chat via API key
+  /// membutuhkan Base URL + model).
+  bool get _usesApiKeyFallback =>
+      _supportsBothAuth && _apiKeyController.text.trim().isNotEmpty;
+
+  /// Preset yang API-nya bukan OpenAI-compatible sehingga chat tidak
+  /// didukung (token saja, Base URL/model tidak relevan).
+  bool get _isNonChatPreset =>
+      _authType == AuthType.oauth && _preset.id == 'qoder';
+
+  /// Preset hanya untuk memperoleh token (chat belum didukung) — Base URL &
+  /// model tidak relevan. Untuk provider dual-auth yang dilengkapi API Key,
+  /// chat via API key didukung sehingga validasi token-only dinonaktifkan.
+  bool get _isTokenOnly =>
+      _authType == AuthType.oauth &&
+      _preset.isTokenOnly &&
+      !_usesApiKeyFallback;
+
+  /// Field Base URL hanya perlu untuk API Key (mis. OpenRouter, OpenCode),
+  /// Custom OAuth, dan provider dual-auth Zai GLM (API key-nya memakai
+  /// endpoint `api.z.ai`). Preset OAuth lain sudah membawa Base URL-nya
+  /// sendiri, jadi tidak ditampilkan dan diambil otomatis dari preset.
+  bool get _showBaseUrlField =>
+      _authType == AuthType.apiKey ||
+      _preset.isCustom ||
+      (_supportsBothAuth && _preset.id == 'zai-glm');
 
   /// Base URL efektif yang akan disimpan: untuk OAuth non-custom selalu dari
-  /// preset, selain itu dari input pengguna.
+  /// preset, kecuali provider dual-auth yang memakai input pengguna agar
+  /// jalur API key bisa dipakai chat.
   String get _effectiveBaseUrl =>
-      (_authType == AuthType.oauth && !_preset.isCustom)
+      (_authType == AuthType.oauth &&
+          !_preset.isCustom &&
+          !_supportsBothAuth)
       ? _preset.baseUrl
       : _baseUrlController.text.trim();
 
   void _onPresetChangedInternal(OAuthProviderPreset preset) {
     _preset = preset;
-    if (preset.isTokenOnly) {
+    if (preset.id == 'zai-glm') {
+      // Dual-auth: siapkan default endpoint API key Z.ai agar jalur API key
+      // langsung bisa dipakai chat; pengguna tetap bisa mengubahnya.
+      if (_baseUrlController.text.trim().isEmpty) {
+        _baseUrlController.text = 'https://api.z.ai/api/paas/v4';
+      }
+      if (_modelController.text.trim().isEmpty) {
+        _modelController.text = 'glm-4.6';
+      }
+    } else if (preset.isTokenOnly) {
       _baseUrlController.clear();
       _modelController.clear();
     } else {
@@ -222,12 +263,16 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   ApiProvider _providerFromForm() {
     final apiKey = _apiKeyController.text.trim();
     final isOAuth = _authType == AuthType.oauth;
+    // Provider dual-auth (Qoder/Zai) menyimpan PAT/API Key sebagai fallback
+    // bearer di samping oauthConfig, sehingga token tetap bisa dipakai
+    // sebelum OAuth terhubung.
+    final allowApiKey = !isOAuth || _supportsBothAuth;
     return ApiProvider(
       id: _editingProviderId ?? 'pending',
       name: _nameController.text.trim(),
       baseUrl: _effectiveBaseUrl,
       model: _modelController.text.trim(),
-      apiKey: (!isOAuth && apiKey.isNotEmpty) ? apiKey : null,
+      apiKey: (allowApiKey && apiKey.isNotEmpty) ? apiKey : null,
       authType: _authType,
       oauthConfig: isOAuth ? _oauthConfigFromForm() : null,
     );
@@ -248,6 +293,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
     if (provider.usesOAuth) {
       provider = provider.copyWith(oauthToken: stored.oauthToken);
+      // Dual-auth: pertahankan PAT/API Key tersimpan bila field kosong.
+      if (provider.apiKey == null && stored.apiKey != null) {
+        provider = provider.copyWith(apiKey: stored.apiKey);
+      }
     } else if (provider.apiKey == null && stored.apiKey != null) {
       provider = provider.copyWith(apiKey: stored.apiKey);
     }
@@ -288,15 +337,6 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     } else {
       context.go(AppRoutes.providers);
     }
-  }
-
-  /// Buka katalog provider dan isi form sesuai pilihan.
-  Future<void> _openCatalog() async {
-    final selection = await context.push<CatalogSelection>(
-      AppRoutes.providersCatalog,
-    );
-    if (selection == null || !mounted) return;
-    setState(() => _applySelection(selection));
   }
 
   /// Buka layar pemilih model; hasilnya mengisi field Model Name.
@@ -532,19 +572,74 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: _buildForm(),
+      body: editing ? _buildDetailBody() : _buildAddBody(),
+    );
+  }
+
+  /// Mode tambah: form manual + panel katalog inline berdampingan.
+  ///
+  /// Mengetuk kartu katalog langsung mengisi form (tanpa halaman katalog
+  /// terpisah). Setelah disimpan, layar beralih ke mode detail/edit dengan
+  /// data yang sudah ditambahkan.
+  Widget _buildAddBody() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1120),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              void onSelected(CatalogSelection s) =>
+                  setState(() => _applySelection(s));
+              if (constraints.maxWidth < 900) {
+                // Layar sempit: susun vertikal (form lalu katalog).
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildForm(),
+                    const SizedBox(height: 24),
+                    ProviderCatalogPanel(onSelected: onSelected),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: 480, child: _buildForm()),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: ProviderCatalogPanel(onSelected: onSelected),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
+  /// Mode detail/edit: form terisi data tersimpan, tanpa panel katalog.
+  Widget _buildDetailBody() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: _buildForm(),
+        ),
+      ),
+    );
+  }
+
   Widget _buildForm() {
+    // Metode auth ditentukan otomatis dari pilihan kartu katalog
+    // (ApiKeySelection vs OAuthSelection) atau dari provider tersimpan.
+    // Khusus provider dual-auth (Qoder, Zai GLM), field API Key/PAT
+    // ditampilkan di samping section OAuth.
+    final showApiKeyField =
+        _authType == AuthType.apiKey || _supportsBothAuth;
+    final showOAuthFields = _authType == AuthType.oauth;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -557,8 +652,6 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAuthTypeToggle(),
-            const SizedBox(height: 20),
             _buildLabel('Provider Name'),
             const SizedBox(height: 8),
             TextFormField(
@@ -584,7 +677,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                   hintText: 'https://api.openai.com/v1',
                 ),
                 validator: (value) {
-                  if (_isTokenOnly) return null;
+                  if (_isTokenOnly || _isNonChatPreset) return null;
                   final text = value?.trim() ?? '';
                   if (text.isEmpty) return 'Base URL wajib diisi.';
                   final uri = Uri.tryParse(text);
@@ -598,13 +691,14 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
               _buildResolvedEndpointPreview(),
               const SizedBox(height: 12),
             ],
-            _buildCatalogButton(),
-            const SizedBox(height: 20),
-            if (_authType == AuthType.apiKey) ...[
-              _buildLabel('API Key'),
+            if (showApiKeyField) ...[
+              _buildLabel(
+                _supportsBothAuth ? 'API Key / PAT' : 'API Key',
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _apiKeyController,
+                onChanged: (_) => setState(() {}),
                 obscureText: true,
                 style: const TextStyle(
                   fontFamily: AppFonts.monoFamily,
@@ -613,51 +707,25 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                 ),
                 decoration: InputDecoration(
                   hintText: _editingProviderId == null ? 'sk-...' : '••••••••',
-                  helperText: _editingProviderId == null
-                      ? 'Kosongkan jika menggunakan endpoint lokal tanpa autentikasi.'
-                      : 'Kosongkan untuk mempertahankan key yang tersimpan.',
+                  helperText: _supportsBothAuth
+                      ? 'Opsional: PAT/API Key sebagai fallback bila OAuth belum terhubung.'
+                      : (_editingProviderId == null
+                            ? 'Kosongkan jika menggunakan endpoint lokal tanpa autentikasi.'
+                            : 'Kosongkan untuk mempertahankan key yang tersimpan.'),
                   helperStyle: const TextStyle(
                     color: AppColors.textDisabled,
                     fontSize: 11,
                   ),
                 ),
               ),
-            ] else
-              _buildOAuthFields(),
+              if (showOAuthFields) const SizedBox(height: 20),
+            ],
+            if (showOAuthFields) _buildOAuthFields(),
             const SizedBox(height: 20),
             _buildModelField(),
             const SizedBox(height: 24),
             _buildFormActions(),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAuthTypeToggle() {
-    return SizedBox(
-      width: double.infinity,
-      child: SegmentedButton<AuthType>(
-        segments: const [
-          ButtonSegment(
-            value: AuthType.apiKey,
-            label: Text('API Key'),
-            icon: Icon(Icons.key_outlined, size: 16),
-          ),
-          ButtonSegment(
-            value: AuthType.oauth,
-            label: Text('OAuth'),
-            icon: Icon(Icons.login, size: 16),
-          ),
-        ],
-        selected: {_authType},
-        onSelectionChanged: (selection) {
-          setState(() => _authType = selection.first);
-        },
-        style: ButtonStyle(
-          textStyle: WidgetStateProperty.all(
-            const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-          ),
         ),
       ),
     );
@@ -918,7 +986,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           ),
           decoration: const InputDecoration(hintText: 'gpt-4o'),
           validator: (value) {
-            if (_isTokenOnly) return null;
+            if (_isTokenOnly || _isNonChatPreset) return null;
             return (value == null || value.trim().isEmpty)
                 ? 'Nama model wajib diisi.'
                 : null;
@@ -965,21 +1033,6 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           ),
         ),
       ],
-    );
-  }
-
-  /// Tombol pembuka layar katalog provider siap-pakai.
-  Widget _buildCatalogButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: _openCatalog,
-        icon: const Icon(Icons.apps, size: 16),
-        label: const Text(
-          'Tambah dari Katalog',
-          style: TextStyle(fontSize: 13),
-        ),
-      ),
     );
   }
 

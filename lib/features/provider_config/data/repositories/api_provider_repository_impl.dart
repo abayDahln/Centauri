@@ -64,8 +64,11 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
   /// ulang, alih-alih menggagalkan pemuatan provider.
   Future<ApiProvider> _withCredentials(ApiProvider provider) async {
     if (provider.usesOAuth) {
+      // Dual-auth (Qoder PAT / Zai API Key): API key disimpan sebagai
+      // fallback bearer bila token OAuth belum terhubung.
+      final apiKey = await _secureStorage.readApiKey(provider.id);
       final tokens = await getTokenSet(provider.id);
-      if (tokens == null) return provider;
+      if (tokens == null) return provider.copyWith(apiKey: apiKey);
       var current = tokens;
       if (tokens.needsRefresh && tokens.canRefresh) {
         try {
@@ -76,7 +79,7 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
           // berikutnya.
         }
       }
-      return provider.copyWith(oauthToken: current);
+      return provider.copyWith(oauthToken: current, apiKey: apiKey);
     }
 
     final apiKey = await _secureStorage.readApiKey(provider.id);

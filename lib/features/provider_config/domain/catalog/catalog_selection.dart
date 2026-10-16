@@ -1,4 +1,4 @@
-import '../oauth/oauth_provider_preset.dart';
+import '../../domain/oauth/oauth_provider_preset.dart';
 import 'provider_catalog_entry.dart';
 
 /// Hasil pemilihan dari katalog provider.

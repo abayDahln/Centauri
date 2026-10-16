@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:centauri/features/provider_config/domain/catalog/catalog_selection.dart';
 import 'package:centauri/features/provider_config/presentation/provider_catalog_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,16 +39,16 @@ void main() {
         'codebuddy',
         'zai-glm',
         'grok-cli',
-        'kiro',
         'opencode',
         'openrouter',
         'nvidia',
         'ollama-cloud',
-        'google-gemini',
+        'gemini',
         'command-code',
         'groq',
         'minimax',
         'mistral',
+        'kiro-ai',
         'custom-api',
       });
     });
@@ -64,8 +66,6 @@ void main() {
         'codebuddy',
         'zai-glm',
         'grok-cli',
-        'kiro',
-        'google-gemini',
       };
       for (final card in ProviderCatalogViewModel.allCards()) {
         if (oauthIds.contains(card.id)) {
@@ -86,9 +86,21 @@ void main() {
 
     test('kartu Gemini memakai nama "Gemini"', () {
       final gemini = ProviderCatalogViewModel.allCards().firstWhere(
-        (c) => c.id == 'google-gemini',
+        (c) => c.id == 'gemini',
       );
       expect(gemini.name, 'Gemini');
+    });
+
+    test('setiap logo asset menunjuk file yang ada', () {
+      for (final card in ProviderCatalogViewModel.allCards()) {
+        final assetPath = card.logo.assetPath;
+        if (assetPath == null) continue;
+        expect(
+          File(assetPath).existsSync(),
+          isTrue,
+          reason: '${card.id}: $assetPath tidak ditemukan',
+        );
+      }
     });
   });
 }

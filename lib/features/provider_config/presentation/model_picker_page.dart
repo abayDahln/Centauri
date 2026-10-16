@@ -10,10 +10,10 @@ import '../data/datasources/ai_api_service.dart';
 import '../domain/entities/api_provider.dart';
 import 'provider_navigation_args.dart';
 import 'providers/model_list_provider.dart';
-import 'widgets/centauri_table.dart';
 
-/// Layar pemilih model: mengambil daftar model live dari `GET /models` dan
-/// menyediakannya sebagai tabel yang bisa dicari. Bila pengambilan gagal atau
+/// Layar pemilih model: mengambil daftar model live dari `GET /models`
+/// milik provider tersebut (valid langsung dari provider) dan menyediakannya
+/// sebagai list 1 kolom penuh yang bisa dicari. Bila pengambilan gagal atau
 /// model tidak ada di daftar, pengguna tetap bisa mengetik manual.
 ///
 /// Menutup layar sambil mengembalikan id model terpilih lewat [context.pop].
@@ -281,39 +281,19 @@ class _ModelPickerPageState extends ConsumerState<ModelPickerPage> {
                   ),
           ),
         ),
+        const SizedBox(height: 8),
+        Text(
+          _query.isEmpty
+              ? '${models.length} model dari provider ini.'
+              : 'Menampilkan ${filtered.length} dari ${models.length} model.',
+          style: const TextStyle(
+            color: AppColors.textDisabled,
+            fontSize: 11,
+          ),
+        ),
         const SizedBox(height: 12),
-        CentauriTable<String>(
-          columns: [
-            CentauriTableColumn<String>(
-              label: 'Model',
-              flex: 6,
-              cell: (_, model) => Text(
-                model,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: AppFonts.monoFamily,
-                  fontFamilyFallback: AppFonts.monoFallback,
-                  fontSize: 12,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            CentauriTableColumn<String>(
-              label: 'Aksi',
-              width: 96,
-              alignment: Alignment.centerRight,
-              cell: (_, model) => TextButton(
-                onPressed: () => _use(model),
-                child: const Text('Pakai', style: TextStyle(fontSize: 12)),
-              ),
-            ),
-          ],
-          rows: filtered,
-          rowKey: (model) => model,
-          onRowTap: (model) => setState(() => _selected = model),
-          isSelected: (model) => model == _selected,
-          emptyState: const Padding(
+        if (filtered.isEmpty)
+          const Padding(
             padding: EdgeInsets.symmetric(vertical: 32),
             child: Center(
               child: Text(
@@ -321,9 +301,61 @@ class _ModelPickerPageState extends ConsumerState<ModelPickerPage> {
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
             ),
-          ),
-        ),
+          )
+        else
+          // List 1 kolom penuh (bukan tabel) agar id model yang panjang
+          // tampil penuh tanpa terpotong — beberapa provider punya
+          // ratusan model.
+          for (var i = 0; i < filtered.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            _buildModelRow(filtered[i], filtered[i] == _selected),
+          ],
       ],
+    );
+  }
+
+  Widget _buildModelRow(String model, bool isSelected) {
+    return InkWell(
+      onTap: () => setState(() => _selected = model),
+      borderRadius: AppRadius.sm,
+      hoverColor: AppColors.hoverBg,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accentPrimary.withValues(alpha: 0.08)
+              : AppColors.bgSurface,
+          border: Border.all(
+            color: isSelected
+                ? AppColors.accentPrimary
+                : AppColors.borderSubtle,
+          ),
+          borderRadius: AppRadius.sm,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                model,
+                style: const TextStyle(
+                  fontFamily: AppFonts.monoFamily,
+                  fontFamilyFallback: AppFonts.monoFallback,
+                  fontSize: 12,
+                  height: 1.5,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => _use(model),
+              child: const Text('Pakai', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
