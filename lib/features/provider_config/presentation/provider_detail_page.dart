@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/config/routes.dart';
 import '../../../app/config/theme.dart';
 import '../../../core/utils/app_constants.dart';
+import '../data/catalog/provider_catalog.dart';
+import '../data/catalog/provider_models.dart';
 import '../data/datasources/ai_api_service.dart';
 import '../data/oauth/oauth_provider_presets.dart';
 import '../data/services/cursor_token_importer.dart';
@@ -20,6 +22,7 @@ import 'provider_navigation_args.dart';
 import 'providers/provider_config_provider.dart';
 import 'widgets/delete_provider_dialog.dart';
 import 'widgets/device_connect_dialog.dart';
+import 'widgets/model_card.dart';
 import 'widgets/provider_catalog_panel.dart';
 
 /// Layar detail provider: formulir tambah manual / edit lengkap dengan OAuth.
@@ -44,6 +47,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   final _baseUrlController = TextEditingController();
   final _apiKeyController = TextEditingController();
   final _modelController = TextEditingController();
+  final _newModelController = TextEditingController();
   final _clientIdController = TextEditingController();
   final _authUrlController = TextEditingController();
   final _tokenUrlController = TextEditingController();
@@ -51,6 +55,19 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   String? _editingProviderId;
   bool _isTesting = false;
   bool _isConnecting = false;
+
+  /// Id katalog/preset provider yang sedang dipakai form. Dipakai untuk
+  /// mencari daftar model hardcode ([ProviderModelCatalog]) dan menandai kartu
+  /// provider yang aktif di panel. Null untuk provider custom/lokal.
+  String? _catalogId;
+
+  /// Id model kustom yang ditambahkan pengguna lewat tombol "Add Model".
+  /// Boleh banyak; hanya satu yang dipakai — id terpilih disimpan di
+  /// [_modelController].
+  final List<String> _customModels = [];
+
+  /// True saat field input model baru sedang ditampilkan.
+  bool _addingModel = false;
 
   AuthType _authType = AuthType.apiKey;
   OAuthProviderPreset _preset = OAuthProviderPresets.googleGemini;
@@ -84,6 +101,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     _baseUrlController.dispose();
     _apiKeyController.dispose();
     _modelController.dispose();
+    _newModelController.dispose();
     _clientIdController.dispose();
     _authUrlController.dispose();
     _tokenUrlController.dispose();
@@ -111,11 +129,75 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     _modelController.text = provider.model;
     _authType = provider.authType;
     _preset = _presetFor(config);
+    _catalogId = _resolveCatalogId(provider);
+    _seedCustomModels(provider.model);
     _clientIdController.text = config?.clientId ?? '';
     _authUrlController.text = _preset.isCustom
         ? (config?.authorizationUrl ?? '')
         : '';
     _tokenUrlController.text = _preset.isCustom ? (config?.tokenUrl ?? '') : '';
+  }
+
+  /// Id katalog provider dari data tersimpan: preset OAuth → id preset;
+  /// API key → entri katalog dengan Base URL yang cocok.
+  String? _resolveCatalogId(ApiProvider provider) {
+    if (provider.authType == AuthType.oauth) {
+      return _preset.isCustom ? null : _preset.id;
+    }
+    final base = provider.normalizedBaseUrl;
+    if (base.isEmpty) return null;
+    for (final entry in ProviderCatalog.all) {
+      if (entry.baseUrl.trim() == base) return entry.id;
+    }
+    return null;
+  }
+
+  /// Menyiapkan daftar model kustom dari model tersimpan: bila [model] tidak
+  /// ada di daftar hardcode provider, tampilkan sebagai kartu kustom terpilih.
+  void _seedCustomModels(String model) {
+    _customModels.clear();
+    final value = model.trim();
+    if (value.isEmpty) return;
+    final set = ProviderModelCatalog.forProvider(_catalogId);
+    if (set != null && set.models.any((m) => m.id == value)) return;
+    _customModels.add(value);
+  }
+
+  /// Menambahkan id model dari field "Add Model" ke daftar kustom, lalu
+  /// memakainya sebagai model aktif. Id yang sudah ada di daftar hardcode
+  /// provider cukup dipilih tanpa diduplikasi.
+  void _addCustomModel() {
+    final id = _newModelController.text.trim();
+    if (id.isEmpty) return;
+    setState(() {
+      final set = ProviderModelCatalog.forProvider(_catalogId);
+      final inCatalog = set != null && set.models.any((m) => m.id == id);
+      if (!inCatalog && !_customModels.contains(id)) {
+        _customModels.add(id);
+      }
+      _modelController.text = id;
+      _newModelController.clear();
+      _addingModel = false;
+    });
+  }
+
+  /// Label tampilan untuk id model: `alias/id` bila provider punya alias
+  /// katalog, selain itu id polos.
+  String _modelLabel(String id) {
+    final set = ProviderModelCatalog.forProvider(_catalogId);
+    return set == null ? id : '${set.alias}/$id';
+  }
+
+  /// Model default saat memilih kartu provider: pakai [fallback] bila ada di
+  /// daftar hardcode, jika tidak pakai model pertama daftar (agar tidak
+  /// langsung jatuh ke mode custom).
+  String _defaultModelFor(String? catalogId, String fallback) {
+    final set = ProviderModelCatalog.forProvider(catalogId);
+    if (set == null || set.models.isEmpty) return fallback;
+    for (final model in set.models) {
+      if (model.id == fallback) return model.id;
+    }
+    return set.models.first.id;
   }
 
   OAuthProviderPreset _presetFor(OAuthConfig? config) {
@@ -137,17 +219,17 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     return OAuthProviderPresets.custom;
   }
 
-  /// Preset yang mendukung dua metode auth sekaligus (OAuth + API Key/PAT).
-  /// Dipakai untuk provider yang menyediakan keduanya, mis. Qoder (OAuth +
-  /// PAT) dan Zai GLM (OAuth + API Key). Untuk preset ini form menampilkan
-  /// field API Key di samping section OAuth tanpa tab bar.
-  static const _dualAuthPresetIds = {'qoder', 'zai-glm'};
+  /// Preset yang mendukung dua metode auth sekaligus (OAuth + API Key).
+  /// Saat ini hanya Zai GLM (OAuth + API Key). Qoder sengaja OAuth murni
+  /// (tanpa PAT). Untuk preset ini form menampilkan field API Key di samping
+  /// section OAuth tanpa tab bar.
+  static const _dualAuthPresetIds = {'zai-glm'};
 
   /// True bila form menampilkan field API Key sekaligus section OAuth.
   bool get _supportsBothAuth =>
       _authType == AuthType.oauth && _dualAuthPresetIds.contains(_preset.id);
 
-  /// True bila pengguna mengisi API Key/PAT pada provider dual-auth.
+  /// True bila pengguna mengisi API Key pada provider dual-auth.
   /// Dipakai untuk menonaktifkan validasi token-only (chat via API key
   /// membutuhkan Base URL + model).
   bool get _usesApiKeyFallback =>
@@ -185,8 +267,21 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       ? _preset.baseUrl
       : _baseUrlController.text.trim();
 
+  /// Base URL untuk validasi kredensial (Test Connection): endpoint khusus
+  /// preset bila ada (mis. GitHub Copilot), selain itu Base URL chat efektif.
+  ///
+  /// `resolveEndpoint` memahami URL penuh (akhiran `/models` dipangkas dulu),
+  /// sehingga `modelsUrl` boleh berupa endpoint penuh maupun root.
+  String get _modelsBaseUrl {
+    if (_authType == AuthType.oauth && _preset.modelsUrl.trim().isNotEmpty) {
+      return _preset.modelsUrl.trim();
+    }
+    return _effectiveBaseUrl;
+  }
+
   void _onPresetChangedInternal(OAuthProviderPreset preset) {
     _preset = preset;
+    _catalogId = preset.isCustom ? null : preset.id;
     if (preset.id == 'zai-glm') {
       // Dual-auth: siapkan default endpoint API key Z.ai agar jalur API key
       // langsung bisa dipakai chat; pengguna tetap bisa mengubahnya.
@@ -194,7 +289,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         _baseUrlController.text = 'https://api.z.ai/api/paas/v4';
       }
       if (_modelController.text.trim().isEmpty) {
-        _modelController.text = 'glm-4.6';
+        _modelController.text = _defaultModelFor(preset.id, 'glm-4.6');
       }
     } else if (preset.isTokenOnly) {
       _baseUrlController.clear();
@@ -203,7 +298,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       if (preset.baseUrl.isNotEmpty) _baseUrlController.text = preset.baseUrl;
       final defaultModel = preset.defaultModel;
       if (defaultModel != null && defaultModel.isNotEmpty) {
-        _modelController.text = defaultModel;
+        _modelController.text = _defaultModelFor(preset.id, defaultModel);
       }
     }
     if (_nameController.text.trim().isEmpty) {
@@ -216,19 +311,19 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     } else {
       _clientIdController.text = preset.clientId;
     }
-  }
-
-  void _onPresetChanged(OAuthProviderPreset? preset) {
-    if (preset == null) return;
-    setState(() => _onPresetChangedInternal(preset));
+    // Setel ulang daftar model kustom: model preset baru (bila di luar daftar
+    // hardcode) tampil sebagai satu kartu kustom terpilih.
+    _seedCustomModels(_modelController.text);
   }
 
   void _applySelection(CatalogSelection selection) {
     switch (selection) {
       case ApiKeySelection(:final entry):
         _authType = AuthType.apiKey;
+        _catalogId = entry.id;
         _baseUrlController.text = entry.baseUrl;
-        _modelController.text = entry.defaultModel;
+        _modelController.text = _defaultModelFor(entry.id, entry.defaultModel);
+        _seedCustomModels(_modelController.text);
         if (_nameController.text.trim().isEmpty) {
           _nameController.text = entry.name;
         }
@@ -329,6 +424,17 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     return null;
   }
 
+  /// Validasi model terpilih. Section "Available Models" berada di luar [Form]
+  /// (kolom kiri, di bawah form provider) dan pemilihan model dilakukan lewat
+  /// kartu — bukan [TextFormField] — sehingga dicek manual di sini. Pengguna
+  /// boleh menambah banyak model, tetapi satu harus dipakai.
+  String? _validateModelField() {
+    if (_isTokenOnly || _isNonChatPreset) return null;
+    return _modelController.text.trim().isEmpty
+        ? 'Pilih atau tambahkan satu model terlebih dahulu.'
+        : null;
+  }
+
   // ---------------------------------------------------------- navigasi ----
 
   void _cancel() {
@@ -337,23 +443,6 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     } else {
       context.go(AppRoutes.providers);
     }
-  }
-
-  /// Buka layar pemilih model; hasilnya mengisi field Model Name.
-  Future<void> _openModelPicker() async {
-    if (_effectiveBaseUrl.isEmpty) {
-      _showSnackBar('Isi Base URL terlebih dahulu.', isError: true);
-      return;
-    }
-    final provider = await _providerWithStoredCredentials();
-    if (!mounted) return;
-
-    final model = await context.push<String>(
-      AppRoutes.providersModels,
-      extra: ModelPickerArgs(provider: provider),
-    );
-    if (model == null || !mounted) return;
-    setState(() => _modelController.text = model);
   }
 
   // -------------------------------------------------------------- aksi ----
@@ -384,9 +473,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final oauthError = _validateOAuthFields();
-    if (oauthError != null) {
-      _showSnackBar(oauthError, isError: true);
+    final error = _validateOAuthFields() ?? _validateModelField();
+    if (error != null) {
+      _showSnackBar(error, isError: true);
       return;
     }
 
@@ -410,9 +499,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   Future<void> _connectOAuth() async {
     if (_isConnecting) return;
     if (!_formKey.currentState!.validate()) return;
-    final oauthError = _validateOAuthFields();
-    if (oauthError != null) {
-      _showSnackBar(oauthError, isError: true);
+    final error = _validateOAuthFields() ?? _validateModelField();
+    if (error != null) {
+      _showSnackBar(error, isError: true);
       return;
     }
 
@@ -493,7 +582,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
     setState(() => _isTesting = true);
     try {
-      final provider = await _providerWithStoredCredentials();
+      var provider = await _providerWithStoredCredentials();
+      // Uji lewat endpoint model bila preset punya endpoint khusus
+      // (mis. token Copilot divalidasi via /v1/models).
+      provider = provider.copyWith(baseUrl: _modelsBaseUrl);
       await ref
           .read(providerConfigProvider.notifier)
           .testConnection(provider);
@@ -572,16 +664,18 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             ),
         ],
       ),
-      body: editing ? _buildDetailBody() : _buildAddBody(),
+      body: _buildBody(),
     );
   }
 
-  /// Mode tambah: form manual + panel katalog inline berdampingan.
+  /// Form + panel katalog provider berdampingan (mode tambah maupun edit).
   ///
-  /// Mengetuk kartu katalog langsung mengisi form (tanpa halaman katalog
-  /// terpisah). Setelah disimpan, layar beralih ke mode detail/edit dengan
-  /// data yang sudah ditambahkan.
-  Widget _buildAddBody() {
+  /// Kolom kiri berisi form provider dengan daftar "Available Models" tepat di
+  /// bawahnya; kolom kanan berisi katalog provider. Mengetuk kartu katalog
+  /// langsung mengisi form (tanpa halaman katalog terpisah), dan kartu provider
+  /// yang sedang dipakai ditandai lewat [_catalogId]. Setelah disimpan, layar
+  /// beralih ke mode edit dengan data yang sudah ditambahkan.
+  Widget _buildBody() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Center(
@@ -591,25 +685,36 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             builder: (context, constraints) {
               void onSelected(CatalogSelection s) =>
                   setState(() => _applySelection(s));
+              final panel = ProviderCatalogPanel(
+                onSelected: onSelected,
+                selectedId: _catalogId,
+              );
+              // Kolom kiri: form provider + daftar model di bawahnya.
+              final left = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildForm(),
+                  const SizedBox(height: 24),
+                  _buildAvailableModels(),
+                ],
+              );
               if (constraints.maxWidth < 900) {
-                // Layar sempit: susun vertikal (form lalu katalog).
+                // Layar sempit: susun vertikal (form + model, lalu katalog).
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildForm(),
+                    left,
                     const SizedBox(height: 24),
-                    ProviderCatalogPanel(onSelected: onSelected),
+                    panel,
                   ],
                 );
               }
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(width: 480, child: _buildForm()),
+                  SizedBox(width: 480, child: left),
                   const SizedBox(width: 24),
-                  Expanded(
-                    child: ProviderCatalogPanel(onSelected: onSelected),
-                  ),
+                  Expanded(child: panel),
                 ],
               );
             },
@@ -619,24 +724,11 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     );
   }
 
-  /// Mode detail/edit: form terisi data tersimpan, tanpa panel katalog.
-  Widget _buildDetailBody() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: _buildForm(),
-        ),
-      ),
-    );
-  }
-
   Widget _buildForm() {
     // Metode auth ditentukan otomatis dari pilihan kartu katalog
     // (ApiKeySelection vs OAuthSelection) atau dari provider tersimpan.
-    // Khusus provider dual-auth (Qoder, Zai GLM), field API Key/PAT
-    // ditampilkan di samping section OAuth.
+    // Khusus provider dual-auth (Zai GLM), field API Key ditampilkan
+    // di samping section OAuth.
     final showApiKeyField =
         _authType == AuthType.apiKey || _supportsBothAuth;
     final showOAuthFields = _authType == AuthType.oauth;
@@ -692,9 +784,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
               const SizedBox(height: 12),
             ],
             if (showApiKeyField) ...[
-              _buildLabel(
-                _supportsBothAuth ? 'API Key / PAT' : 'API Key',
-              ),
+              _buildLabel('API Key'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _apiKeyController,
@@ -708,7 +798,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                 decoration: InputDecoration(
                   hintText: _editingProviderId == null ? 'sk-...' : '••••••••',
                   helperText: _supportsBothAuth
-                      ? 'Opsional: PAT/API Key sebagai fallback bila OAuth belum terhubung.'
+                      ? 'Opsional: API Key sebagai fallback bila OAuth belum terhubung.'
                       : (_editingProviderId == null
                             ? 'Kosongkan jika menggunakan endpoint lokal tanpa autentikasi.'
                             : 'Kosongkan untuk mempertahankan key yang tersimpan.'),
@@ -721,8 +811,6 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
               if (showOAuthFields) const SizedBox(height: 20),
             ],
             if (showOAuthFields) _buildOAuthFields(),
-            const SizedBox(height: 20),
-            _buildModelField(),
             const SizedBox(height: 24),
             _buildFormActions(),
           ],
@@ -736,28 +824,23 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel('OAuth Provider'),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<OAuthProviderPreset>(
-          // FormField tidak menyinkronkan initialValue saat berubah, jadi beri
-          // key agar dropdown dibangun ulang ketika preset di-set programatik
-          // (mis. saat mengedit provider OAuth yang tersimpan).
-          key: ValueKey('oauth-preset-${preset.id}'),
-          initialValue: preset,
-          isExpanded: true,
-          decoration: const InputDecoration(),
-          items: OAuthProviderPresets.all
-              .map(
-                (p) => DropdownMenuItem(
-                  value: p,
-                  child: Text(
-                    p.isExperimental ? '${p.label} (eksperimental)' : p.label,
-                    style: const TextStyle(fontSize: 13),
-                  ),
+        // Preset OAuth dipilih lewat kartu provider di panel sebelah kanan
+        // (tidak ada dropdown terpisah agar tidak duplikat).
+        Row(
+          children: [
+            _buildLabel('OAuth'),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                preset.label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
-              )
-              .toList(),
-          onChanged: _onPresetChanged,
+              ),
+            ),
+          ],
         ),
         if (preset.description.isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -957,40 +1040,156 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     );
   }
 
-  /// Field Model Name + tombol pembuka layar pemilih model.
-  Widget _buildModelField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  /// Section "Available Models": kartu daftar model — model hardcode provider
+  /// (ala 9router) bila ada, ditambah model kustom yang ditambahkan pengguna.
+  ///
+  /// Tombol "Add Model" selalu tersedia (boleh menambah banyak). Hanya satu
+  /// model yang dipakai; kartu terpilih ditandai dan id polosnya disimpan ke
+  /// [_modelController]. Label kartu memakai format `<alias>/<id>` bila provider
+  /// punya alias, selain itu id polos.
+  Widget _buildAvailableModels() {
+    final set = ProviderModelCatalog.forProvider(_catalogId);
+    final current = _modelController.text.trim();
+    final hasCatalog = set != null && set.models.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        borderRadius: AppRadius.md,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _buildLabel('Available Models'),
+              if (set != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${set.alias}/…',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: AppFonts.monoFamily,
+                      fontFamilyFallback: AppFonts.monoFallback,
+                      fontSize: 11,
+                      color: AppColors.textDisabled,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasCatalog
+                ? 'Daftar model siap-pakai (hardcode, ala 9router). Klik untuk '
+                      'memakai — yang disimpan adalah id polosnya.'
+                : 'Belum ada model. Klik "Add Model" untuk menambahkan model '
+                      'yang didukung provider ini.',
+            style: const TextStyle(
+              color: AppColors.textDisabled,
+              fontSize: 11,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (set != null)
+            for (final model in set.models) ...[
+              ModelCard(
+                label: set.label(model),
+                name: model.name,
+                selected: model.id == current,
+                onTap: () => setState(() => _modelController.text = model.id),
+              ),
+              const SizedBox(height: 8),
+            ],
+          for (final id in _customModels) ...[
+            ModelCard(
+              label: _modelLabel(id),
+              name: 'Custom model',
+              selected: id == current,
+              onTap: () => setState(() => _modelController.text = id),
+            ),
+            const SizedBox(height: 8),
+          ],
+          _buildAddModelCard(),
+          if (_addingModel) ...[
+            const SizedBox(height: 12),
+            _buildNewModelField(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Kartu "Add Model": menampilkan field untuk mengetik id model baru.
+  Widget _buildAddModelCard() {
+    return InkWell(
+      onTap: () => setState(() => _addingModel = true),
+      borderRadius: AppRadius.lg,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 54),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.lg,
+          border: Border.all(color: AppColors.borderStrong),
+        ),
+        child: const Row(
           children: [
-            _buildLabel('Model Name'),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: _openModelPicker,
-              icon: const Icon(Icons.list_alt, size: 16),
-              label: const Text(
-                'Pilih dari Daftar',
-                style: TextStyle(fontSize: 12),
+            Icon(Icons.add, size: 18, color: AppColors.accentPrimary),
+            SizedBox(width: 8),
+            Text(
+              'Add Model',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.accentPrimary,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        TextFormField(
-          controller: _modelController,
-          style: const TextStyle(
-            fontFamily: AppFonts.monoFamily,
-            fontFamilyFallback: AppFonts.monoFallback,
-            fontSize: 13,
+      ),
+    );
+  }
+
+  /// Field untuk mengetik id model baru (muncul dari tombol "Add Model").
+  Widget _buildNewModelField() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _newModelController,
+            autofocus: true,
+            style: const TextStyle(
+              fontFamily: AppFonts.monoFamily,
+              fontFamilyFallback: AppFonts.monoFallback,
+              fontSize: 13,
+            ),
+            decoration: const InputDecoration(
+              hintText: 'cth: gpt-4o',
+              isDense: true,
+            ),
+            onSubmitted: (_) => _addCustomModel(),
           ),
-          decoration: const InputDecoration(hintText: 'gpt-4o'),
-          validator: (value) {
-            if (_isTokenOnly || _isNonChatPreset) return null;
-            return (value == null || value.trim().isEmpty)
-                ? 'Nama model wajib diisi.'
-                : null;
-          },
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: _addCustomModel,
+          child: const Text('Add', style: TextStyle(fontSize: 12.5)),
+        ),
+        IconButton(
+          tooltip: 'Batal',
+          icon: const Icon(Icons.close, size: 16),
+          color: AppColors.textDisabled,
+          visualDensity: VisualDensity.compact,
+          onPressed: () => setState(() {
+            _newModelController.clear();
+            _addingModel = false;
+          }),
         ),
       ],
     );

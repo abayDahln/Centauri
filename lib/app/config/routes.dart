@@ -2,7 +2,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/canvas_preview/presentation/canvas_preview_page.dart';
 import '../../features/code_exporter/presentation/code_exporter_page.dart';
-import '../../features/provider_config/presentation/model_picker_page.dart';
 import '../../features/provider_config/presentation/provider_detail_page.dart';
 import '../../features/provider_config/presentation/provider_list_page.dart';
 import '../../features/provider_config/presentation/provider_navigation_args.dart';
@@ -18,9 +17,6 @@ class AppRoutes {
 
   /// Formulir tambah provider baru (manual: API Key / OAuth).
   static const String providerNew = '/providers/new';
-
-  /// Pemilih model live (`GET /models`) untuk satu provider draft.
-  static const String providersModels = '/providers/models';
 
   /// Detail/edit provider tersimpan.
   static String providerDetail(String id) => '/providers/$id';
@@ -42,11 +38,6 @@ final GoRouter appRouter = GoRouter(
           path: 'new',
           builder: (_, state) =>
               ProviderDetailPage(args: state.extra as ProviderDetailArgs?),
-        ),
-        GoRoute(
-          path: 'models',
-          builder: (_, state) =>
-              ModelPickerPage(args: state.extra as ModelPickerArgs?),
         ),
         GoRoute(
           path: ':id',

@@ -12,12 +12,3 @@ class ProviderDetailArgs {
   final ApiProvider? draft;
   final CatalogSelection? selection;
 }
-
-/// Argumen navigasi ke layar pemilih model.
-class ModelPickerArgs {
-  const ModelPickerArgs({required this.provider});
-
-  /// Provider (boleh draft/belum tersimpan) yang baseUrl + kredensialnya
-  /// dipakai untuk `GET /models`.
-  final ApiProvider provider;
-}
