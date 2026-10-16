@@ -99,6 +99,12 @@ void main() {
           .reduce((a, b) => a + b);
       expect(total, ProviderCatalog.all.length);
     });
+
+    test('customApi berada di luar all dan bisa di-resolve', () {
+      expect(ProviderCatalog.all.any((e) => e.id == 'custom-api'), isFalse);
+      expect(ProviderCatalog.customApi.id, 'custom-api');
+      expect(ProviderCatalog.byId('custom-api')?.id, 'custom-api');
+    });
   });
 
   group('OAuth section', () {

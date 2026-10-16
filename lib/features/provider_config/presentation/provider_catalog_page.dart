@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/config/theme.dart';
-import '../data/catalog/provider_catalog.dart';
-import '../data/oauth/oauth_provider_presets.dart';
 import '../domain/catalog/catalog_selection.dart';
-import '../domain/catalog/provider_catalog_entry.dart';
-import '../domain/oauth/oauth_provider_preset.dart';
-import 'widgets/centauri_table.dart';
+import 'provider_catalog_view_model.dart';
+import 'widgets/provider_card.dart';
 
-/// Layar katalog provider siap-pakai: tabel per kategori + pencarian.
+/// Layar katalog provider siap-pakai: grid kartu per section + pencarian.
 ///
 /// Menutup layar sambil mengembalikan [CatalogSelection] ke pemanggil.
 class ProviderCatalogPage extends StatefulWidget {
@@ -29,14 +26,15 @@ class _ProviderCatalogPageState extends State<ProviderCatalogPage> {
     super.dispose();
   }
 
-  bool _matches(String name, String id) {
+  bool _matches(ProviderCardData card) {
     if (_query.isEmpty) return true;
     final q = _query.toLowerCase();
-    return name.toLowerCase().contains(q) || id.toLowerCase().contains(q);
+    return card.name.toLowerCase().contains(q) ||
+        card.id.toLowerCase().contains(q) ||
+        card.subtitle.toLowerCase().contains(q);
   }
 
-  List<OAuthProviderPreset> get _oauthPresets =>
-      OAuthProviderPresets.all.where((p) => !p.isCustom).toList();
+  void _select(CatalogSelection selection) => context.pop(selection);
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +50,7 @@ class _ProviderCatalogPageState extends State<ProviderCatalogPage> {
               children: [
                 const Text(
                   'Pilih provider untuk mengisi Base URL dan model secara otomatis. '
-                  'Anda tetap perlu menempelkan API key milik sendiri.',
+                  'Anda tetap perlu menempelkan API key atau login sendiri.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
@@ -91,87 +89,29 @@ class _ProviderCatalogPageState extends State<ProviderCatalogPage> {
   List<Widget> _buildSections() {
     final sections = <Widget>[];
 
-    final oauth = _oauthPresets.where((p) => _matches(p.label, p.id)).toList();
-    if (oauth.isNotEmpty) {
+    for (final section in ProviderCatalogViewModel.build()) {
+      final cards = section.cards.where(_matches).toList();
+      if (cards.isEmpty) continue;
       sections.add(
         _section(
-          'OAuth',
-          CentauriTable<OAuthProviderPreset>(
-            columns: [
-              CentauriTableColumn<OAuthProviderPreset>(
-                label: 'Provider',
-                flex: 4,
-                cell: (_, preset) => _providerCell(
-                  icon: Icons.login,
-                  color: AppColors.accentPrimary,
-                  name: preset.label,
-                  note: preset.description,
-                ),
-              ),
-              CentauriTableColumn<OAuthProviderPreset>(
-                label: 'Model default',
-                flex: 3,
-                cell: (_, preset) => _mono(preset.defaultModel ?? '—'),
-              ),
-              CentauriTableColumn<OAuthProviderPreset>(
-                label: 'Aksi',
-                width: 96,
-                alignment: Alignment.centerRight,
-                cell: (_, preset) => _pickButton(
-                  onTap: () => context.pop(OAuthSelection(preset)),
-                ),
-              ),
-            ],
-            rows: oauth,
-            rowKey: (preset) => preset.id,
-            onRowTap: (preset) => context.pop(OAuthSelection(preset)),
-          ),
-        ),
-      );
-    }
-
-    for (final category in ProviderCategory.values) {
-      final entries = ProviderCatalog.byCategory(
-        category,
-      ).where((e) => _matches(e.name, e.id)).toList();
-      if (entries.isEmpty) continue;
-      sections.add(
-        _section(
-          category.label,
-          CentauriTable<ProviderCatalogEntry>(
-            columns: [
-              CentauriTableColumn<ProviderCatalogEntry>(
-                label: 'Provider',
-                flex: 4,
-                cell: (_, entry) => _providerCell(
-                  icon: entry.icon,
-                  color: entry.brandColor,
-                  name: entry.name,
-                  note: entry.note,
-                ),
-              ),
-              CentauriTableColumn<ProviderCatalogEntry>(
-                label: 'Model default',
-                flex: 3,
-                cell: (_, entry) => _mono(entry.defaultModel),
-              ),
-              CentauriTableColumn<ProviderCatalogEntry>(
-                label: 'Endpoint',
-                flex: 3,
-                cell: (_, entry) => _mono(_hostOf(entry.baseUrl)),
-              ),
-              CentauriTableColumn<ProviderCatalogEntry>(
-                label: 'Aksi',
-                width: 96,
-                alignment: Alignment.centerRight,
-                cell: (_, entry) => _pickButton(
-                  onTap: () => context.pop(ApiKeySelection(entry)),
-                ),
-              ),
-            ],
-            rows: entries,
-            rowKey: (entry) => entry.id,
-            onRowTap: (entry) => context.pop(ApiKeySelection(entry)),
+          section.title,
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 240,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              mainAxisExtent: 88,
+            ),
+            itemCount: cards.length,
+            itemBuilder: (context, index) {
+              final card = cards[index];
+              return ProviderCard(
+                data: card,
+                onTap: () => _select(card.selection),
+              );
+            },
           ),
         ),
       );
@@ -194,93 +134,16 @@ class _ProviderCatalogPageState extends State<ProviderCatalogPage> {
     return sections;
   }
 
-  Widget _section(String title, Widget table) {
+  Widget _section(String title, Widget grid) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(2, 20, 2, 8),
+          padding: const EdgeInsets.fromLTRB(2, 20, 2, 10),
           child: Text(title, style: AppText.sectionTitle),
         ),
-        table,
+        grid,
       ],
     );
-  }
-
-  Widget _providerCell({
-    required IconData icon,
-    required Color color,
-    required String name,
-    String? note,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: AppRadius.sm,
-          ),
-          alignment: Alignment.center,
-          child: Icon(icon, size: 16, color: color),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (note != null && note.isNotEmpty)
-                Text(
-                  note,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _mono(String text) {
-    return Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        fontFamily: AppFonts.monoFamily,
-        fontFamilyFallback: AppFonts.monoFallback,
-        fontSize: 11,
-        color: AppColors.textSecondary,
-      ),
-    );
-  }
-
-  Widget _pickButton({required VoidCallback onTap}) {
-    return TextButton(
-      onPressed: onTap,
-      child: const Text('Pilih', style: TextStyle(fontSize: 12)),
-    );
-  }
-
-  static String _hostOf(String baseUrl) {
-    final uri = Uri.tryParse(baseUrl);
-    return uri?.host ?? baseUrl;
   }
 }

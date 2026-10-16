@@ -1,4 +1,5 @@
 import '../entities/oauth_config.dart';
+import '../entities/oauth_flow.dart';
 
 /// Preset provider OAuth. Menyediakan endpoint otorisasi/token, scope, dan
 /// default Base URL + model agar pengguna tidak perlu mengetik manual.
@@ -23,6 +24,15 @@ class OAuthProviderPreset {
     this.extraTokenParams = const {},
     this.isExperimental = false,
     this.isCustom = false,
+    this.flow = OAuthFlow.authorizationCode,
+    this.deviceFlowStyle = DeviceFlowStyle.rfc8628,
+    this.tokenExchange = TokenExchangeStyle.none,
+    this.tokenBodyFormat = TokenBodyFormat.form,
+    this.redirectPort,
+    this.callbackPath,
+    this.importSource,
+    this.usePkce = true,
+    this.isTokenOnly = false,
   });
 
   final String id;
@@ -52,6 +62,34 @@ class OAuthProviderPreset {
   /// provider yang tidak disertakan bawaan, termasuk flow subscription.
   final bool isCustom;
 
+  /// Alur OAuth yang dipakai preset ini.
+  final OAuthFlow flow;
+
+  /// Dialek device flow (hanya relevan bila [flow] == [OAuthFlow.deviceCode]).
+  final DeviceFlowStyle deviceFlowStyle;
+
+  /// Langkah tukar-token tambahan setelah token utama diperoleh.
+  final TokenExchangeStyle tokenExchange;
+
+  /// Format body saat menukar token (form-urlencoded atau JSON).
+  final TokenBodyFormat tokenBodyFormat;
+
+  /// Port loopback tetap untuk redirect (mis. Codex memakai 1455).
+  final int? redirectPort;
+
+  /// Path callback loopback khusus (mis. `/auth/callback`).
+  final String? callbackPath;
+
+  /// Sumber impor token lokal (mis. Cursor). Lihat [OAuthFlow.importToken].
+  final ImportSource? importSource;
+
+  /// Aktifkan PKCE (S256). Default true.
+  final bool usePkce;
+
+  /// Provider yang hanya untuk memperoleh token (chat belum didukung). Base URL
+  /// / model tidak wajib diisi.
+  final bool isTokenOnly;
+
   bool get requiresUserClientId => clientId.isEmpty;
 
   OAuthConfig toOAuthConfig({String? clientIdOverride}) {
@@ -63,9 +101,18 @@ class OAuthProviderPreset {
       scopes: scopes,
       revocationUrl: revocationUrl,
       audience: audience,
+      redirectPort: redirectPort,
       extraAuthParams: extraAuthParams,
       extraTokenParams: extraTokenParams,
+      usePkce: usePkce,
       isExperimental: isExperimental,
+      flow: flow,
+      deviceFlowStyle: deviceFlowStyle,
+      tokenExchange: tokenExchange,
+      tokenBodyFormat: tokenBodyFormat,
+      callbackPath: callbackPath,
+      importSource: importSource,
+      isTokenOnly: isTokenOnly,
     );
   }
 }

@@ -7,15 +7,19 @@ import '../../../app/config/theme.dart';
 import '../../../core/utils/app_constants.dart';
 import '../data/datasources/ai_api_service.dart';
 import '../data/oauth/oauth_provider_presets.dart';
+import '../data/services/cursor_token_importer.dart';
 import '../domain/catalog/catalog_selection.dart';
 import '../domain/entities/api_provider.dart';
 import '../domain/entities/oauth_config.dart';
+import '../domain/entities/oauth_flow.dart';
+import '../domain/entities/oauth_token_set.dart';
 import '../domain/entities/provider_auth_type.dart';
 import '../domain/oauth/oauth_provider_preset.dart';
 import '../domain/services/oauth_service.dart';
 import 'provider_navigation_args.dart';
 import 'providers/provider_config_provider.dart';
 import 'widgets/delete_provider_dialog.dart';
+import 'widgets/device_connect_dialog.dart';
 
 /// Layar detail provider: formulir tambah/edit lengkap dengan OAuth.
 ///
@@ -117,20 +121,49 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     if (config == null) return OAuthProviderPresets.googleGemini;
     for (final preset in OAuthProviderPresets.all) {
       if (preset.isCustom) continue;
-      if (preset.authorizationUrl == config.authorizationUrl &&
-          preset.tokenUrl == config.tokenUrl) {
-        return preset;
+      if (preset.flow != config.flow) continue;
+      if (preset.authorizationUrl != config.authorizationUrl) continue;
+      if (preset.tokenUrl != config.tokenUrl) continue;
+      // Endpoint Google dipakai bersama (Gemini & Antigravity); bedakan
+      // lewat clientId bila keduanya terisi.
+      if (preset.clientId.isNotEmpty &&
+          config.clientId.isNotEmpty &&
+          preset.clientId != config.clientId) {
+        continue;
       }
+      return preset;
     }
     return OAuthProviderPresets.custom;
   }
 
+  /// Preset hanya untuk memperoleh token (chat belum didukung) — Base URL &
+  /// model tidak relevan.
+  bool get _isTokenOnly =>
+      _authType == AuthType.oauth && _preset.isTokenOnly;
+
+  /// Field Base URL hanya perlu untuk API Key (mis. OpenRouter, OpenCode) dan
+  /// Custom OAuth. Preset OAuth lain sudah membawa Base URL-nya sendiri, jadi
+  /// tidak ditampilkan dan diambil otomatis dari preset.
+  bool get _showBaseUrlField => _authType == AuthType.apiKey || _preset.isCustom;
+
+  /// Base URL efektif yang akan disimpan: untuk OAuth non-custom selalu dari
+  /// preset, selain itu dari input pengguna.
+  String get _effectiveBaseUrl =>
+      (_authType == AuthType.oauth && !_preset.isCustom)
+      ? _preset.baseUrl
+      : _baseUrlController.text.trim();
+
   void _onPresetChangedInternal(OAuthProviderPreset preset) {
     _preset = preset;
-    if (preset.baseUrl.isNotEmpty) _baseUrlController.text = preset.baseUrl;
-    final defaultModel = preset.defaultModel;
-    if (defaultModel != null && defaultModel.isNotEmpty) {
-      _modelController.text = defaultModel;
+    if (preset.isTokenOnly) {
+      _baseUrlController.clear();
+      _modelController.clear();
+    } else {
+      if (preset.baseUrl.isNotEmpty) _baseUrlController.text = preset.baseUrl;
+      final defaultModel = preset.defaultModel;
+      if (defaultModel != null && defaultModel.isNotEmpty) {
+        _modelController.text = defaultModel;
+      }
     }
     if (_nameController.text.trim().isEmpty) {
       _nameController.text = preset.label;
@@ -172,7 +205,15 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         ? _tokenUrlController.text.trim()
         : _preset.tokenUrl;
     final clientId = _clientIdController.text.trim();
-    if (authUrl.isEmpty || tokenUrl.isEmpty || clientId.isEmpty) return null;
+    // Import lokal (mis. Cursor) tidak memakai endpoint OAuth.
+    if (_preset.flow != OAuthFlow.importToken &&
+        (authUrl.isEmpty || tokenUrl.isEmpty)) {
+      return null;
+    }
+    // Client ID hanya wajib untuk Authorization Code; device/import flow tidak.
+    if (_preset.flow == OAuthFlow.authorizationCode && clientId.isEmpty) {
+      return null;
+    }
     return _preset
         .toOAuthConfig(clientIdOverride: clientId)
         .copyWith(authorizationUrl: authUrl, tokenUrl: tokenUrl);
@@ -184,7 +225,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     return ApiProvider(
       id: _editingProviderId ?? 'pending',
       name: _nameController.text.trim(),
-      baseUrl: _baseUrlController.text.trim(),
+      baseUrl: _effectiveBaseUrl,
       model: _modelController.text.trim(),
       apiKey: (!isOAuth && apiKey.isNotEmpty) ? apiKey : null,
       authType: _authType,
@@ -216,6 +257,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   /// Validasi tambahan di luar [Form] untuk mode OAuth.
   String? _validateOAuthFields() {
     if (_authType != AuthType.oauth) return null;
+    // Device flow & impor token: endpoint & Client ID sudah terisi dari preset,
+    // tidak ada field yang perlu divalidasi di sini.
+    if (_preset.flow == OAuthFlow.deviceCode ||
+        _preset.flow == OAuthFlow.importToken) {
+      return null;
+    }
     if (_clientIdController.text.trim().isEmpty) {
       return 'Client ID wajib diisi untuk OAuth.';
     }
@@ -254,7 +301,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   /// Buka layar pemilih model; hasilnya mengisi field Model Name.
   Future<void> _openModelPicker() async {
-    if (_baseUrlController.text.trim().isEmpty) {
+    if (_effectiveBaseUrl.isEmpty) {
       _showSnackBar('Isi Base URL terlebih dahulu.', isError: true);
       return;
     }
@@ -339,6 +386,34 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         setState(() => _editingProviderId = id);
       }
 
+      // Device flow: tampilkan dialog (login URL + kode + menunggu) alih-alih
+      // alur PKCE loopback.
+      final provider = _providerFromForm();
+      final config = provider.oauthConfig;
+      if (config?.flow == OAuthFlow.importToken) {
+        final tokens = await _importLocalToken(config!);
+        if (!mounted || tokens == null) return;
+        await ref
+            .read(providerConfigProvider.notifier)
+            .saveOAuthTokens(id, tokens);
+        if (!mounted) return;
+        _showSnackBar('Berhasil mengimpor token.', isError: false);
+        return;
+      }
+      if (config?.flow == OAuthFlow.deviceCode) {
+        final tokens = await showDeviceConnectDialog(
+          context,
+          provider: provider,
+        );
+        if (!mounted || tokens == null) return;
+        await ref
+            .read(providerConfigProvider.notifier)
+            .saveOAuthTokens(id, tokens);
+        if (!mounted) return;
+        _showSnackBar('Berhasil terhubung via OAuth.', isError: false);
+        return;
+      }
+
       await ref.read(providerConfigProvider.notifier).connectOAuth(id);
       if (!mounted) return;
       final result = ref.read(providerConfigProvider);
@@ -354,8 +429,22 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     }
   }
 
-  Future<void> _disconnectOAuth(String id) async {
-    await ref.read(providerConfigProvider.notifier).disconnectOAuth(id);
+  /// Impor token dari penyimpanan lokal aplikasi lain (mis. Cursor).
+  Future<OAuthTokenSet?> _importLocalToken(OAuthConfig config) async {
+    try {
+      switch (config.importSource) {
+        case ImportSource.cursor:
+          return await const CursorTokenImporter().import();
+        case null:
+          throw const ImportTokenException('Sumber impor token tidak dikenal.');
+      }
+    } on ImportTokenException catch (e) {
+      if (mounted) _showSnackBar(e.message, isError: true);
+      return null;
+    }
+  }
+
+  Future<void> _disconnectOAuth(String id) async {    await ref.read(providerConfigProvider.notifier).disconnectOAuth(id);
     if (mounted) _showSnackBar('Koneksi OAuth diputus.', isError: false);
   }
 
@@ -480,32 +569,35 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                   : null,
             ),
             const SizedBox(height: 20),
-            _buildLabel('Base URL'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _baseUrlController,
-              onChanged: (_) => setState(() {}),
-              style: const TextStyle(
-                fontFamily: AppFonts.monoFamily,
-                fontFamilyFallback: AppFonts.monoFallback,
-                fontSize: 13,
+            if (_showBaseUrlField) ...[
+              _buildLabel('Base URL'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _baseUrlController,
+                onChanged: (_) => setState(() {}),
+                style: const TextStyle(
+                  fontFamily: AppFonts.monoFamily,
+                  fontFamilyFallback: AppFonts.monoFallback,
+                  fontSize: 13,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'https://api.openai.com/v1',
+                ),
+                validator: (value) {
+                  if (_isTokenOnly) return null;
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) return 'Base URL wajib diisi.';
+                  final uri = Uri.tryParse(text);
+                  if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+                    return 'Masukkan URL yang valid (contoh: https://...).';
+                  }
+                  return null;
+                },
               ),
-              decoration: const InputDecoration(
-                hintText: 'https://api.openai.com/v1',
-              ),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-                if (text.isEmpty) return 'Base URL wajib diisi.';
-                final uri = Uri.tryParse(text);
-                if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
-                  return 'Masukkan URL yang valid (contoh: https://...).';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 6),
-            _buildResolvedEndpointPreview(),
-            const SizedBox(height: 12),
+              const SizedBox(height: 6),
+              _buildResolvedEndpointPreview(),
+              const SizedBox(height: 12),
+            ],
             _buildCatalogButton(),
             const SizedBox(height: 20),
             if (_authType == AuthType.apiKey) ...[
@@ -610,13 +702,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             ),
           ),
         ],
-        if (preset.isExperimental) ...[
+        if (preset.isExperimental || preset.isTokenOnly) ...[
           const SizedBox(height: 8),
-          _buildWarning(
-            'Flow ini memakai endpoint yang tidak resmi/umum dan bisa berhenti '
-            'berfungsi sewaktu-waktu. Pastikan Anda mematuhi ketentuan layanan '
-            'provider terkait.',
-          ),
+          _buildWarning(_presetWarning(preset)),
         ],
         if (preset.isCustom) ...[
           const SizedBox(height: 16),
@@ -648,31 +736,52 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             ),
           ),
         ],
-        const SizedBox(height: 16),
-        _buildLabel('Client ID'),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _clientIdController,
-          style: const TextStyle(
-            fontFamily: AppFonts.monoFamily,
-            fontFamilyFallback: AppFonts.monoFallback,
-            fontSize: 13,
-          ),
-          decoration: const InputDecoration(
-            hintText: 'client-id.apps.googleusercontent.com',
-            helperText:
-                'Client ID dari aplikasi OAuth Anda (tipe Desktop/native). '
-                'Client ID bersifat publik dan aman disimpan lokal.',
-            helperStyle: TextStyle(
-              color: AppColors.textDisabled,
-              fontSize: 11,
+        if (!preset.isTokenOnly) ...[
+          const SizedBox(height: 16),
+          _buildLabel('Client ID'),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _clientIdController,
+            style: const TextStyle(
+              fontFamily: AppFonts.monoFamily,
+              fontFamilyFallback: AppFonts.monoFallback,
+              fontSize: 13,
+            ),
+            decoration: const InputDecoration(
+              hintText: 'client-id.apps.googleusercontent.com',
+              helperText:
+                  'Client ID dari aplikasi OAuth Anda (tipe Desktop/native). '
+                  'Client ID bersifat publik dan aman disimpan lokal.',
+              helperStyle: TextStyle(
+                color: AppColors.textDisabled,
+                fontSize: 11,
+              ),
             ),
           ),
-        ),
+        ],
         const SizedBox(height: 16),
         _buildOAuthStatusRow(),
       ],
     );
+  }
+
+  /// Pesan peringatan gabungan untuk preset eksperimental dan/atau token-only.
+  String _presetWarning(OAuthProviderPreset preset) {
+    final parts = <String>[];
+    if (preset.isTokenOnly) {
+      parts.add(
+        'Preset ini hanya untuk menghubungkan akun (menyimpan token); chat '
+        'belum didukung untuk provider ini.',
+      );
+    }
+    if (preset.isExperimental) {
+      parts.add(
+        'Memakai endpoint tidak resmi (reverse-engineered) yang bisa berhenti '
+        'berfungsi sewaktu-waktu. Pastikan Anda mematuhi ketentuan layanan '
+        'provider.',
+      );
+    }
+    return parts.join(' ');
   }
 
   Widget _buildOAuthStatusRow() {
@@ -808,9 +917,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             fontSize: 13,
           ),
           decoration: const InputDecoration(hintText: 'gpt-4o'),
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? 'Nama model wajib diisi.'
-              : null,
+          validator: (value) {
+            if (_isTokenOnly) return null;
+            return (value == null || value.trim().isEmpty)
+                ? 'Nama model wajib diisi.'
+                : null;
+          },
         ),
       ],
     );
@@ -874,7 +986,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   /// Menampilkan URL endpoint final yang akan dipanggil. Membantu pengguna
   /// menyadari Base URL yang salah sebelum menekan Test/Save.
   Widget _buildResolvedEndpointPreview() {
-    final base = _baseUrlController.text.trim();
+    final base = _effectiveBaseUrl;
     if (base.isEmpty) return const SizedBox.shrink();
 
     final endpoint = AiApiService.resolveEndpoint(

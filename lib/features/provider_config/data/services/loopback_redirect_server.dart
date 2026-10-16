@@ -16,18 +16,19 @@ class LoopbackRedirectServer implements RedirectReceiver {
   HttpServer? _server;
   Completer<OAuthRedirectResult>? _completer;
   Uri? _redirectUri;
+  String _callbackPath = AppConstants.oauthRedirectPath;
 
   /// Redirect URI aktif (tersedia setelah [start]).
   Uri? get redirectUri => _redirectUri;
 
   @override
-  Future<Uri> start({int? port}) async {
+  Future<Uri> start({int? port, String? path}) async {
     await stop();
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port ?? 0);
     _server = server;
+    _callbackPath = path ?? AppConstants.oauthRedirectPath;
     final redirectUri = Uri.parse(
-      'http://${AppConstants.oauthLoopbackHost}:${server.port}'
-      '${AppConstants.oauthRedirectPath}',
+      'http://${AppConstants.oauthLoopbackHost}:${server.port}$_callbackPath',
     );
     _redirectUri = redirectUri;
     _completer = Completer<OAuthRedirectResult>();
@@ -38,7 +39,7 @@ class LoopbackRedirectServer implements RedirectReceiver {
   Future<void> _handleRequest(HttpRequest request) async {
     final completer = _completer;
     // Abaikan permintaan lain (mis. /favicon.ico) agar tidak menutup flow.
-    if (request.uri.path != AppConstants.oauthRedirectPath) {
+    if (request.uri.path != _callbackPath) {
       request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
       return;

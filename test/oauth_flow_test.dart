@@ -60,8 +60,10 @@ class _FakeReceiver implements RedirectReceiver {
   bool stopped = false;
 
   @override
-  Future<Uri> start({int? port}) async {
-    startedUri = Uri.parse('http://127.0.0.1:5555/callback');
+  Future<Uri> start({int? port, String? path}) async {
+    startedUri = Uri.parse(
+      'http://127.0.0.1:5555${path ?? '/callback'}',
+    );
     return startedUri!;
   }
 

@@ -53,6 +53,9 @@ dependencies:
   pdf: ^3.13.1
   url_launcher: ^6.3.0
   crypto: ^3.0.3  # PKCE S256 (SHA-256) untuk OAuth.
+  simple_icons: ^16.23.0  # Logo brand provider (font-based, tree-shakeable).
+  sqlite3: ^2.4.6  # Baca state.vscdb Cursor untuk impor token lokal.
+  sqlite3_flutter_libs: ^0.5.24  # Bundel SQLite native (Windows/desktop).
 
 dev_dependencies:
   flutter_test:

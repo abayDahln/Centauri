@@ -197,6 +197,13 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
     state = await AsyncValue.guard(_loadState);
   }
 
+  /// Simpan token OAuth yang diperoleh dari luar [connectOAuth] (mis. device
+  /// flow yang dijalankan lewat dialog) lalu muat ulang state.
+  Future<void> saveOAuthTokens(String id, OAuthTokenSet tokens) async {
+    await ref.read(apiProviderRepositoryProvider).saveTokenSet(id, tokens);
+    state = await AsyncValue.guard(_loadState);
+  }
+
   /// Cabut token OAuth provider [id] (best-effort) lalu hapus dari storage.
   Future<void> disconnectOAuth(String id) async {
     final repository = ref.read(apiProviderRepositoryProvider);
