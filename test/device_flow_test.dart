@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:centauri/features/provider_config/data/catalog/provider_models.dart';
 import 'package:centauri/features/provider_config/data/oauth/oauth_provider_presets.dart';
 import 'package:centauri/features/provider_config/data/services/oauth_service_impl.dart';
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
@@ -117,6 +118,26 @@ void main() {
       expect(config.flow, OAuthFlow.deviceCode);
       expect(config.deviceFlowStyle, DeviceFlowStyle.qoder);
       expect(config.isTokenOnly, isTrue);
+    });
+
+    test('preset Copilot mengambil daftar model live dari endpoint khusus', () {
+      expect(
+        OAuthProviderPresets.githubCopilot.modelsUrl,
+        'https://api.githubcopilot.com/v1/models',
+      );
+    });
+
+    test('preset Qoder memakai daftar model hardcode (ala 9Router)', () {
+      // Daftar model kini terpusat di ProviderModelCatalog (hardcode), bukan
+      // lagi di preset; API Qoder tidak punya endpoint /models publik.
+      final set = ProviderModelCatalog.forProvider('qoder');
+      expect(set, isNotNull);
+      expect(set!.alias, 'qd');
+      final ids = set.models.map((m) => m.id).toList();
+      for (final id in ['auto', 'ultimate', 'qmodel_38max', 'dmodel', 'gmodel']) {
+        expect(ids, contains(id));
+      }
+      expect(OAuthProviderPresets.qoder.modelsUrl, isEmpty);
     });
   });
 

@@ -33,6 +33,7 @@ class OAuthProviderPreset {
     this.importSource,
     this.usePkce = true,
     this.isTokenOnly = false,
+    this.modelsUrl = '',
   });
 
   final String id;
@@ -64,7 +65,6 @@ class OAuthProviderPreset {
 
   /// Alur OAuth yang dipakai preset ini.
   final OAuthFlow flow;
-
   /// Dialek device flow (hanya relevan bila [flow] == [OAuthFlow.deviceCode]).
   final DeviceFlowStyle deviceFlowStyle;
 
@@ -89,6 +89,15 @@ class OAuthProviderPreset {
   /// Provider yang hanya untuk memperoleh token (chat belum didukung). Base URL
   /// / model tidak wajib diisi.
   final bool isTokenOnly;
+
+  /// Endpoint daftar model khusus preset ini (URL penuh atau root).
+  ///
+  /// Dipakai bila daftar live `GET /models` tidak bisa diambil dari Base URL
+  /// chat — mis. preset token-only yang API-nya punya endpoint model
+  /// terpisah (contoh: GitHub Copilot memakai
+  /// `https://api.githubcopilot.com/v1/models` dengan token hasil exchange).
+  /// Kosong = ikut Base URL efektif seperti biasa.
+  final String modelsUrl;
 
   bool get requiresUserClientId => clientId.isEmpty;
 

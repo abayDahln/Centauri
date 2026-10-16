@@ -37,6 +37,20 @@ void main() {
       }
     });
 
+    test('modelsUrl yang terisi berupa URL http(s) valid', () {
+      for (final preset in OAuthProviderPresets.all.where(
+        (p) => p.modelsUrl.trim().isNotEmpty,
+      )) {
+        final uri = Uri.tryParse(preset.modelsUrl);
+        expect(uri, isNotNull, reason: preset.id);
+        expect(
+          uri!.hasScheme && uri.hasAuthority,
+          isTrue,
+          reason: preset.id,
+        );
+      }
+    });
+
     test('preset reverse-engineered ditandai eksperimental', () {
       const experimental = {
         'claude-code',

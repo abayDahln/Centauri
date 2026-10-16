@@ -123,12 +123,16 @@ class OAuthProviderPresets {
   );
 
   /// GitHub Copilot — device flow GitHub + token exchange ke token Copilot.
+  ///
+  /// Token hasil exchange valid untuk API OpenAI-compatible Copilot, termasuk
+  /// endpoint daftar model di bawah — sehingga daftar model diambil live
+  /// dari provider (bukan hardcode), walau chat Centauri belum didukung.
   static const OAuthProviderPreset githubCopilot = OAuthProviderPreset(
     id: 'github-copilot',
     label: 'GitHub Copilot',
     description:
         'Login via GitHub device flow, lalu token ditukar menjadi token '
-        'Copilot. Chat belum didukung lewat jalur OpenAI-compatible Centauri.',
+        'Copilot. Daftar model diambil live dari API Copilot.',
     baseUrl: '',
     authorizationUrl: 'https://github.com/login/device/code',
     tokenUrl: 'https://github.com/login/oauth/access_token',
@@ -137,6 +141,7 @@ class OAuthProviderPresets {
     flow: OAuthFlow.deviceCode,
     deviceFlowStyle: DeviceFlowStyle.rfc8628,
     tokenExchange: TokenExchangeStyle.githubCopilot,
+    modelsUrl: 'https://api.githubcopilot.com/v1/models',
     isTokenOnly: true,
     isExperimental: true,
   );

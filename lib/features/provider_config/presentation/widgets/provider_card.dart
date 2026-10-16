@@ -11,14 +11,14 @@ class ProviderCard extends StatefulWidget {
     super.key,
     required this.data,
     required this.onTap,
-    this.connected = false,
+    this.selected = false,
   });
 
   final ProviderCardData data;
   final VoidCallback onTap;
 
-  /// Menampilkan titik status bila provider sudah terhubung (heuristik).
-  final bool connected;
+  /// Kartu ini mewakili provider yang sedang dipilih di form.
+  final bool selected;
 
   @override
   State<ProviderCard> createState() => _ProviderCardState();
@@ -30,6 +30,7 @@ class _ProviderCardState extends State<ProviderCard> {
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
+    final selected = widget.selected;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -40,10 +41,16 @@ class _ProviderCardState extends State<ProviderCard> {
           duration: const Duration(milliseconds: 140),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: _hovered ? AppColors.hoverBg : AppColors.bgSurface,
+            color: selected
+                ? AppColors.accentPrimary.withValues(alpha: 0.08)
+                : (_hovered ? AppColors.hoverBg : AppColors.bgSurface),
             borderRadius: AppRadius.lg,
             border: Border.all(
-              color: _hovered ? AppColors.accentPrimary : AppColors.borderSubtle,
+              color: selected
+                  ? AppColors.accentPrimary
+                  : (_hovered
+                        ? AppColors.accentPrimary
+                        : AppColors.borderSubtle),
             ),
             boxShadow: _hovered ? AppColors.shadowSoft : null,
           ),

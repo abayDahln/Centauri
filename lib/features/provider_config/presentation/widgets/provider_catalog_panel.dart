@@ -5,15 +5,23 @@ import '../../domain/catalog/catalog_selection.dart';
 import '../provider_catalog_view_model.dart';
 import 'provider_card.dart';
 
-/// Panel katalog provider siap-pakai untuk layar Tambah Provider.
+/// Panel katalog provider siap-pakai untuk layar Tambah/Edit Provider.
 ///
 /// Menampilkan grid kartu per section (OAuth / Free Tier / API Key).
 /// Mengetuk kartu memanggil [onSelected] agar pemanggil langsung mengisi
 /// form — tanpa navigasi ke halaman katalog terpisah.
+///
+/// [selectedId] menandai kartu provider yang sedang dipakai form (id katalog
+/// atau id preset OAuth), bila ada.
 class ProviderCatalogPanel extends StatelessWidget {
-  const ProviderCatalogPanel({super.key, required this.onSelected});
+  const ProviderCatalogPanel({
+    super.key,
+    required this.onSelected,
+    this.selectedId,
+  });
 
   final void Function(CatalogSelection selection) onSelected;
+  final String? selectedId;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +40,7 @@ class ProviderCatalogPanel extends StatelessWidget {
             if (i > 0) const SizedBox(height: 12),
             ProviderCard(
               data: section.cards[i],
+              selected: section.cards[i].id == selectedId,
               onTap: () => onSelected(section.cards[i].selection),
             ),
           ],
