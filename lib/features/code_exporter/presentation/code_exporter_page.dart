@@ -37,7 +37,7 @@ class CodeExporterPage extends ConsumerWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Generate UI di canvas terlebih dahulu.',
+                      'Buat UI terlebih dahulu.',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textDisabled,

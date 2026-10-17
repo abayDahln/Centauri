@@ -146,7 +146,7 @@ class ProviderCatalogViewModel {
       id == 'google-gemini' || id == 'gemini' ? 'Gemini' : fallback;
 
   static String _presetSubtitle(OAuthProviderPreset preset) =>
-      preset.isTokenOnly ? 'Login • token saja' : 'Login OAuth';
+      preset.isTokenOnly ? 'Login • tanpa chat' : 'Login OAuth';
 
   static String _hostOf(String baseUrl) {
     final uri = Uri.tryParse(baseUrl);

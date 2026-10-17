@@ -103,7 +103,7 @@ class _TabBar extends StatelessWidget {
           const SizedBox(width: 2),
           Expanded(
             child: _TabButton(
-              label: 'History',
+              label: 'Riwayat',
               icon: Icons.history,
               active: index == 1,
               onTap: () => onChanged(1),

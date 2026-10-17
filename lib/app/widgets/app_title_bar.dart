@@ -108,19 +108,19 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
               const Spacer(),
               _WindowButton(
                 icon: Icons.remove,
-                tooltip: 'Minimize',
+                tooltip: 'Perkecil',
                 onTap: () => _safe(windowManager.minimize),
               ),
               _WindowButton(
                 icon: _isMaximized
                     ? Icons.filter_none
                     : Icons.crop_square_outlined,
-                tooltip: _isMaximized ? 'Restore' : 'Maximize',
+                tooltip: _isMaximized ? 'Kembalikan' : 'Perbesar',
                 onTap: _toggleMaximize,
               ),
               _WindowButton(
                 icon: Icons.close,
-                tooltip: 'Close',
+                tooltip: 'Tutup',
                 isClose: true,
                 onTap: () => _safe(windowManager.close),
               ),

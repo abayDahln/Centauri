@@ -257,7 +257,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                                   focusedBorder: InputBorder.none,
                                   filled: false,
                                   hintText:
-                                      'What would you like to change or create?',
+                                      'Apa yang ingin dibuat?',
                                   hintStyle: TextStyle(
                                     fontFamily: AppFonts.uiFamily,
                                     fontFamilyFallback: AppFonts.uiFallback,
@@ -300,7 +300,7 @@ class _AttachButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Lampirkan gambar / file (${AttachmentFormats.acceptLabel})',
+      message: 'Lampirkan berkas',
       child: InkWell(
         onTap: onPressed,
         borderRadius: AppRadius.pill,
@@ -336,7 +336,7 @@ class _SendButton extends StatelessWidget {
     // dibatalkan — bukan spinner mati yang membingungkan.
     if (busy) {
       return Tooltip(
-        message: 'Hentikan generate',
+        message: 'Hentikan proses',
         child: SizedBox(
           width: 40,
           height: 40,

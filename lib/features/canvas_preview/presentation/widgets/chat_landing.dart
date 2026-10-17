@@ -78,7 +78,7 @@ class _Welcome extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Mulai dengan sebuah prompt',
+              'Mulai dengan pesan',
               style: TextStyle(
                 fontFamily: AppFonts.uiFamily,
                 fontFamilyFallback: AppFonts.uiFallback,
@@ -91,8 +91,8 @@ class _Welcome extends StatelessWidget {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 380),
               child: Text(
-                'Tanya apa saja untuk saran desain, atau minta langsung sebuah UI. '
-                'Begitu UI dibuat, board akan muncul dan menampilkan hasilnya.',
+                'Tanya apa saja untuk saran desain, atau minta langsung '
+                'dibuat.',
                 textAlign: TextAlign.center,
                 style: AppText.uiSmall,
               ),

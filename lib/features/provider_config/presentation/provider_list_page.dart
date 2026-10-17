@@ -42,8 +42,7 @@ class ProviderListPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Centauri tidak mengirim data Anda ke server mana pun. Semua '
-                  'kredensial API disimpan terenkripsi di perangkat Anda.',
+                  'Semua data tersimpan dan terenkripsi di perangkat Anda.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
@@ -261,6 +260,7 @@ class ProviderListPage extends ConsumerWidget {
         'OAuth · Disconnected',
         AppColors.statusError,
       ),
+      OAuthStatus.stale => ('OAuth (lama)', AppColors.textDisabled),
       OAuthStatus.none => ('OAuth', AppColors.textDisabled),
     };
     return _chip(label, color);
@@ -320,7 +320,7 @@ class ProviderListPage extends ConsumerWidget {
                 .setActiveProvider(provider.id),
           ),
         IconButton(
-          tooltip: 'Edit',
+          tooltip: 'Ubah',
           icon: const Icon(Icons.edit_outlined, size: 18),
           color: AppColors.textSecondary,
           splashRadius: 18,

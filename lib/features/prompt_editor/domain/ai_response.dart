@@ -109,7 +109,7 @@ AiResponse classifyAiResponse(String rawResponse) {
   final raw = rawResponse.trim();
   if (raw.isEmpty) {
     return const AiResponse.chat(
-      'Respons AI kosong. Coba kirim ulang prompt Anda.',
+      'Respons AI kosong. Kirim ulang pesan Anda.',
     );
   }
 

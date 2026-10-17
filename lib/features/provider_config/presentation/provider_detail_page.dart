@@ -53,6 +53,11 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   final _tokenUrlController = TextEditingController();
 
   String? _editingProviderId;
+
+  /// Id preset OAuth yang saat ini memiliki sesi (token) tersimpan. Chip
+  /// "Connected" hanya boleh tampil bila form memakai preset yang sama —
+  /// berpindah preset berarti sesi milik preset lama tidak berlaku di sini.
+  String? _oauthSessionPresetId;
   bool _isTesting = false;
   bool _isConnecting = false;
 
@@ -129,6 +134,8 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     _modelController.text = provider.model;
     _authType = provider.authType;
     _preset = _presetFor(config);
+    // Sesi token tersimpan berasal dari preset konfigurasi yang tersimpan.
+    _oauthSessionPresetId = _preset.id;
     _catalogId = _resolveCatalogId(provider);
     _seedCustomModels(provider.model);
     _clientIdController.text = config?.clientId ?? '';
@@ -507,11 +514,14 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
     setState(() => _isConnecting = true);
     try {
-      var id = _editingProviderId;
-      if (id == null) {
-        id = await _persistProvider();
-        if (id == null) return;
-        if (!mounted) return;
+      // Simpan isi form dulu (provider baru maupun yang diedit) agar alur
+      // OAuth memakai konfigurasi yang benar-benar tampil: endpoint, Client
+      // ID, dan preset yang sama. Juga memicu pembatalan token tersimpan
+      // bila identitas OAuth berubah.
+      final id = await _persistProvider();
+      if (id == null) return;
+      if (!mounted) return;
+      if (id != _editingProviderId) {
         setState(() => _editingProviderId = id);
       }
 
@@ -526,6 +536,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             .read(providerConfigProvider.notifier)
             .saveOAuthTokens(id, tokens);
         if (!mounted) return;
+        _markSessionConnected();
         _showSnackBar('Berhasil mengimpor token.', isError: false);
         return;
       }
@@ -539,6 +550,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             .read(providerConfigProvider.notifier)
             .saveOAuthTokens(id, tokens);
         if (!mounted) return;
+        _markSessionConnected();
         _showSnackBar('Berhasil terhubung via OAuth.', isError: false);
         return;
       }
@@ -550,12 +562,19 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         _showSnackBar('Gagal terhubung: ${result.error}', isError: true);
         return;
       }
+      _markSessionConnected();
       _showSnackBar('Berhasil terhubung via OAuth.', isError: false);
     } on OAuthException catch (e) {
       if (mounted) _showSnackBar(e.message, isError: true);
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }
+  }
+
+  /// Tegaskan bahwa sesi token yang baru tersimpan milik preset form saat
+  /// ini — chip "Connected" berlaku untuk preset ini, bukan preset lain.
+  void _markSessionConnected() {
+    setState(() => _oauthSessionPresetId = _preset.id);
   }
 
   /// Impor token dari penyimpanan lokal aplikasi lain (mis. Cursor).
@@ -798,10 +817,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                 decoration: InputDecoration(
                   hintText: _editingProviderId == null ? 'sk-...' : '••••••••',
                   helperText: _supportsBothAuth
-                      ? 'Opsional: API Key sebagai fallback bila OAuth belum terhubung.'
+                      ? 'Opsional: dipakai bila OAuth belum terhubung.'
                       : (_editingProviderId == null
-                            ? 'Kosongkan jika menggunakan endpoint lokal tanpa autentikasi.'
-                            : 'Kosongkan untuk mempertahankan key yang tersimpan.'),
+                            ? 'Kosongkan untuk layanan lokal tanpa autentikasi.'
+                            : 'Kosongkan untuk mempertahankan key tersimpan.'),
                   helperStyle: const TextStyle(
                     color: AppColors.textDisabled,
                     fontSize: 11,
@@ -901,8 +920,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             decoration: const InputDecoration(
               hintText: 'client-id.apps.googleusercontent.com',
               helperText:
-                  'Client ID dari aplikasi OAuth Anda (tipe Desktop/native). '
-                  'Client ID bersifat publik dan aman disimpan lokal.',
+                  'Client ID dari aplikasi OAuth tipe Desktop Anda.',
               helperStyle: TextStyle(
                 color: AppColors.textDisabled,
                 fontSize: 11,
@@ -921,15 +939,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     final parts = <String>[];
     if (preset.isTokenOnly) {
       parts.add(
-        'Preset ini hanya untuk menghubungkan akun (menyimpan token); chat '
-        'belum didukung untuk provider ini.',
+        'Preset ini hanya untuk login akun; chat belum didukung provider ini.',
       );
     }
     if (preset.isExperimental) {
       parts.add(
-        'Memakai endpoint tidak resmi (reverse-engineered) yang bisa berhenti '
-        'berfungsi sewaktu-waktu. Pastikan Anda mematuhi ketentuan layanan '
-        'provider.',
+        'Koneksi tidak resmi dan bisa berhenti berfungsi sewaktu-waktu.',
       );
     }
     return parts.join(' ');
@@ -937,10 +952,18 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   Widget _buildOAuthStatusRow() {
     final id = _editingProviderId;
-    final status = id == null
+    var status = id == null
         ? OAuthStatus.none
         : ref.watch(providerConfigProvider).value?.statusFor(id) ??
               OAuthStatus.none;
+    // Sesi token tersimpan hanya sah pada preset asalnya. Saat form
+    // berpindah ke preset katalog lain, kartu "Connected" milik sesi lama
+    // ditandai stale — tidak boleh menempel pada provider lain.
+    if (id != null &&
+        (status == OAuthStatus.connected || status == OAuthStatus.expiring) &&
+        _oauthSessionPresetId != _preset.id) {
+      status = OAuthStatus.stale;
+    }
 
     return Row(
       children: [
@@ -960,7 +983,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             label: Text(
               status == OAuthStatus.connected || status == OAuthStatus.expiring
                   ? 'Hubungkan Ulang'
-                  : 'Connect with OAuth',
+                  : 'Hubungkan via OAuth',
               style: const TextStyle(fontSize: 13),
             ),
           ),
@@ -971,7 +994,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           const SizedBox(width: 12),
           OutlinedButton(
             onPressed: () => _disconnectOAuth(id),
-            child: const Text('Disconnect', style: TextStyle(fontSize: 13)),
+            child: const Text('Putuskan', style: TextStyle(fontSize: 13)),
           ),
         ],
         const SizedBox(width: 12),
@@ -981,11 +1004,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   }
 
   Widget _buildOAuthStatusChip(OAuthStatus status) {
-    final (label, color) = switch (status) {
-      OAuthStatus.connected => ('Connected', AppColors.statusSuccess),
-      OAuthStatus.expiring => ('Expiring soon', AppColors.statusWarning),
-      OAuthStatus.disconnected => ('Disconnected', AppColors.statusError),
-      OAuthStatus.none => ('Belum tersimpan', AppColors.textDisabled),
+    final color = switch (status) {
+      OAuthStatus.connected => AppColors.statusSuccess,
+      OAuthStatus.expiring => AppColors.statusWarning,
+      OAuthStatus.disconnected => AppColors.statusError,
+      OAuthStatus.stale => AppColors.textDisabled,
+      OAuthStatus.none => AppColors.textDisabled,
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -994,7 +1018,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         borderRadius: AppRadius.sm,
       ),
       child: Text(
-        label,
+        status.label,
         style: TextStyle(
           fontFamily: AppFonts.monoFamily,
           fontFamilyFallback: AppFonts.monoFallback,
@@ -1064,7 +1088,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         children: [
           Row(
             children: [
-              _buildLabel('Available Models'),
+              _buildLabel('Daftar Model'),
               if (set != null) ...[
                 const SizedBox(width: 8),
                 Expanded(
@@ -1086,10 +1110,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           const SizedBox(height: 4),
           Text(
             hasCatalog
-                ? 'Daftar model siap-pakai (hardcode, ala 9router). Klik untuk '
-                      'memakai — yang disimpan adalah id polosnya.'
-                : 'Belum ada model. Klik "Add Model" untuk menambahkan model '
-                      'yang didukung provider ini.',
+                ? 'Model siap pakai dari provider ini. Klik untuk memilih.'
+                : 'Belum ada model. Tambahkan model untuk mulai memakai '
+                      'provider ini.',
             style: const TextStyle(
               color: AppColors.textDisabled,
               fontSize: 11,
@@ -1143,7 +1166,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             Icon(Icons.add, size: 18, color: AppColors.accentPrimary),
             SizedBox(width: 8),
             Text(
-              'Add Model',
+              'Tambah Model',
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -1170,7 +1193,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
               fontSize: 13,
             ),
             decoration: const InputDecoration(
-              hintText: 'cth: gpt-4o',
+              hintText: 'mis. gpt-4o',
               isDense: true,
             ),
             onSubmitted: (_) => _addCustomModel(),
@@ -1179,7 +1202,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         const SizedBox(width: 8),
         ElevatedButton(
           onPressed: _addCustomModel,
-          child: const Text('Add', style: TextStyle(fontSize: 12.5)),
+          child: const Text('Tambah', style: TextStyle(fontSize: 12.5)),
         ),
         IconButton(
           tooltip: 'Batal',
@@ -1211,7 +1234,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                     ),
                   )
                 : const Text(
-                    'Test Connection',
+                    'Uji Koneksi',
                     style: TextStyle(fontSize: 13),
                   ),
           ),
@@ -1223,7 +1246,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             child: Text(
               _editingProviderId == null
                   ? 'Simpan Provider'
-                  : 'Update Provider',
+                  : 'Perbarui Provider',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,

@@ -168,7 +168,7 @@ class _ExperimentalDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Eksperimental — endpoint reverse-engineered',
+      message: 'Layanan tidak resmi — bisa berubah sewaktu-waktu',
       child: Container(
         width: 7,
         height: 7,
@@ -187,7 +187,7 @@ class _TokenChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Token saja — chat belum didukung',
+      message: 'Hanya login — chat belum didukung',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(

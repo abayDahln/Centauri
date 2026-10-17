@@ -69,7 +69,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
             AiStatusIndicator(),
             SizedBox(height: 12),
             Text(
-              'Sedang memproses...',
+              'Memproses…',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.uiFamily,
@@ -126,8 +126,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
             ),
             SizedBox(height: 6),
             Text(
-              'Pesan Anda dan balasan AI akan tampil di sini. '
-              'Tulis prompt di bar bawah board.',
+              'Ketik pesan untuk memulai.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.uiFamily,
@@ -371,7 +370,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                   ),
                   const SizedBox(width: 6),
                   const Text(
-                    'Generated UI',
+                    'UI siap',
                     style: TextStyle(
                       fontFamily: AppFonts.uiFamily,
                       fontFamilyFallback: AppFonts.uiFallback,

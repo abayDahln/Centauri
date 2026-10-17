@@ -24,7 +24,7 @@ Future<bool> showDeleteProviderDialog(BuildContext context, String name) async {
         ),
       ),
       content: Text(
-        'Hapus $label beserta kredensial tersimpan? Tindakan ini tidak dapat '
+        'Hapus $label beserta data tersimpan? Tindakan ini tidak bisa '
         'dibatalkan.',
         style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
