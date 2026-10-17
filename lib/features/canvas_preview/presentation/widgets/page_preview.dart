@@ -100,7 +100,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       case 'outerHtmlError':
         return; // dikonsumsi peminta via stream yang sama.
       case 'error':
-        final message = event.errorMessage ?? 'Terjadi kesalahan di preview.';
+        final message = event.errorMessage ?? 'Terjadi kesalahan pada pratinjau.';
         debugPrint('[workspace] bridge error: $message');
         if (mounted) setState(() => _error = message);
         return;
@@ -251,7 +251,7 @@ class _PreviewEmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Tulis prompt di bar bawah untuk membuat UI.',
+                'Ketik pesan untuk membuat halaman.',
                 style: AppText.caption,
               ),
             ],
@@ -313,7 +313,7 @@ class _WebviewError extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Bila tetap gagal: pastikan Microsoft Edge WebView2 Runtime terinstal.',
+                'Jika tetap gagal, instal Microsoft Edge WebView2 Runtime.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 10, color: AppColors.textDisabled),
               ),

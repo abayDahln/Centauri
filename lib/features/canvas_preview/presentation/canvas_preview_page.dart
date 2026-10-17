@@ -384,7 +384,7 @@ class _TopBar extends ConsumerWidget {
           children: [
             SoftIconButton(
               icon: Icons.menu,
-              tooltip: 'Panel (Chat · History)',
+              tooltip: 'Panel Chat dan Riwayat',
               active: promptVisible,
               onPressed: onTogglePrompt,
             ),
@@ -398,7 +398,7 @@ class _TopBar extends ConsumerWidget {
             if (workspaceActive) ...[
               SoftIconButton(
                 icon: Icons.code_outlined,
-                tooltip: 'Code',
+                tooltip: 'Kode',
                 active: codeVisible,
                 onPressed: onToggleCode,
               ),
@@ -441,8 +441,8 @@ class _TopBar extends ConsumerWidget {
               SoftIconButton(
                 icon: Icons.touch_app_outlined,
                 tooltip: state.linkInterceptEnabled
-                    ? 'Mode: navigasi link (klik untuk mode seleksi)'
-                    : 'Mode: seleksi elemen (klik untuk mode navigasi)',
+                    ? 'Mode: navigasi link'
+                    : 'Mode: seleksi elemen',
                 active: state.linkInterceptEnabled,
                 onPressed: notifier.toggleLinkIntercept,
               ),
@@ -463,7 +463,7 @@ class _TopBar extends ConsumerWidget {
               const SizedBox(width: 4),
               SoftIconButton(
                 icon: Icons.delete_outline,
-                tooltip: 'Bersihkan workspace',
+                tooltip: 'Bersihkan semua',
                 onPressed: state.pages.isEmpty ? null : notifier.clearWorkspace,
               ),
             ],
@@ -523,7 +523,7 @@ class _AiStatusPill extends ConsumerWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Stop',
+                      'Hentikan',
                       style: TextStyle(
                         fontFamily: AppFonts.uiFamily,
                         fontFamilyFallback: AppFonts.uiFallback,
@@ -577,7 +577,7 @@ class _EmptyPreviewHint extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Tulis prompt di bar bawah untuk mulai.',
+                'Ketik pesan untuk mulai.',
                 style: AppText.caption,
               ),
             ],
@@ -607,7 +607,7 @@ class _MobileShell extends ConsumerWidget {
         actions: [
           SoftIconButton(
             icon: Icons.menu,
-            tooltip: 'Panel (Chat · History)',
+            tooltip: 'Panel Chat dan Riwayat',
             onPressed: () =>
                 _openSheet(context, const ChatSidePanel(), heightFactor: 0.75),
           ),
@@ -619,7 +619,7 @@ class _MobileShell extends ConsumerWidget {
           if (hasUi) ...[
             SoftIconButton(
               icon: Icons.code_outlined,
-              tooltip: 'Code',
+              tooltip: 'Kode',
               onPressed: () =>
                   _openSheet(context, const CodePanel(), heightFactor: 0.8),
             ),
@@ -715,9 +715,8 @@ class _StorageBannerState extends ConsumerState<StorageBanner> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Penyimpanan lokal tidak bisa dibuka (${status.error}). '
-                'Riwayat & pengaturan tidak akan tersimpan. '
-                'Tutup instance Centauri lain lalu coba lagi.',
+                'Penyimpanan lokal gagal dibuka. '
+                'Tutup Centauri lain lalu coba lagi.',
                 style: const TextStyle(fontSize: 12, height: 1.4),
               ),
             ),

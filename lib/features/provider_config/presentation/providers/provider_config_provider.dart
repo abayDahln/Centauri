@@ -31,7 +31,25 @@ final aiApiServiceProvider = Provider<AiApiService>((ref) {
 });
 
 /// Status koneksi OAuth sebuah provider (untuk ditampilkan di UI).
-enum OAuthStatus { none, connected, expiring, disconnected }
+enum OAuthStatus {
+  none,
+  connected,
+  expiring,
+  disconnected,
+
+  /// Sesi OAuth tersimpan tidak boleh dianggap connected pada preset katalog
+  /// lain yang sedang dipakai form — tampilkan sebagai tidak tersimpan.
+  stale;
+
+  /// Label manusiawi per status (dipakui chip status di halaman form).
+  String get label => switch (this) {
+    none => 'Belum tersimpan',
+    connected => 'Connected',
+    expiring => 'Expiring soon',
+    disconnected => 'Disconnected',
+    stale => 'Connected (lama)',
+  };
+}
 
 class ProviderConfigState {
   const ProviderConfigState({
@@ -92,6 +110,22 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
     );
   }
 
+  /// Lepas satu entri status OAuth dari state (per sesi/per preset) tanpa
+  /// menyentuh provider lain. Dipakai halaman form saat berpindah preset:
+  /// status "Connected" milik preset lama tidak boleh mewakili preset baru.
+  void clearOAuthStatus(String providerId) {
+    final value = state.value;
+    if (value == null) return;
+    if (!value.oauthStatus.containsKey(providerId)) return;
+    state = AsyncValue.data(
+      ProviderConfigState(
+        providers: value.providers,
+        activeProvider: value.activeProvider,
+        oauthStatus: Map.of(value.oauthStatus)..remove(providerId),
+      ),
+    );
+  }
+
   static OAuthStatus _statusFor(OAuthTokenSet? tokens) {
     if (tokens == null) return OAuthStatus.disconnected;
     // Token kedaluwarsa tanpa refresh token tidak bisa dipulihkan otomatis.
@@ -137,16 +171,22 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
         if (existing == null) {
           throw StateError('Provider tidak ditemukan.');
         }
-        await repository.saveProvider(
-          existing.copyWith(
-            name: name.trim(),
-            baseUrl: baseUrl.trim(),
-            model: model.trim(),
-            apiKey: apiKey,
-            authType: authType,
-            oauthConfig: oauthConfig,
-          ),
+        final updated = existing.copyWith(
+          name: name.trim(),
+          baseUrl: baseUrl.trim(),
+          model: model.trim(),
+          apiKey: apiKey,
+          authType: authType,
+          oauthConfig: oauthConfig,
         );
+        await repository.saveProvider(updated);
+        // Sesi OAuth hanya sah untuk identitas (flow/endpoint/client id)
+        // yang sama. Begitu identitas berubah (mis. preset katalog lain
+        // dipilih lalu disimpan), token lama tidak berlaku — hapus agar
+        // chip "Connected" tidak menampilkan status sesi lama.
+        if (_oauthIdentityChanged(existing.oauthConfig, updated.oauthConfig)) {
+          await repository.deleteTokenSet(id);
+        }
       }
 
       return _loadState();
@@ -218,5 +258,18 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
     }
     await repository.deleteTokenSet(id);
     state = await AsyncValue.guard(_loadState);
+  }
+
+  /// True bila identitas OAuth berubah — flow, endpoint otorisasi/token,
+  /// client id, sumber impor, atau gaya tukar token. Token milik
+  /// konfigurasi lama tidak berlaku untuk konfigurasi baru.
+  static bool _oauthIdentityChanged(OAuthConfig? a, OAuthConfig? b) {
+    if (a == null || b == null) return true;
+    return a.flow != b.flow ||
+        a.authorizationUrl != b.authorizationUrl ||
+        a.tokenUrl != b.tokenUrl ||
+        a.clientId != b.clientId ||
+        a.importSource != b.importSource ||
+        a.tokenExchange != b.tokenExchange;
   }
 }

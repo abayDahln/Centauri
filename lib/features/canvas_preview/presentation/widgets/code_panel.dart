@@ -33,7 +33,7 @@ class _CodePanelState extends ConsumerState<CodePanel> {
   Future<void> _copy(String code) async {
     await _exportService.copyToClipboard(code);
     if (!mounted) return;
-    _toast('HTML disalin ke clipboard');
+    _toast('HTML disalin.');
   }
 
   Future<void> _save(String code) async {
@@ -274,7 +274,7 @@ class _CodeEmptyState extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(24),
         child: Text(
-          'Belum ada kode.\nGenerate UI lebih dulu, lalu lihat HTML-nya di sini.',
+          'Belum ada kode.\nBuat UI terlebih dahulu.',
           textAlign: TextAlign.center,
           style: AppText.caption,
         ),

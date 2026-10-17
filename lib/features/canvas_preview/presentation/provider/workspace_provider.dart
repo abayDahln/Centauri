@@ -51,8 +51,8 @@ enum ChatMessageKind { chat, ui }
 /// Status proses AI yang ditampilkan live ke pengguna.
 enum AiStatus {
   idle('', ''),
-  thinking('Berpikir', 'Menghubungi model...'),
-  responding('Menulis', 'Menerima respons'),
+  thinking('Berpikir', 'Menghubungi model…'),
+  responding('Menulis', 'Menerima balasan'),
   rendering('Merender', 'Menyiapkan halaman'),
   done('Selesai', '');
 
@@ -410,7 +410,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     );
     if (duplicate) return null;
     if (state.attachments.length >= 6) {
-      return 'Maksimal 6 lampiran per prompt.';
+      return 'Maksimal 6 lampiran per pesan.';
     }
     state = state.copyWith(attachments: [...state.attachments, attachment]);
     return null;
@@ -474,7 +474,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
         const CanvasMessage(
           role: ChatRole.error,
           text:
-              'Belum ada provider aktif. Buka Settings untuk mengonfigurasi API terlebih dahulu.',
+              'Belum ada provider aktif. Tambahkan provider untuk mulai.',
         ),
       );
       return;
@@ -586,7 +586,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       _failGeneration(e.message);
     } catch (e) {
       if (!state.isGenerating) return;
-      _failGeneration('Terjadi kesalahan: $e');
+      _failGeneration('Terjadi kesalahan. Coba lagi.');
     }
   }
 
@@ -710,14 +710,14 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
   String _titleFromPrompt(String prompt) {
     final cleaned = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (cleaned.isEmpty) return 'Untitled';
+    if (cleaned.isEmpty) return 'Tanpa judul';
     final words = cleaned
         .split(' ')
         .where((w) => w.isNotEmpty)
         .take(4)
         .join(' ')
         .replaceAll(RegExp(r'[,.:;!?]+$'), '');
-    if (words.isEmpty) return 'Untitled';
+    if (words.isEmpty) return 'Tanpa judul';
     final titled = words.length > 32 ? '${words.substring(0, 32).trim()}...' : words;
     return titled
         .split(' ')

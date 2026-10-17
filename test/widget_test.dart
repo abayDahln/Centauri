@@ -25,10 +25,10 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    expect(find.text('Mulai dengan sebuah prompt'), findsOneWidget);
+    expect(find.text('Mulai dengan pesan'), findsOneWidget);
     expect(find.text('Belum ada halaman'), findsNothing);
     expect(
-      find.text('What would you like to change or create?'),
+      find.text('Apa yang ingin dibuat?'),
       findsOneWidget,
     );
 
@@ -48,7 +48,7 @@ void main() {
     // Provider pill juga tersedia.
     expect(find.text('Pilih provider'), findsOneWidget);
     expect(
-      find.text('What would you like to change or create?'),
+      find.text('Apa yang ingin dibuat?'),
       findsOneWidget,
     );
 
@@ -81,19 +81,20 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    // Panel tertutup: belum ada tab "History" di panel samping.
-    expect(find.text('History'), findsNothing);
+    // Panel tertutup: belum ada tab "Riwayat" di panel samping.
+    expect(find.text('Riwayat'), findsNothing);
 
     // Klik tombol menu di kiri atas.
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
 
-    // Panel samping muncul dengan dua tab: Chat, History.
+    // Panel samping muncul dengan dua tab: Chat, Riwayat
+    // (label tab + judul panel Riwayat = 2 teks sama).
     expect(find.text('Chat'), findsOneWidget);
-    expect(find.text('History'), findsOneWidget);
+    expect(find.text('Riwayat'), findsNWidgets(2));
 
-    // Buka tab History -> tombol "Chat baru" tampil.
-    await tester.tap(find.text('History'));
+    // Buka tab Riwayat -> tombol "Chat baru" tampil.
+    await tester.tap(find.text('Riwayat').first);
     await tester.pumpAndSettle();
     expect(find.text('Chat baru'), findsOneWidget);
 

@@ -87,8 +87,8 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
             final count = _figma.countNodes(payload);
             snack(
               path == null
-                  ? 'Payload Figma ($count elemen) disalin ke clipboard.'
-                  : 'Payload Figma ($count elemen) disalin + disimpan: $path',
+                  ? 'Data Figma ($count elemen) disalin.'
+                  : 'Data Figma ($count elemen) tersimpan: $path',
             );
         }
       } on PageExportException catch (e) {
@@ -112,7 +112,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.download_outlined),
-        tooltip: 'Ekspor halaman (PNG/SVG/PDF/Figma)',
+        tooltip: 'Ekspor halaman',
         onSelected: run,
         itemBuilder: (_) => const [
           PopupMenuItem(
@@ -129,7 +129,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
           ),
           PopupMenuItem(
             value: _PageExportKind.figma,
-            child: Text('Figma (payload plugin)'),
+            child: Text('Figma'),
           ),
         ],
       );
@@ -148,12 +148,12 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
         ),
         PopupMenuItem(
           value: _PageExportKind.figma,
-          child: Text('Figma (payload plugin)'),
+          child: Text('Figma'),
         ),
       ],
       child: SoftIconButton(
         icon: _busy ? Icons.hourglass_empty : Icons.download_outlined,
-        tooltip: 'Ekspor halaman (PNG/SVG/PDF/Figma)',
+        tooltip: 'Ekspor halaman',
         onPressed: () {},
       ),
     );

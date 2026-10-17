@@ -146,7 +146,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50)); // jalankan _begin
 
     expect(find.text('DAAF7FDD'), findsOneWidget);
-    expect(find.textContaining('Waiting for authorization'), findsOneWidget);
+    expect(find.textContaining('Menunggu persetujuan'), findsOneWidget);
     expect(launcher.opened, isNotNull);
     expect(launcher.opened!.queryParameters['nonce'], 'abc');
 

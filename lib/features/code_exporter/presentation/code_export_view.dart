@@ -35,7 +35,7 @@ class _CodeExportViewState extends State<CodeExportView> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('Kode ${_format.label} disalin ke clipboard'),
+          content: Text('Kode ${_format.label} disalin.'),
           backgroundColor: AppColors.bgElevated,
           behavior: SnackBarBehavior.floating,
         ),
@@ -191,7 +191,7 @@ class _CodeExportViewState extends State<CodeExportView> {
                 child: OutlinedButton.icon(
                   onPressed: _copy,
                   icon: const Icon(Icons.copy_all_outlined, size: 15),
-                  label: const Text('Copy', style: TextStyle(fontSize: 12)),
+                  label: const Text('Salin', style: TextStyle(fontSize: 12)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -209,7 +209,7 @@ class _CodeExportViewState extends State<CodeExportView> {
                         )
                       : const Icon(Icons.download_outlined, size: 15),
                   label: const Text(
-                    'Download',
+                    'Unduh',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -224,13 +224,16 @@ class _CodeExportViewState extends State<CodeExportView> {
   String get _formatNotice {
     switch (_format) {
       case CodeFormat.html:
-        return 'Format utama: satu file HTML lengkap - seluruh CSS di <style> dan JS vanilla di <script> inline. Tanpa CDN, tanpa framework, tanpa dependency eksternal. Bisa langsung disimpan sebagai .html dan dijalankan offline.';
+        return 'Satu file HTML utuh: CSS dan JS digabung, langsung jalan offline.';
       case CodeFormat.reactJsx:
-        return 'Konversi bonus (heuristik): atribut className dan style object. Pindahkan isi tag <style> dokumen asli ke file CSS terpisah - class mengacu ke CSS hand-written, bukan Tailwind. Periksa kembali sebelum produksi.';
+        return 'Konversi perkiraan. Pindahkan isi tag <style> ke file CSS '
+            'sendiri, lalu periksa sebelum dipakai.';
       case CodeFormat.flutterDart:
-        return 'Konversi bonus (heuristik): HTML menjadi widget Flutter. Hanya inline style yang diterjemahkan; CSS di dalam <style> tidak dipetakan. Periksa kembali sebelum produksi.';
+        return 'Konversi perkiraan. Hanya inline style yang diterjemahkan; CSS '
+            'di tag <style> tidak ikut. Periksa sebelum dipakai.';
       case CodeFormat.tailwind:
-        return 'Konversi bonus (heuristik): inline style menjadi arbitrary property Tailwind ([prop:value], butuh v3.2+). Class asli dipertahankan; isi <style> pindahkan ke CSS. Periksa kembali sebelum produksi.';
+        return 'Konversi perkiraan. Butuh Tailwind v3.2+; isi tag <style> '
+            'pindahkan ke file CSS. Periksa sebelum dipakai.';
     }
   }
 }

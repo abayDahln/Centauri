@@ -50,4 +50,22 @@ docs/
 
 .history/
 .codegraph/
+
+# Agent tooling — LOCAL ONLY.
+# Skills, MCP server configs, and agent instruction files are generated per
+# machine and must never be pushed. Do not un-ignore any of these.
+.codebuddy/
 .claude/
+.agents/
+.qoder/
+.codex/
+.cline/
+.cursor/
+.github/copilot-instructions.md
+.mcp.json
+opencode.jsonc
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+CODEBUDDY.local.md
+.qoder

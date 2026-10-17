@@ -109,7 +109,7 @@ class _DeviceConnectDialogState extends ConsumerState<_DeviceConnectDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Connect ${widget.provider.name}',
+                'Hubungkan ${widget.provider.name}',
                 style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 16,
@@ -118,14 +118,13 @@ class _DeviceConnectDialogState extends ConsumerState<_DeviceConnectDialog> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Buka URL login di bawah, lalu setujui akses di browser.',
+                'Buka URL login, lalu setujui akses di browser.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
               ),
               if (widget.provider.oauthConfig?.isExperimental ?? false) ...[
                 const SizedBox(height: 12),
                 _buildWarning(
-                  'Flow ini memakai endpoint tidak resmi (reverse-engineered) '
-                  'dan bisa berhenti berfungsi sewaktu-waktu.',
+                  'Koneksi tidak resmi dan bisa terputus sewaktu-waktu.',
                 ),
               ],
               const SizedBox(height: 16),
@@ -187,7 +186,7 @@ class _DeviceConnectDialogState extends ConsumerState<_DeviceConnectDialog> {
     }
 
     if (auth == null) {
-      return [_waitingRow('Menyiapkan device flow…')];
+      return [_waitingRow('Menyiapkan…')];
     }
 
     return [
@@ -199,10 +198,10 @@ class _DeviceConnectDialogState extends ConsumerState<_DeviceConnectDialog> {
       // Sebagian provider tidak menampilkan kode (mis. CodeBuddy, Zai GLM).
       if (auth.userCode.isNotEmpty) ...[
         const SizedBox(height: 12),
-        _ValueBox(label: 'Your Code', value: auth.userCode, emphasize: true),
+        _ValueBox(label: 'Kode verifikasi', value: auth.userCode, emphasize: true),
       ],
       const SizedBox(height: 16),
-      _waitingRow('Waiting for authorization…'),
+      _waitingRow('Menunggu persetujuan…'),
     ];
   }
 

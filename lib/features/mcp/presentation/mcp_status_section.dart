@@ -51,8 +51,7 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
           ),
           SizedBox(height: 6),
           Text(
-            'MCP server hanya berjalan di versi Desktop. '
-            'Di perangkat ini fitur agent bridge tidak tersedia.',
+            'MCP hanya berjalan di versi Desktop.',
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 13,
@@ -84,7 +83,7 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
             _StatusDot(running: running),
             const SizedBox(width: 8),
             Text(
-              running ? 'Berjalan' : 'Mati',
+              running ? 'Berjalan' : 'Berhenti',
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -97,8 +96,8 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
         ),
         const SizedBox(height: 6),
         const Text(
-          'Jembatan agar AI agent PC (Claude Code, Cursor) bisa membaca dan '
-          'mengubah canvas. Perubahan dari agent tampil live tanpa refresh.',
+          'Jembatan agar AI agent (Claude Code, Cursor) bisa membaca dan '
+          'mengubah desain. Perubahan tampil langsung.',
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,
@@ -136,12 +135,12 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
             width: double.infinity,
             child: FilledButton(
               onPressed: _starting ? null : _start,
-              child: Text(_starting ? 'Menyalakan…' : 'Nyalakan server'),
+              child: Text(_starting ? 'Menyalakan…' : 'Nyalakan'),
             ),
           ),
           const SizedBox(height: 6),
           const Text(
-            'Normalnya server menyala otomatis saat board dibuka.',
+            'Server menyala otomatis saat aplikasi dibuka.',
             style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
           ),
         ],
@@ -227,7 +226,7 @@ class _EndpointRow extends StatelessWidget {
                 ..hideCurrentSnackBar()
                 ..showSnackBar(
                   const SnackBar(
-                    content: Text('Endpoint disalin.'),
+                    content: Text('Alamat disalin.'),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );

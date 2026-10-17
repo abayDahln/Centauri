@@ -363,7 +363,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               searching
                   ? 'Tidak ada percakapan yang cocok.'
-                  : 'Belum ada percakapan tersimpan.\nMulai dari "Chat baru".',
+                  : 'Belum ada percakapan tersimpan.',
               textAlign: TextAlign.center,
               style: AppText.caption,
             ),
