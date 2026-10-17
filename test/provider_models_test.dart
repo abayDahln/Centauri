@@ -1,11 +1,10 @@
 import 'package:centauri/features/provider_config/data/catalog/provider_models.dart';
-import 'package:centauri/features/provider_config/data/oauth/oauth_provider_presets.dart';
 import 'package:centauri/features/provider_config/presentation/provider_catalog_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Provider yang sengaja TIDAK punya daftar model hardcode (pengguna mengisi
 /// Base URL + model sendiri).
-const _noStaticModels = {'custom-api', 'custom-oauth'};
+const _noStaticModels = {'custom-api'};
 
 void main() {
   group('ProviderModelCatalog integrity', () {
@@ -51,15 +50,29 @@ void main() {
     });
 
     test('label tampilan memakai format alias/id', () {
-      final set = ProviderModelCatalog.forProvider('codebuddy')!;
-      final model = set.models.firstWhere((m) => m.id == 'glm-5.2');
-      expect(set.label(model), 'cbai/glm-5.2');
+      final kiro = ProviderModelCatalog.forProvider('kiro-ai')!;
+      final opus = kiro.models.firstWhere((m) => m.id == 'claude-opus-4.8');
+      expect(kiro.label(opus), 'kr/claude-opus-4.8');
 
-      final cline = ProviderModelCatalog.forProvider('cline')!;
-      final opus = cline.models.firstWhere(
-        (m) => m.id == 'anthropic/claude-opus-4.7',
+      final zai = ProviderModelCatalog.forProvider('zai')!;
+      final glm = zai.models.firstWhere((m) => m.id == 'glm-5.3');
+      expect(zai.label(glm), 'glm/glm-5.3');
+    });
+
+    test('label tanpa alias tambahan bila id sudah ber-namespace', () {
+      // Label harus sama dengan id yang dikirim ke provider; menempelkan alias
+      // di depan id ber-namespace menghasilkan id palsu (mis.
+      // `openrouter/openai/gpt-5.4`) yang ditolak provider dengan HTTP 404.
+      final openrouter = ProviderModelCatalog.forProvider('openrouter')!;
+      for (final model in openrouter.models) {
+        expect(openrouter.label(model), model.id, reason: model.id);
+      }
+
+      final nvidia = ProviderModelCatalog.forProvider('nvidia')!;
+      final nemotron = nvidia.models.firstWhere(
+        (m) => m.id.startsWith('nvidia/'),
       );
-      expect(cline.label(opus), 'cl/anthropic/claude-opus-4.7');
+      expect(nvidia.label(nemotron), nemotron.id);
     });
 
     test('forProvider(null) & id tak dikenal mengembalikan null', () {
@@ -74,18 +87,6 @@ void main() {
           ProviderModelCatalog.forProvider(card.id),
           isNotNull,
           reason: 'kartu ${card.id} tidak punya daftar model hardcode',
-        );
-      }
-    });
-
-    test('setiap preset OAuth non-custom punya daftar model', () {
-      for (final preset in OAuthProviderPresets.all.where(
-        (p) => !p.isCustom,
-      )) {
-        expect(
-          ProviderModelCatalog.forProvider(preset.id),
-          isNotNull,
-          reason: 'preset ${preset.id} tidak punya daftar model hardcode',
         );
       }
     });

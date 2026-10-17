@@ -4,7 +4,6 @@ import '../../features/canvas_preview/presentation/canvas_preview_page.dart';
 import '../../features/code_exporter/presentation/code_exporter_page.dart';
 import '../../features/provider_config/presentation/provider_detail_page.dart';
 import '../../features/provider_config/presentation/provider_list_page.dart';
-import '../../features/provider_config/presentation/provider_navigation_args.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -15,7 +14,7 @@ class AppRoutes {
   /// Daftar provider tersimpan (pintu masuk konfigurasi).
   static const String providers = '/providers';
 
-  /// Formulir tambah provider baru (manual: API Key / OAuth).
+  /// Formulir tambah provider baru (API Key).
   static const String providerNew = '/providers/new';
 
   /// Detail/edit provider tersimpan.
@@ -34,16 +33,11 @@ final GoRouter appRouter = GoRouter(
       builder: (_, _) => const ProviderListPage(),
       routes: [
         // Segmen statis didahulukan agar tidak tertangkap oleh `:id`.
-        GoRoute(
-          path: 'new',
-          builder: (_, state) =>
-              ProviderDetailPage(args: state.extra as ProviderDetailArgs?),
-        ),
+        GoRoute(path: 'new', builder: (_, _) => const ProviderDetailPage()),
         GoRoute(
           path: ':id',
-          builder: (_, state) => ProviderDetailPage(
-            providerId: state.pathParameters['id'],
-          ),
+          builder: (_, state) =>
+              ProviderDetailPage(providerId: state.pathParameters['id']),
         ),
       ],
     ),

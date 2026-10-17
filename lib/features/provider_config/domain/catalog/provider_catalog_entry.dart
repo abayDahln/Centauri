@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 /// Kategori provider untuk pengelompokan di UI.
 ///
 /// Mengikuti penamaan kategori 9router ("Free Tier" / "API Key") plus "Lokal".
-/// Kategori OAuth tidak ada di sini karena preset OAuth punya model sendiri
-/// ([OAuthProviderPreset]) dan disatukan hanya di lapisan UI.
 enum ProviderCategory { freeTier, apiKey, local }
 
 extension ProviderCategoryLabel on ProviderCategory {

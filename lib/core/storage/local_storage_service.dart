@@ -156,6 +156,19 @@ class LocalStorageService {
   List<String> readAllProvidersJson() =>
       _providersBox?.values.toList() ?? const [];
 
+  /// Seluruh provider sebagai pasangan id → JSON. Dipakai migrasi/bersih-bersih
+  /// yang perlu menyasar provider tertentu berdasarkan id-nya.
+  Map<String, String> readProvidersJsonById() {
+    final box = _providersBox;
+    if (box == null) return const {};
+    final result = <String, String>{};
+    for (final key in box.keys) {
+      final value = box.get(key);
+      if (key is String && value is String) result[key] = value;
+    }
+    return result;
+  }
+
   void writeProviderJson(String id, String json) =>
       _providersBox?.put(id, json);
 
@@ -167,6 +180,9 @@ class LocalStorageService {
 
   Future<void> setActiveProviderId(String id) async =>
       _metaBox?.put(AppConstants.activeProviderIdKey, id);
+
+  Future<void> clearActiveProviderId() async =>
+      _metaBox?.delete(AppConstants.activeProviderIdKey);
 
   // ------------------------------------------------------------- projects --
 

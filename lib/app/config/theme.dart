@@ -72,30 +72,14 @@ class AppColors {
 
   /// Shadow lembut untuk panel mengambang.
   static const List<BoxShadow> shadowSoft = [
-    BoxShadow(
-      color: Color(0x0F000000),
-      blurRadius: 2,
-      offset: Offset(0, 1),
-    ),
-    BoxShadow(
-      color: Color(0x0A000000),
-      blurRadius: 8,
-      offset: Offset(0, 2),
-    ),
+    BoxShadow(color: Color(0x0F000000), blurRadius: 2, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 2)),
   ];
 
   /// Shadow lebih tegas untuk dialog/popover.
   static const List<BoxShadow> shadowRaised = [
-    BoxShadow(
-      color: Color(0x14000000),
-      blurRadius: 6,
-      offset: Offset(0, 2),
-    ),
-    BoxShadow(
-      color: Color(0x1A000000),
-      blurRadius: 24,
-      offset: Offset(0, 8),
-    ),
+    BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+    BoxShadow(color: Color(0x1A000000), blurRadius: 24, offset: Offset(0, 8)),
   ];
 }
 

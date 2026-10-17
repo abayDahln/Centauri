@@ -1,5 +1,4 @@
 import 'package:centauri/features/provider_config/data/catalog/provider_catalog.dart';
-import 'package:centauri/features/provider_config/data/oauth/oauth_provider_presets.dart';
 import 'package:centauri/features/provider_config/domain/catalog/provider_catalog_entry.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -104,15 +103,6 @@ void main() {
       expect(ProviderCatalog.all.any((e) => e.id == 'custom-api'), isFalse);
       expect(ProviderCatalog.customApi.id, 'custom-api');
       expect(ProviderCatalog.byId('custom-api')?.id, 'custom-api');
-    });
-  });
-
-  group('OAuth section', () {
-    test('has at least one selectable (non-custom) preset', () {
-      final selectable = OAuthProviderPresets.all
-          .where((p) => !p.isCustom)
-          .toList();
-      expect(selectable, isNotEmpty);
     });
   });
 }

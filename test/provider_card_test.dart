@@ -1,4 +1,3 @@
-import 'package:centauri/features/provider_config/domain/catalog/catalog_selection.dart';
 import 'package:centauri/features/provider_config/domain/catalog/provider_catalog_entry.dart';
 import 'package:centauri/features/provider_config/presentation/provider_catalog_view_model.dart';
 import 'package:centauri/features/provider_config/presentation/widgets/provider_card.dart';
@@ -16,18 +15,12 @@ const _entry = ProviderCatalogEntry(
   textIcon: 'GQ',
 );
 
-ProviderCardData _card({
-  String name = 'Groq Test',
-  bool isExperimental = false,
-  bool isTokenOnly = false,
-}) => ProviderCardData(
+ProviderCardData _card({String name = 'Groq Test'}) => ProviderCardData(
   id: 'groq-test',
   name: name,
   subtitle: 'Ada tier gratis',
   logo: const ProviderLogoData(color: Color(0xFFF55036), textIcon: 'GQ'),
-  selection: const ApiKeySelection(_entry),
-  isExperimental: isExperimental,
-  isTokenOnly: isTokenOnly,
+  entry: _entry,
 );
 
 Widget _host(ProviderCardData data, {VoidCallback? onTap}) => MaterialApp(
@@ -52,25 +45,13 @@ void main() {
 
       expect(tapped, 1);
     });
-
-    testWidgets('badge token tampil untuk preset token-only', (tester) async {
-      await tester.pumpWidget(_host(_card(isTokenOnly: true)));
-
-      expect(find.text('token'), findsOneWidget);
-    });
-
-    testWidgets('tanpa badge token untuk kartu biasa', (tester) async {
-      await tester.pumpWidget(_host(_card()));
-
-      expect(find.text('token'), findsNothing);
-    });
   });
 
   group('ProviderCatalogPanel data', () {
     test('setiap kartu view-model bisa dirender ProviderCard', () {
       final data = ProviderCatalogViewModel.allCards().first;
       expect(data.name.trim(), isNotEmpty);
-      expect(data.selection, isNotNull);
+      expect(data.entry.id, isNotEmpty);
     });
   });
 }

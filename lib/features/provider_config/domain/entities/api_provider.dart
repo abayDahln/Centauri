@@ -1,46 +1,43 @@
-import 'oauth_config.dart';
-import 'oauth_token_set.dart';
-import 'provider_auth_type.dart';
+/// Id katalog untuk provider yang dikonfigurasi manual (bukan template).
+const String kCustomCatalogId = 'custom-api';
 
 /// Metadata Custom API Provider (FR-01).
 ///
-/// Catatan keamanan: [apiKey] dan [oauthToken] hanya hidup di Secure Storage
-/// dan instance runtime; kedua field ini tidak pernah diserialisasi ke Hive
-/// (NFR-01). [oauthConfig] aman diserialisasi karena hanya memuat data publik
-/// klien PKCE (client id, endpoint, scope).
+/// Catatan keamanan: [apiKey] hanya hidup di Secure Storage dan instance
+/// runtime; field ini tidak pernah diserialisasi ke Hive (NFR-01).
 class ApiProvider {
   const ApiProvider({
     required this.id,
     required this.name,
     required this.baseUrl,
     required this.model,
+    this.providerName = '',
+    this.catalogId,
     this.apiKey,
-    this.authType = AuthType.apiKey,
-    this.oauthConfig,
-    this.oauthToken,
   });
 
   final String id;
+
+  /// Label pilihan pengguna untuk entri ini, mis. "Groq Kerja".
   final String name;
+
+  /// Nama provider yang dipakai, mis. "Groq" (dari template) atau nama bebas
+  /// untuk provider custom.
+  final String providerName;
+
+  /// Id entri katalog template, atau [kCustomCatalogId] untuk provider yang
+  /// dikonfigurasi sendiri. Null hanya pada data lama sebelum dinormalkan.
+  final String? catalogId;
+
   final String baseUrl;
   final String model;
   final String? apiKey;
 
-  /// Metode autentikasi: API Key (BYOK) atau OAuth.
-  final AuthType authType;
-
-  /// Konfigurasi OAuth; wajib bila [authType] == [AuthType.oauth].
-  final OAuthConfig? oauthConfig;
-
-  /// Token OAuth runtime (tidak pernah dipersist ke Hive). Null berarti
-  /// belum terhubung / token tidak tersedia.
-  final OAuthTokenSet? oauthToken;
+  /// True bila provider memakai template katalog (bukan custom).
+  bool get usesTemplate => catalogId != null && catalogId != kCustomCatalogId;
 
   /// Token yang dipakai untuk header `Authorization: Bearer`.
-  /// OAuth menang bila ada; jika tidak, jatuh ke API Key.
-  String? get bearerToken => oauthToken?.accessToken ?? apiKey;
-
-  bool get usesOAuth => authType == AuthType.oauth;
+  String? get bearerToken => apiKey;
 
   /// Base URL tanpa trailing slash agar aman digabung dengan path.
   String get normalizedBaseUrl {
@@ -53,53 +50,40 @@ class ApiProvider {
 
   ApiProvider copyWith({
     String? name,
+    String? providerName,
     String? baseUrl,
     String? model,
     String? apiKey,
-    AuthType? authType,
-    OAuthConfig? oauthConfig,
-    OAuthTokenSet? oauthToken,
-    bool clearOauthToken = false,
+    String? catalogId,
   }) {
     return ApiProvider(
       id: id,
       name: name ?? this.name,
+      providerName: providerName ?? this.providerName,
       baseUrl: baseUrl ?? this.baseUrl,
       model: model ?? this.model,
       apiKey: apiKey ?? this.apiKey,
-      authType: authType ?? this.authType,
-      oauthConfig: oauthConfig ?? this.oauthConfig,
-      oauthToken: clearOauthToken ? null : (oauthToken ?? this.oauthToken),
+      catalogId: catalogId ?? this.catalogId,
     );
   }
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'providerName': providerName,
+    'catalogId': catalogId,
     'baseUrl': baseUrl,
     'model': model,
-    'authType': authType.name,
-    if (oauthConfig != null) 'oauthConfig': oauthConfig!.toJson(),
   };
 
+  /// [providerName] dan [catalogId] opsional agar JSON provider lama (sebelum
+  /// pemisahan nama label vs nama provider) tetap bisa dibaca.
   factory ApiProvider.fromJson(Map<String, dynamic> json) => ApiProvider(
     id: json['id'] as String,
     name: json['name'] as String,
+    providerName: json['providerName'] as String? ?? json['name'] as String,
+    catalogId: json['catalogId'] as String?,
     baseUrl: json['baseUrl'] as String,
     model: json['model'] as String,
-    // Backward-compatible: provider lama di Hive tidak punya 'authType'.
-    authType: _authTypeFromName(json['authType'] as String?),
-    oauthConfig: json['oauthConfig'] == null
-        ? null
-        : OAuthConfig.fromJson(
-            (json['oauthConfig'] as Map).cast<String, dynamic>(),
-          ),
   );
-
-  static AuthType _authTypeFromName(String? name) {
-    return AuthType.values.firstWhere(
-      (t) => t.name == name,
-      orElse: () => AuthType.apiKey,
-    );
-  }
 }

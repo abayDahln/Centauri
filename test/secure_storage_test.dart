@@ -1,9 +1,5 @@
-import 'dart:convert';
-
 import 'package:centauri/core/storage/secure_storage_service.dart';
-import 'package:centauri/core/utils/app_constants.dart';
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
-import 'package:centauri/features/provider_config/domain/entities/oauth_token_set.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -59,36 +55,6 @@ void main() {
     test('toJson tetap tidak pernah memuat apiKey', () {
       final json = stored.toJson();
       expect(json.containsKey('apiKey'), isFalse);
-    });
-  });
-
-  group('Token OAuth (secure storage contract)', () {
-    test('prefix token terpisah dari prefix API key', () {
-      expect(AppConstants.oauthTokenPrefix, isNot(AppConstants.apiKeyPrefix));
-      expect(
-        AppConstants.oauthTokenPrefix.startsWith(AppConstants.apiKeyPrefix),
-        isFalse,
-      );
-    });
-
-    test('JSON token yang disimpan bisa dibaca kembali (round-trip)', () {
-      // SecureStorageService menyimpan token sebagai JSON string; kontrak ini
-      // yang harus tetap konsisten antara penulisan dan pembacaan.
-      final tokens = OAuthTokenSet(
-        accessToken: 'at-secret',
-        refreshToken: 'rt-secret',
-        expiresAt: DateTime.now().add(const Duration(hours: 2)),
-        scope: 'a b',
-      );
-
-      final raw = jsonEncode(tokens.toJson());
-      final restored = OAuthTokenSet.fromJson(
-        jsonDecode(raw) as Map<String, dynamic>,
-      );
-
-      expect(restored.accessToken, 'at-secret');
-      expect(restored.refreshToken, 'rt-secret');
-      expect(restored.scope, 'a b');
     });
   });
 }

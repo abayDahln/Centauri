@@ -36,161 +36,25 @@ class ProviderModelSet {
   final List<ProviderModel> models;
 
   /// Label tampilan bergaya 9router: `<alias>/<id>`.
-  String label(ProviderModel model) => '$alias/${model.id}';
+  ///
+  /// Alias hanya ditempel bila [ProviderModel.id] masih polos (tanpa `/`). Id
+  /// yang sudah ber-namespace sendiri (mis. `openai/gpt-5.4`,
+  /// `nvidia/nemotron-3-ultra-550b-a55b`) tampil apa adanya, supaya label
+  /// selalu sama dengan id yang benar-benar dikirim ke provider. Kartu model
+  /// punya tombol "Salin id model"; label yang berbeda dari id asli berisiko
+  /// tersalin utuh lalu ditolak provider (HTTP 404 "No endpoints found").
+  String label(ProviderModel model) =>
+      model.id.contains('/') ? model.id : '$alias/${model.id}';
 }
 
-/// Registry model per id provider Centauri (id katalog / preset OAuth).
+/// Registry model per id provider Centauri (id katalog).
 ///
 /// Provider yang tidak punya daftar statis (lokal & custom) tidak ada di sini
 /// — UI jatuh ke input teks manual.
 class ProviderModelCatalog {
   ProviderModelCatalog._();
 
-  // ------------------------------------------------------------- oauth ----
-
-  static const _claudeCode = ProviderModelSet(
-    alias: 'cc',
-    models: [
-      ProviderModel('claude-opus-5-5', 'Claude Opus 5.5'),
-      ProviderModel('claude-opus-5', 'Claude Opus 5'),
-      ProviderModel('claude-sonnet-5-5', 'Claude Sonnet 5.5'),
-      ProviderModel('claude-sonnet-5', 'Claude Sonnet 5'),
-      ProviderModel('claude-fable-5-1', 'Claude Fable 5.1'),
-      ProviderModel('claude-fable-5', 'Claude Fable 5'),
-      ProviderModel('claude-haiku-4-5-20251001', 'Claude 4.5 Haiku'),
-    ],
-  );
-
-  static const _antigravity = ProviderModelSet(
-    alias: 'ag',
-    models: [
-      ProviderModel('gemini-3.8-flash', 'Gemini 3.8 Flash'),
-      ProviderModel('gemini-3.7-flash-medium', 'Gemini 3.7 Flash'),
-      ProviderModel('gemini-3.1-pro-high', 'Gemini 3.1 Pro (High)'),
-      ProviderModel('claude-sonnet-4-6', 'Claude Sonnet 4.6 (Thinking)'),
-      ProviderModel('claude-opus-4-6-thinking', 'Claude Opus 4.6 (Thinking)'),
-      ProviderModel('gpt-oss-120b-medium', 'GPT-OSS 120B (Medium)'),
-    ],
-  );
-
-  static const _qoder = ProviderModelSet(
-    alias: 'qd',
-    models: [
-      ProviderModel('ultimate', 'Ultimate'),
-      ProviderModel('auto', 'Auto'),
-      ProviderModel('performance', 'Performance'),
-      ProviderModel('efficient', 'Efficient'),
-      ProviderModel('lite', 'Lite'),
-      ProviderModel('qmodel_38max', 'Qwen3.8-Max'),
-      ProviderModel('qmodel_latest', 'Qwen3.7-Max'),
-      ProviderModel('qmodel', 'Qwen3.7-Plus'),
-      ProviderModel('qfmodel', 'Qwen3.8-Flash'),
-      ProviderModel('kmodel_latest', 'Kimi-K3'),
-      ProviderModel('kmodel', 'Kimi-K2.7-Code'),
-      ProviderModel('gmodel', 'GLM-5.3'),
-      ProviderModel('gfmodel', 'GLM-5.3-Flash'),
-      ProviderModel('dmodel', 'DeepSeek-V4-Pro'),
-      ProviderModel('dfmodel', 'DeepSeek-V4-Flash'),
-      ProviderModel('mmodel', 'MiniMax-M3'),
-    ],
-  );
-
-  static const _openaiCodex = ProviderModelSet(
-    alias: 'cx',
-    models: [
-      ProviderModel('gpt-6.1-sol', 'GPT 6.1 Sol'),
-      ProviderModel('gpt-6-astra', 'GPT 6.0 Astra'),
-      ProviderModel('gpt-6-sol', 'GPT 6.0 Sol'),
-      ProviderModel('gpt-6-luna', 'GPT 6.0 Luna'),
-      ProviderModel('gpt-5.6-sol', 'GPT 5.6 Sol'),
-      ProviderModel('gpt-5.6-terra', 'GPT 5.6 Terra'),
-      ProviderModel('gpt-5.6-luna', 'GPT 5.6 Luna'),
-      ProviderModel('gpt-daybreak-blue-latest', 'GPT Daybreak Blue'),
-    ],
-  );
-
-  static const _githubCopilot = ProviderModelSet(
-    alias: 'gh',
-    models: [
-      ProviderModel('gpt-5.4', 'GPT-5.4'),
-      ProviderModel('gpt-5.4-mini', 'GPT-5.4 Mini'),
-      ProviderModel('gpt-5.3-codex', 'GPT-5.3 Codex'),
-      ProviderModel('gpt-5.2', 'GPT-5.2'),
-      ProviderModel('claude-opus-4.7', 'Claude Opus 4.7'),
-      ProviderModel('claude-sonnet-4.6', 'Claude Sonnet 4.6'),
-      ProviderModel('claude-haiku-4.5', 'Claude Haiku 4.5'),
-      ProviderModel('gemini-3.1-pro-preview', 'Gemini 3.1 Pro'),
-      ProviderModel('gemini-3-flash-preview', 'Gemini 3 Flash'),
-      ProviderModel('grok-code-fast-1', 'Grok Code Fast 1'),
-    ],
-  );
-
-  static const _cursor = ProviderModelSet(
-    alias: 'cu',
-    models: [
-      ProviderModel('default', 'Auto (Server Picks)'),
-      ProviderModel('claude-4.6-opus-max', 'Claude 4.6 Opus Max'),
-      ProviderModel('claude-4.5-opus-high', 'Claude 4.5 Opus High'),
-      ProviderModel('claude-4.5-sonnet', 'Claude 4.5 Sonnet'),
-      ProviderModel('claude-4.5-haiku', 'Claude 4.5 Haiku'),
-      ProviderModel('gpt-5.3-codex', 'GPT 5.3 Codex'),
-      ProviderModel('gpt-5.2', 'GPT 5.2'),
-      ProviderModel('gemini-3-flash-preview', 'Gemini 3 Flash Preview'),
-      ProviderModel('kimi-k2.5', 'Kimi K2.5'),
-    ],
-  );
-
-  static const _kiloCode = ProviderModelSet(
-    alias: 'kc',
-    models: [
-      ProviderModel('anthropic/claude-sonnet-4-20250514', 'Claude Sonnet 4'),
-      ProviderModel('anthropic/claude-opus-4-20250514', 'Claude Opus 4'),
-      ProviderModel('google/gemini-2.5-pro', 'Gemini 2.5 Pro'),
-      ProviderModel('google/gemini-2.5-flash', 'Gemini 2.5 Flash'),
-      ProviderModel('openai/gpt-4.1', 'GPT-4.1'),
-      ProviderModel('openai/o3', 'o3'),
-      ProviderModel('deepseek/deepseek-chat', 'DeepSeek Chat'),
-      ProviderModel('deepseek/deepseek-reasoner', 'DeepSeek Reasoner'),
-    ],
-  );
-
-  static const _cline = ProviderModelSet(
-    alias: 'cl',
-    models: [
-      ProviderModel('anthropic/claude-opus-4.7', 'Claude Opus 4.7'),
-      ProviderModel('anthropic/claude-sonnet-4.6', 'Claude Sonnet 4.6'),
-      ProviderModel('anthropic/claude-opus-4.6', 'Claude Opus 4.6'),
-      ProviderModel('openai/gpt-5.3-codex', 'GPT-5.3 Codex'),
-      ProviderModel('openai/gpt-5.4', 'GPT-5.4'),
-      ProviderModel('google/gemini-3.1-pro-preview', 'Gemini 3.1 Pro Preview'),
-      ProviderModel(
-        'google/gemini-3.1-flash-lite-preview',
-        'Gemini 3.1 Flash Lite Preview',
-      ),
-      ProviderModel('kwaipilot/kat-coder-pro', 'KAT Coder Pro'),
-    ],
-  );
-
-  static const _codebuddy = ProviderModelSet(
-    alias: 'cbai',
-    models: [
-      ProviderModel('glm-5.2', 'GLM-5.2'),
-      ProviderModel('glm-5.1', 'GLM-5.1'),
-      ProviderModel('glm-5.0', 'GLM-5.0'),
-      ProviderModel('glm-5.0-turbo', 'GLM-5.0-Turbo'),
-      ProviderModel('glm-5v-turbo', 'GLM-5v-Turbo'),
-      ProviderModel('glm-4.7', 'GLM-4.7'),
-      ProviderModel('minimax-m3', 'MiniMax-M3'),
-      ProviderModel('minimax-m2.7', 'MiniMax-M2.7'),
-      ProviderModel('kimi-k2.7', 'Kimi-K2.7-Code'),
-      ProviderModel('kimi-k2.6', 'Kimi-K2.6'),
-      ProviderModel('kimi-k2.5', 'Kimi-K2.5'),
-      ProviderModel('hy3-preview', 'Hy3 Preview'),
-      ProviderModel('deepseek-v4-pro', 'DeepSeek-V4-Pro'),
-      ProviderModel('deepseek-v4.1-flash', 'DeepSeek-V4.1-Flash'),
-      ProviderModel('deepseek-v3-2-volc', 'DeepSeek-V3.2'),
-    ],
-  );
+  // ------------------------------------------------------------ api key ---
 
   static const _zaiGlm = ProviderModelSet(
     alias: 'glm',
@@ -203,16 +67,6 @@ class ProviderModelCatalog {
       ProviderModel('glm-5', 'GLM 5'),
       ProviderModel('glm-4.7', 'GLM 4.7'),
       ProviderModel('glm-4.6v', 'GLM 4.6V (Vision)'),
-    ],
-  );
-
-  static const _grokCli = ProviderModelSet(
-    alias: 'gcli',
-    models: [
-      ProviderModel('grok-4.5', 'Grok 4.5'),
-      ProviderModel('grok-4.5-high', 'Grok 4.5 (High)'),
-      ProviderModel('grok-4.5-medium', 'Grok 4.5 (Medium)'),
-      ProviderModel('grok-4.5-low', 'Grok 4.5 (Low)'),
     ],
   );
 
@@ -258,10 +112,7 @@ class ProviderModelCatalog {
       ProviderModel('deepseek-ai/deepseek-v4-pro', 'DeepSeek V4 Pro'),
       ProviderModel('deepseek-ai/deepseek-v4-flash', 'DeepSeek V4 Flash'),
       ProviderModel('moonshotai/kimi-k2.6', 'Kimi K2.6'),
-      ProviderModel(
-        'nvidia/nemotron-3-ultra-550b-a55b',
-        'Nemotron 3 Ultra',
-      ),
+      ProviderModel('nvidia/nemotron-3-ultra-550b-a55b', 'Nemotron 3 Ultra'),
     ],
   );
 
@@ -430,18 +281,12 @@ class ProviderModelCatalog {
   static const _fireworks = ProviderModelSet(
     alias: 'fireworks',
     models: [
-      ProviderModel(
-        'accounts/fireworks/models/deepseek-v3p1',
-        'DeepSeek V3.1',
-      ),
+      ProviderModel('accounts/fireworks/models/deepseek-v3p1', 'DeepSeek V3.1'),
       ProviderModel(
         'accounts/fireworks/models/llama-v3p3-70b-instruct',
         'Llama 3.3 70B',
       ),
-      ProviderModel(
-        'accounts/fireworks/models/qwen3-235b-a22b',
-        'Qwen3 235B',
-      ),
+      ProviderModel('accounts/fireworks/models/qwen3-235b-a22b', 'Qwen3 235B'),
     ],
   );
 
@@ -547,25 +392,13 @@ class ProviderModelCatalog {
     ],
   );
 
-  /// Peta id provider → set model. Id memakai id katalog / preset OAuth
-  /// Centauri (bukan id 9router).
+  /// Peta id provider → set model. Id memakai id katalog Centauri (bukan id
+  /// 9router).
   static const Map<String, ProviderModelSet> _byProvider = {
-    // OAuth
-    'claude-code': _claudeCode,
-    'antigravity': _antigravity,
-    'qoder': _qoder,
-    'openai-codex': _openaiCodex,
-    'github-copilot': _githubCopilot,
-    'cursor': _cursor,
-    'kilo-code': _kiloCode,
-    'cline': _cline,
-    'codebuddy': _codebuddy,
-    'zai-glm': _zaiGlm,
-    'grok-cli': _grokCli,
-    'kiro': _kiro,
+    // API key
     'kiro-ai': _kiro,
-    // OAuth preset Google Gemini (id preset, bukan id entri katalog).
-    'google-gemini': _gemini,
+    'zai': _zaiGlm,
+    'command-code': _commandCode,
     // Free tier
     'gemini': _gemini,
     'nvidia': _nvidia,
@@ -574,7 +407,7 @@ class ProviderModelCatalog {
     'ollama-cloud': _ollamaCloud,
     'groq': _groq,
     'cerebras': _cerebras,
-    // API key
+    // API key (lanjutan)
     'openai': _openai,
     'anthropic': _anthropic,
     'mistral': _mistral,
@@ -589,11 +422,9 @@ class ProviderModelCatalog {
     'hyperbolic': _hyperbolic,
     'siliconflow': _siliconflow,
     'moonshot': _moonshot,
-    'zai': _zaiGlm,
     'minimax': _minimax,
     'llm7': _llm7,
     'featherless': _featherless,
-    'command-code': _commandCode,
   };
 
   /// Set model untuk provider [id], atau null bila tidak ada daftar statis

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/catalog/provider_catalog_entry.dart';
+import '../../domain/entities/api_provider.dart';
 
 /// Katalog provider AI siap-pakai (OpenAI-compatible).
 ///
@@ -418,11 +419,11 @@ class ProviderCatalog {
     ),
   ];
 
-  /// Kartu sintetis "Custom API": sengaja di luar [all] karena tidak punya
+  /// Kartu sintetis "Custom API Key": sengaja di luar [all] karena tidak punya
   /// endpoint bawaan — pengguna mengisi Base URL & model sendiri.
   static const ProviderCatalogEntry customApi = ProviderCatalogEntry(
-    id: 'custom-api',
-    name: 'Custom API',
+    id: kCustomCatalogId,
+    name: 'Custom API Key',
     category: ProviderCategory.apiKey,
     baseUrl: '',
     defaultModel: '',

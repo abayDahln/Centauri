@@ -23,7 +23,13 @@ class ProviderListPage extends ConsumerWidget {
     final activeProviderId = asyncState.value?.activeProvider?.id;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Provider')),
+      appBar: AppBar(
+        title: const Text('Provider'),
+        // Tombol kembali eksplisit: halaman ini juga bisa menjadi halaman
+        // pertama (mis. setelah simpan yang mengganti lokasi), dan pengguna
+        // tidak boleh terjebak tanpa jalan keluar.
+        leading: BackButton(onPressed: () => _leave(context)),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Center(
@@ -52,7 +58,13 @@ class ProviderListPage extends ConsumerWidget {
                 const SizedBox(height: 20),
                 _buildActions(context),
                 const SizedBox(height: 20),
-                _buildList(context, ref, providers, activeProviderId, asyncState),
+                _buildList(
+                  context,
+                  ref,
+                  providers,
+                  activeProviderId,
+                  asyncState,
+                ),
                 const SizedBox(height: 32),
                 // MCP bridge agar agent eksternal bisa membaca/mengubah canvas.
                 const McpStatusSection(),
@@ -63,6 +75,16 @@ class ProviderListPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Keluar dari pengaturan provider: pop bila ditumpuk di atas layar lain,
+  /// kalau tidak kembali ke canvas agar tidak ada jalan buntu.
+  void _leave(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.canvasPreview);
+    }
   }
 
   Widget _buildActions(BuildContext context) {
@@ -151,9 +173,6 @@ class ProviderListPage extends ConsumerWidget {
       );
     }
 
-    final oauthStatus =
-        asyncState.value?.oauthStatus ?? const <String, OAuthStatus>{};
-
     // List kartu vertikal (bukan tabel) agar teks panjang seperti Base URL
     // dan nama model tampil penuh tanpa terpotong.
     return Column(
@@ -165,7 +184,6 @@ class ProviderListPage extends ConsumerWidget {
             ref,
             providers[i],
             providers[i].id == activeProviderId,
-            oauthStatus[providers[i].id] ?? OAuthStatus.none,
           ),
         ],
       ],
@@ -177,7 +195,6 @@ class ProviderListPage extends ConsumerWidget {
     WidgetRef ref,
     ApiProvider provider,
     bool isActive,
-    OAuthStatus status,
   ) {
     return InkWell(
       onTap: () => context.push(AppRoutes.providerDetail(provider.id)),
@@ -238,7 +255,10 @@ class ProviderListPage extends ConsumerWidget {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                _authCell(provider, status),
+                // Nama provider (template/brand) & model sebagai info pendukung;
+                // judul kartu memakai Nama entri.
+                if (provider.providerName.trim().isNotEmpty)
+                  _chip(provider.providerName, AppColors.textSecondary),
                 if (provider.model.trim().isNotEmpty)
                   _chip(provider.model, AppColors.textSecondary),
               ],
@@ -247,23 +267,6 @@ class ProviderListPage extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  Widget _authCell(ApiProvider provider, OAuthStatus status) {
-    if (!provider.usesOAuth) {
-      return _chip('API Key', AppColors.textSecondary);
-    }
-    final (label, color) = switch (status) {
-      OAuthStatus.connected => ('OAuth · Connected', AppColors.statusSuccess),
-      OAuthStatus.expiring => ('OAuth · Expiring', AppColors.statusWarning),
-      OAuthStatus.disconnected => (
-        'OAuth · Disconnected',
-        AppColors.statusError,
-      ),
-      OAuthStatus.stale => ('OAuth (lama)', AppColors.textDisabled),
-      OAuthStatus.none => ('OAuth', AppColors.textDisabled),
-    };
-    return _chip(label, color);
   }
 
   Widget _chip(String label, Color color) {
@@ -324,8 +327,7 @@ class ProviderListPage extends ConsumerWidget {
           icon: const Icon(Icons.edit_outlined, size: 18),
           color: AppColors.textSecondary,
           splashRadius: 18,
-          onPressed: () =>
-              context.push(AppRoutes.providerDetail(provider.id)),
+          onPressed: () => context.push(AppRoutes.providerDetail(provider.id)),
         ),
         IconButton(
           tooltip: 'Hapus',

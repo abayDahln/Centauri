@@ -7,10 +7,6 @@ class AppConstants {
   // Secure storage: API key disimpan per-provider, tidak pernah di Hive.
   static const String apiKeyPrefix = 'centauri_provider_api_key_';
 
-  // Secure storage: token OAuth (access/refresh) per-provider, tidak pernah
-  // di Hive (NFR-01).
-  static const String oauthTokenPrefix = 'centauri_provider_oauth_token_';
-
   // Hive boxes.
   static const String providersBoxName = 'centauri_providers';
   static const String metaBoxName = 'centauri_meta';
@@ -36,13 +32,6 @@ class AppConstants {
   // Endpoint OpenAI-compatible untuk validasi kredensial.
   static const String testConnectionPath = '/models';
   static const String chatCompletionsPath = '/chat/completions';
-
-  // OAuth: loopback redirect (RFC 8252) untuk desktop Windows.
-  static const String oauthLoopbackHost = '127.0.0.1';
-  static const String oauthRedirectPath = '/callback';
-
-  /// Batas tunggu pengguna menyelesaikan login di browser (OAuth).
-  static const Duration oauthFlowTimeout = Duration(minutes: 5);
 
   // Parameter generasi UI. Temperature lebih tinggi dari chat agar model
   // berani berkreasi desain (bukan output dasar yang seragam). max_tokens

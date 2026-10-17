@@ -5,14 +5,15 @@ import '../../../../app/config/theme.dart';
 
 /// Kartu satu model pada section "Available Models" (ala 9router).
 ///
-/// Menampilkan label `<alias>/<id>` (mono) + nama ramah sebagai subtitle.
-/// Mengetuk kartu memanggil [onTap] (memilih model). Ikon salin menyalin id
-/// polos ke clipboard.
+/// Menampilkan [label] (mono) + nama ramah sebagai subtitle. Mengetuk kartu
+/// memanggil [onTap] (memilih model). Ikon salin menyalin [modelId] — id polos
+/// yang dikirim ke provider — ke clipboard, bukan [label] tampilannya.
 class ModelCard extends StatefulWidget {
   const ModelCard({
     super.key,
     required this.label,
     required this.name,
+    required this.modelId,
     required this.onTap,
     this.selected = false,
   });
@@ -22,6 +23,10 @@ class ModelCard extends StatefulWidget {
 
   /// Nama ramah, mis. `GLM-5.2`.
   final String name;
+
+  /// Id polos model yang dipakai provider (mis. `openai/gpt-5.4`). Ini yang
+  /// disalin tombol salin, karena hanya bentuk inilah yang diterima API.
+  final String modelId;
 
   final VoidCallback onTap;
 
@@ -117,13 +122,14 @@ class _ModelCardState extends State<ModelCard> {
                 splashRadius: 16,
                 visualDensity: VisualDensity.compact,
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: widget.label));
+                  // Id polos, bukan label: hanya id inilah yang dikenal API.
+                  Clipboard.setData(ClipboardData(text: widget.modelId));
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Disalin: ${widget.label}',
+                          'Disalin: ${widget.modelId}',
                           style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 13,

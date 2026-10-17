@@ -77,11 +77,6 @@ class _ProviderCardState extends State<ProviderCard> {
                             ),
                           ),
                         ),
-                        if (data.isExperimental)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 6),
-                            child: _ExperimentalDot(),
-                          ),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -97,10 +92,6 @@ class _ProviderCardState extends State<ProviderCard> {
                   ],
                 ),
               ),
-              if (data.isTokenOnly) ...[
-                const SizedBox(width: 8),
-                const _TokenChip(),
-              ],
               const SizedBox(width: 4),
               const Icon(
                 Icons.chevron_right,
@@ -145,8 +136,8 @@ class ProviderLogo extends StatelessWidget {
               ),
             )
           : logo.brandIcon != null
-              ? Icon(logo.brandIcon, size: 22, color: logo.color)
-              : _fallbackText(),
+          ? Icon(logo.brandIcon, size: 22, color: logo.color)
+          : _fallbackText(),
     );
   }
 
@@ -157,52 +148,6 @@ class ProviderLogo extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w700,
         color: logo.color,
-      ),
-    );
-  }
-}
-
-class _ExperimentalDot extends StatelessWidget {
-  const _ExperimentalDot();
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Layanan tidak resmi — bisa berubah sewaktu-waktu',
-      child: Container(
-        width: 7,
-        height: 7,
-        decoration: const BoxDecoration(
-          color: AppColors.statusWarning,
-          shape: BoxShape.circle,
-        ),
-      ),
-    );
-  }
-}
-
-class _TokenChip extends StatelessWidget {
-  const _TokenChip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Hanya login — chat belum didukung',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: AppColors.bgSunken,
-          borderRadius: AppRadius.sm,
-        ),
-        child: const Text(
-          'token',
-          style: TextStyle(
-            fontFamily: AppFonts.monoFamily,
-            fontFamilyFallback: AppFonts.monoFallback,
-            fontSize: 10,
-            color: AppColors.textSecondary,
-          ),
-        ),
       ),
     );
   }

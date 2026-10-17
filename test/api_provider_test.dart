@@ -1,9 +1,6 @@
 import 'dart:convert';
 
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
-import 'package:centauri/features/provider_config/domain/entities/oauth_config.dart';
-import 'package:centauri/features/provider_config/domain/entities/oauth_token_set.dart';
-import 'package:centauri/features/provider_config/domain/entities/provider_auth_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -52,108 +49,92 @@ void main() {
       expect(edited.id, provider.id);
       expect(edited.name, provider.name);
     });
-  });
 
-  group('ApiProvider OAuth', () {
-    const oauthConfig = OAuthConfig(
-      authorizationUrl: 'https://auth.example.com/authorize',
-      tokenUrl: 'https://auth.example.com/token',
-      clientId: 'client-1',
-      scopes: ['s'],
-    );
+    test('bearerToken memakai API Key', () {
+      expect(provider.bearerToken, 'gsk-super-secret');
+    });
 
-    test('fromJson tanpa authType default ke apiKey (backward-compatible)', () {
-      // JSON provider lama di Hive tidak punya field authType.
+    test('bearerToken null bila tanpa API Key', () {
+      const noKey = ApiProvider(
+        id: 'x',
+        name: 'x',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-4o',
+      );
+      expect(noKey.bearerToken, isNull);
+    });
+
+    test('fromJson mengabaikan field OAuth lama (backward-compatible)', () {
+      // Metadata provider lama di Hive bisa masih memuat authType/oauthConfig;
+      // field itu tidak lagi dipakai dan harus diabaikan tanpa error.
       final legacy = ApiProvider.fromJson({
         'id': 'old',
         'name': 'Old',
         'baseUrl': 'https://api.openai.com/v1',
         'model': 'gpt-4o',
+        'authType': 'oauth',
+        'oauthConfig': {'clientId': 'client-1'},
       });
 
-      expect(legacy.authType, AuthType.apiKey);
-      expect(legacy.oauthConfig, isNull);
-      expect(legacy.usesOAuth, isFalse);
+      expect(legacy.id, 'old');
+      expect(legacy.baseUrl, 'https://api.openai.com/v1');
+      expect(legacy.bearerToken, isNull);
     });
 
-    test('toJson memuat authType + oauthConfig, tidak memuat token/apiKey', () {
-      final oauthProvider = ApiProvider(
-        id: 'o1',
-        name: 'Google',
-        baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-        model: 'gemini-2.0-flash',
-        authType: AuthType.oauth,
-        oauthConfig: oauthConfig,
-        oauthToken: OAuthTokenSet(
-          accessToken: 'super-secret-access',
-          refreshToken: 'super-secret-refresh',
-          expiresAt: DateTime.now().add(const Duration(hours: 1)),
-        ),
+    test('toJson membawa providerName & catalogId, tetap tanpa apiKey', () {
+      const entry = ApiProvider(
+        id: 'p1',
+        name: 'Kerja',
+        providerName: 'Groq',
+        catalogId: 'groq',
+        baseUrl: 'https://api.groq.com/openai/v1',
+        model: 'llama-3.3-70b-versatile',
+        apiKey: 'secret',
       );
 
-      final json = oauthProvider.toJson();
-      expect(json['authType'], 'oauth');
-      expect(json['oauthConfig'], isA<Map>());
+      final json = entry.toJson();
+      expect(json['providerName'], 'Groq');
+      expect(json['catalogId'], 'groq');
       expect(json.containsKey('apiKey'), isFalse);
-      expect(json.containsKey('oauthToken'), isFalse);
-
-      final encoded = jsonEncode(json);
-      expect(encoded, isNot(contains('super-secret-access')));
-      expect(encoded, isNot(contains('super-secret-refresh')));
     });
 
-    test('oauthConfig bertahan lewat toJson/fromJson', () {
-      final oauthProvider = ApiProvider(
-        id: 'o1',
-        name: 'Google',
-        baseUrl: 'https://api.example.com/v1',
-        model: 'm',
-        authType: AuthType.oauth,
-        oauthConfig: oauthConfig,
+    test('fromJson memulihkan providerName & catalogId', () {
+      const entry = ApiProvider(
+        id: 'p1',
+        name: 'Kerja',
+        providerName: 'Groq',
+        catalogId: 'groq',
+        baseUrl: 'https://api.groq.com/openai/v1',
+        model: 'llama-3.3-70b-versatile',
       );
 
       final restored = ApiProvider.fromJson(
-        jsonDecode(jsonEncode(oauthProvider.toJson())) as Map<String, dynamic>,
+        jsonDecode(jsonEncode(entry.toJson())) as Map<String, dynamic>,
       );
 
-      expect(restored.authType, AuthType.oauth);
-      expect(restored.usesOAuth, isTrue);
-      expect(restored.oauthConfig?.clientId, 'client-1');
-      expect(restored.oauthConfig?.tokenUrl, oauthConfig.tokenUrl);
+      expect(restored.providerName, 'Groq');
+      expect(restored.catalogId, 'groq');
+      expect(restored.usesTemplate, isTrue);
     });
 
-    test('bearerToken memprioritaskan token OAuth di atas API key', () {
-      final oauthProvider = ApiProvider(
-        id: 'o1',
-        name: 'x',
-        baseUrl: 'https://api.example.com/v1',
-        model: 'm',
-        apiKey: 'api-key-value',
-        authType: AuthType.oauth,
-        oauthToken: OAuthTokenSet(
-          accessToken: 'oauth-access',
-          expiresAt: DateTime.now().add(const Duration(hours: 1)),
-        ),
-      );
-      expect(oauthProvider.bearerToken, 'oauth-access');
+    test('data lama tanpa providerName/catalogId tetap terbaca', () {
+      final legacy = ApiProvider.fromJson({
+        'id': 'old',
+        'name': 'Groq Cloud',
+        'baseUrl': 'https://api.groq.com/openai/v1',
+        'model': 'llama-3.3-70b-versatile',
+      });
 
-      final apiKeyProvider = provider;
-      expect(apiKeyProvider.bearerToken, 'gsk-super-secret');
+      // Nama label dipakai sebagai nama provider agar kartu daftar tetap
+      // informatif; catalogId diisi saat normalisasi di repository.
+      expect(legacy.providerName, 'Groq Cloud');
+      expect(legacy.catalogId, isNull);
+      expect(legacy.usesTemplate, isFalse);
     });
 
-    test('clearOauthToken menghapus token runtime', () {
-      final oauthProvider = ApiProvider(
-        id: 'o1',
-        name: 'x',
-        baseUrl: 'https://api.example.com/v1',
-        model: 'm',
-        authType: AuthType.oauth,
-        oauthToken: OAuthTokenSet(
-          accessToken: 'a',
-          expiresAt: DateTime.now(),
-        ),
-      );
-      expect(oauthProvider.copyWith(clearOauthToken: true).oauthToken, isNull);
+    test('usesTemplate false untuk provider custom', () {
+      final custom = provider.copyWith(catalogId: kCustomCatalogId);
+      expect(custom.usesTemplate, isFalse);
     });
   });
 }

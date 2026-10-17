@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
 import 'core/storage/local_storage_service.dart';
+import 'core/storage/provider_oauth_cleanup.dart';
 
 /// Shell desktop (Windows) memakai title bar kustom, jadi window dijalankan
 /// frameless. Target mobile tidak terpengaruh.
@@ -37,6 +38,8 @@ Future<void> main() async {
   if (!storage.isHealthy) {
     debugPrint('[storage] inisialisasi tidak lengkap: ${storage.error}');
   }
+  // Provider OAuth lama tidak lagi didukung — bersihkan sekali di sini.
+  await cleanupLegacyOAuthProviders();
   if (Platform.isWindows) {
     await _prepareWebviewEnvironment();
   }

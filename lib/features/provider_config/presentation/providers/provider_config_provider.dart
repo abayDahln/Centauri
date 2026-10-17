@@ -5,77 +5,33 @@ import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../data/datasources/ai_api_service.dart';
 import '../../data/repositories/api_provider_repository_impl.dart';
-import '../../data/services/oauth_service_impl.dart';
 import '../../domain/entities/api_provider.dart';
-import '../../domain/entities/oauth_config.dart';
-import '../../domain/entities/oauth_token_set.dart';
-import '../../domain/entities/provider_auth_type.dart';
 import '../../domain/repositories/api_provider_repository.dart';
-import '../../domain/services/oauth_service.dart';
-
-final oauthServiceProvider = Provider<OAuthService>((ref) => OAuthServiceImpl());
 
 final apiProviderRepositoryProvider = Provider<ApiProviderRepository>((ref) {
   return ApiProviderRepositoryImpl(
     localStorage: LocalStorageService(),
     secureStorage: SecureStorageService(),
-    oauthService: ref.read(oauthServiceProvider),
   );
 });
 
-final aiApiServiceProvider = Provider<AiApiService>((ref) {
-  return AiApiService(
-    resolveBearerToken: (provider) =>
-        ref.read(apiProviderRepositoryProvider).resolveBearerToken(provider),
-  );
-});
-
-/// Status koneksi OAuth sebuah provider (untuk ditampilkan di UI).
-enum OAuthStatus {
-  none,
-  connected,
-  expiring,
-  disconnected,
-
-  /// Sesi OAuth tersimpan tidak boleh dianggap connected pada preset katalog
-  /// lain yang sedang dipakai form — tampilkan sebagai tidak tersimpan.
-  stale;
-
-  /// Label manusiawi per status (dipakui chip status di halaman form).
-  String get label => switch (this) {
-    none => 'Belum tersimpan',
-    connected => 'Connected',
-    expiring => 'Expiring soon',
-    disconnected => 'Disconnected',
-    stale => 'Connected (lama)',
-  };
-}
+final aiApiServiceProvider = Provider<AiApiService>(
+  (ref) => const AiApiService(),
+);
 
 class ProviderConfigState {
-  const ProviderConfigState({
-    this.providers = const [],
-    this.activeProvider,
-    this.oauthStatus = const {},
-  });
+  const ProviderConfigState({this.providers = const [], this.activeProvider});
 
   final List<ApiProvider> providers;
   final ApiProvider? activeProvider;
 
-  /// Status OAuth per provider id (hanya berisi provider ber-authType oauth).
-  final Map<String, OAuthStatus> oauthStatus;
-
-  OAuthStatus statusFor(String providerId) =>
-      oauthStatus[providerId] ?? OAuthStatus.none;
-
   ProviderConfigState copyWith({
     List<ApiProvider>? providers,
     ApiProvider? activeProvider,
-    Map<String, OAuthStatus>? oauthStatus,
   }) {
     return ProviderConfigState(
       providers: providers ?? this.providers,
       activeProvider: activeProvider ?? this.activeProvider,
-      oauthStatus: oauthStatus ?? this.oauthStatus,
     );
   }
 }
@@ -95,76 +51,44 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
     final repository = ref.read(apiProviderRepositoryProvider);
     final providers = await repository.getProviders();
     final active = await repository.getActiveProvider();
-
-    final statuses = <String, OAuthStatus>{};
-    for (final provider in providers) {
-      if (!provider.usesOAuth) continue;
-      final tokens = await repository.getTokenSet(provider.id);
-      statuses[provider.id] = _statusFor(tokens);
-    }
-
-    return ProviderConfigState(
-      providers: providers,
-      activeProvider: active,
-      oauthStatus: statuses,
-    );
-  }
-
-  /// Lepas satu entri status OAuth dari state (per sesi/per preset) tanpa
-  /// menyentuh provider lain. Dipakai halaman form saat berpindah preset:
-  /// status "Connected" milik preset lama tidak boleh mewakili preset baru.
-  void clearOAuthStatus(String providerId) {
-    final value = state.value;
-    if (value == null) return;
-    if (!value.oauthStatus.containsKey(providerId)) return;
-    state = AsyncValue.data(
-      ProviderConfigState(
-        providers: value.providers,
-        activeProvider: value.activeProvider,
-        oauthStatus: Map.of(value.oauthStatus)..remove(providerId),
-      ),
-    );
-  }
-
-  static OAuthStatus _statusFor(OAuthTokenSet? tokens) {
-    if (tokens == null) return OAuthStatus.disconnected;
-    // Token kedaluwarsa tanpa refresh token tidak bisa dipulihkan otomatis.
-    if (tokens.isExpired && !tokens.canRefresh) return OAuthStatus.disconnected;
-    if (tokens.needsRefresh) return OAuthStatus.expiring;
-    return OAuthStatus.connected;
+    return ProviderConfigState(providers: providers, activeProvider: active);
   }
 
   /// Tambah (id == null) atau edit provider. [apiKey] null berarti
-  /// pertahankan key lama di secure storage. Mengembalikan id provider
-  /// (baru atau lama) agar pemanggil bisa langsung menjalankan alur OAuth.
+  /// pertahankan key lama di secure storage. Provider baru langsung dijadikan
+  /// aktif. Mengembalikan id provider (baru atau lama).
   Future<String> saveProvider({
     String? id,
     required String name,
+    required String providerName,
+    required String catalogId,
     required String baseUrl,
     required String model,
     String? apiKey,
-    AuthType authType = AuthType.apiKey,
-    OAuthConfig? oauthConfig,
   }) async {
+    final isNew = id == null;
     final targetId = id ?? const Uuid().v4();
+    // Ambil provider saat ini sebelum state diubah ke loading.
+    final current = state.value;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(apiProviderRepositoryProvider);
 
-      if (id == null) {
+      if (isNew) {
         await repository.saveProvider(
           ApiProvider(
             id: targetId,
             name: name.trim(),
+            providerName: providerName.trim(),
+            catalogId: catalogId,
             baseUrl: baseUrl.trim(),
             model: model.trim(),
             apiKey: apiKey,
-            authType: authType,
-            oauthConfig: oauthConfig,
           ),
         );
+        // Provider yang baru ditambahkan langsung dipakai.
+        await repository.setActiveProvider(targetId);
       } else {
-        final current = state.value;
         final existing = current?.providers
             .where((p) => p.id == id)
             .firstOrNull;
@@ -173,20 +97,13 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
         }
         final updated = existing.copyWith(
           name: name.trim(),
+          providerName: providerName.trim(),
+          catalogId: catalogId,
           baseUrl: baseUrl.trim(),
           model: model.trim(),
           apiKey: apiKey,
-          authType: authType,
-          oauthConfig: oauthConfig,
         );
         await repository.saveProvider(updated);
-        // Sesi OAuth hanya sah untuk identitas (flow/endpoint/client id)
-        // yang sama. Begitu identitas berubah (mis. preset katalog lain
-        // dipilih lalu disimpan), token lama tidak berlaku — hapus agar
-        // chip "Connected" tidak menampilkan status sesi lama.
-        if (_oauthIdentityChanged(existing.oauthConfig, updated.oauthConfig)) {
-          await repository.deleteTokenSet(id);
-        }
       }
 
       return _loadState();
@@ -199,6 +116,17 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
     state = await AsyncValue.guard(() async {
       final repository = ref.read(apiProviderRepositoryProvider);
       await repository.deleteProvider(id);
+      return _loadState();
+    });
+  }
+
+  /// Menghapus API Key tersimpan milik [id] (tombol Reset di form provider),
+  /// lalu memuat ulang state agar provider aktif tidak lagi membawa key lama.
+  Future<void> clearApiKey(String id) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(apiProviderRepositoryProvider);
+      await repository.clearApiKey(id);
       return _loadState();
     });
   }
@@ -216,60 +144,5 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
   /// Melempar [ApiConnectionException] jika gagal.
   Future<void> testConnection(ApiProvider provider) async {
     await ref.read(aiApiServiceProvider).testConnection(provider);
-  }
-
-  // ------------------------------------------------------------- oauth ----
-
-  /// Jalankan alur OAuth untuk provider [id] dan simpan token yang diperoleh.
-  /// Melempar [OAuthException] bila gagal.
-  Future<void> connectOAuth(String id) async {
-    final repository = ref.read(apiProviderRepositoryProvider);
-    final provider = await repository.getProviderById(id);
-    if (provider == null) {
-      throw StateError('Provider tidak ditemukan.');
-    }
-    if (!provider.usesOAuth || provider.oauthConfig == null) {
-      throw OAuthException('Provider ini belum dikonfigurasi untuk OAuth.');
-    }
-
-    final tokens = await ref.read(oauthServiceProvider).authorize(provider);
-    await repository.saveTokenSet(id, tokens);
-    state = await AsyncValue.guard(_loadState);
-  }
-
-  /// Simpan token OAuth yang diperoleh dari luar [connectOAuth] (mis. device
-  /// flow yang dijalankan lewat dialog) lalu muat ulang state.
-  Future<void> saveOAuthTokens(String id, OAuthTokenSet tokens) async {
-    await ref.read(apiProviderRepositoryProvider).saveTokenSet(id, tokens);
-    state = await AsyncValue.guard(_loadState);
-  }
-
-  /// Cabut token OAuth provider [id] (best-effort) lalu hapus dari storage.
-  Future<void> disconnectOAuth(String id) async {
-    final repository = ref.read(apiProviderRepositoryProvider);
-    final provider = await repository.getProviderById(id);
-    final tokens = await repository.getTokenSet(id);
-    if (provider != null && tokens != null) {
-      try {
-        await ref.read(oauthServiceProvider).revoke(provider, tokens);
-      } catch (_) {
-        // Best-effort: tetap hapus token lokal meski revoke gagal.
-      }
-    }
-    await repository.deleteTokenSet(id);
-    state = await AsyncValue.guard(_loadState);
-  }
-
-  /// True bila identitas OAuth berubah — flow, endpoint otorisasi/token,
-  /// client id, sumber impor, atau gaya tukar token. Token milik
-  /// konfigurasi lama tidak berlaku untuk konfigurasi baru.
-  static bool _oauthIdentityChanged(OAuthConfig? a, OAuthConfig? b) {
-    if (a == null || b == null) return true;
-    return a.flow != b.flow ||
-        a.authorizationUrl != b.authorizationUrl ||
-        a.tokenUrl != b.tokenUrl ||
-        a.clientId != b.clientId ||
-        a.importSource != b.importSource ||
-        a.tokenExchange != b.tokenExchange;
   }
 }

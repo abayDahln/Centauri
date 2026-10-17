@@ -1,4 +1,5 @@
 import 'package:centauri/features/provider_config/data/datasources/ai_api_service.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -214,6 +215,106 @@ void main() {
         }),
         throwsA(isA<ApiConnectionException>()),
       );
+    });
+  });
+
+  group('mapDioError', () {
+    DioException badResponse(int status, {dynamic body}) => DioException(
+      requestOptions: RequestOptions(path: '/chat/completions'),
+      type: DioExceptionType.badResponse,
+      response: Response<dynamic>(
+        requestOptions: RequestOptions(path: '/chat/completions'),
+        statusCode: status,
+        data: body,
+      ),
+    );
+
+    test('404 menyertakan pesan asli provider (model tidak ada)', () {
+      final message = AiApiService.mapDioError(
+        badResponse(
+          404,
+          body: {
+            'error': {
+              'message': 'No endpoints found for stealth/space-bunny-alpha.',
+              'code': 404,
+            },
+          },
+        ),
+      );
+
+      expect(message, contains('404'));
+      expect(message, contains('space-bunny-alpha'));
+    });
+
+    test('404 tanpa body tetap menyebut Base URL & nama model', () {
+      final message = AiApiService.mapDioError(badResponse(404));
+
+      expect(message, contains('404'));
+      expect(message, contains('Base URL'));
+      expect(message, contains('model'));
+    });
+
+    test('404 dari respons stream mengangkat error.message provider', () {
+      // ResponseType.stream membuat Dio tidak mendekode body error; pemanggil
+      // membacanya sendiri dan menyerahkannya via `responseBody`.
+      final message = AiApiService.mapDioError(
+        badResponse(404),
+        responseBody: '{"error":{"message":"No endpoints found for openai/gpt-9.","code":404}}',
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        model: 'openai/gpt-9',
+      );
+
+      expect(message, contains('No endpoints found for openai/gpt-9'));
+      expect(
+        message,
+        contains('https://openrouter.ai/api/v1/chat/completions'),
+      );
+      expect(message, contains('Model: openai/gpt-9'));
+    });
+
+    test('404 tanpa detail menyertakan URL final dan model', () {
+      final message = AiApiService.mapDioError(
+        badResponse(404),
+        responseBody: '',
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        model: 'openai/gpt-5.4',
+      );
+
+      expect(message, contains('404'));
+      expect(message, contains('Base URL'));
+      expect(message, contains('Model: openai/gpt-5.4'));
+    });
+
+    test('body error HTML tidak JSON tampil sebagai cuplikan', () {
+      final message = AiApiService.mapDioError(
+        badResponse(404),
+        responseBody: '<!DOCTYPE html><html><body>404 Not Found</body></html>',
+        url: 'https://api.example.com/v1/chat/completions',
+        model: 'x',
+      );
+
+      expect(message, contains('404 Not Found'));
+      expect(message, contains('https://api.example.com/v1/chat/completions'));
+    });
+
+    test('status non-404 menyertakan detail provider + konteks request', () {
+      final message = AiApiService.mapDioError(
+        badResponse(400),
+        responseBody: '{"error":{"message":"max_tokens too large"}}',
+        url: 'https://api.example.com/v1/chat/completions',
+        model: 'gpt-4o',
+      );
+
+      expect(message, contains('HTTP 400'));
+      expect(message, contains('max_tokens too large'));
+      expect(message, contains('Model: gpt-4o'));
+    });
+
+    test('401 menjelaskan kunci akses, bukan Base URL', () {
+      final message = AiApiService.mapDioError(badResponse(401));
+
+      expect(message, contains('401'));
+      expect(message, contains('Kunci akses'));
     });
   });
 }

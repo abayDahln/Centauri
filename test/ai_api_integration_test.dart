@@ -27,7 +27,10 @@ void main() {
 
   test('parses a streaming SSE response end to end', () async {
     final server = await startServer((request) async {
-      request.response.headers.contentType = ContentType('text', 'event-stream');
+      request.response.headers.contentType = ContentType(
+        'text',
+        'event-stream',
+      );
       // Tulis bertahap agar benar-benar menyerupai stream jaringan.
       request.response.write(
         'data: {"id":"gen-1","object":"chat.completion","choices":[{"delta":{"role":"assistant"}}]}\n\n',
@@ -118,5 +121,45 @@ void main() {
 
     const service = AiApiService();
     await service.testConnection(providerFor(server.port));
+  });
+
+  test('surfaces the provider 404 message, URL and model end to end', () async {
+    // Meniru OpenRouter: model tanpa endpoint membalas 404 + error.message.
+    final server = await startServer((request) async {
+      request.response.statusCode = 404;
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(
+        jsonEncode({
+          'error': {
+            'message': 'No endpoints found for test-model.',
+            'code': 404,
+          },
+        }),
+      );
+      await request.response.close();
+    });
+    addTearDown(() => server.close(force: true));
+
+    const service = AiApiService();
+    await expectLater(
+      service.generateUI(
+        provider: providerFor(server.port),
+        messages: [
+          {'role': 'user', 'content': 'hi'},
+        ],
+      ),
+      throwsA(
+        isA<ApiConnectionException>().having(
+          (e) => e.message,
+          'message',
+          allOf(
+            contains('404'),
+            contains('No endpoints found for test-model.'),
+            contains('http://127.0.0.1:${server.port}/v1/chat/completions'),
+            contains('Model: test-model'),
+          ),
+        ),
+      ),
+    );
   });
 }

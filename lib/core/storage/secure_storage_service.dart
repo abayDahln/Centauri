@@ -59,9 +59,6 @@ class SecureStorageService {
   String _keyFor(String providerId) =>
       '${AppConstants.apiKeyPrefix}$providerId';
 
-  String _tokenKeyFor(String providerId) =>
-      '${AppConstants.oauthTokenPrefix}$providerId';
-
   /// Simpan API Key. Melempar [SecureStorageException] bila native storage
   /// gagal, agar kegagalan tidak senyap (key tidak tersimpan tanpa disadari).
   Future<void> saveApiKey(String providerId, String apiKey) async {
@@ -97,37 +94,19 @@ class SecureStorageService {
     }
   }
 
-  // ------------------------------------------------------- oauth token set --
+  // --------------------------------------------------------- legacy oauth --
 
-  /// Simpan token set OAuth (JSON) secara terenkripsi. Melempar
-  /// [SecureStorageException] bila gagal, agar token tidak hilang senyap.
-  Future<void> saveTokenSet(String providerId, String json) async {
-    try {
-      await _storage.write(key: _tokenKeyFor(providerId), value: json);
-    } catch (e) {
-      throw SecureStorageException(
-        'Gagal menyimpan token OAuth secara terenkripsi: $e',
-      );
-    }
-  }
+  /// Prefix lama untuk token OAuth. Fitur login OAuth sudah dihapus, jadi
+  /// tidak ada penulis baru — konstanta ini hanya dipakai untuk membersihkan
+  /// token yang masih tersisa di perangkat pengguna.
+  static const String legacyOAuthTokenPrefix = 'centauri_provider_oauth_token_';
 
-  /// Baca token set OAuth (JSON). Null bila belum ada.
-  Future<String?> readTokenSet(String providerId) async {
+  /// Hapus token OAuth lama milik [providerId] (best-effort).
+  Future<void> deleteLegacyOAuthToken(String providerId) async {
     try {
-      return await _storage.read(key: _tokenKeyFor(providerId));
-    } catch (e) {
-      throw SecureStorageException(
-        'Gagal membaca token OAuth terenkripsi: $e',
-      );
-    }
-  }
-
-  /// Hapus token set OAuth (best-effort).
-  Future<void> deleteTokenSet(String providerId) async {
-    try {
-      await _storage.delete(key: _tokenKeyFor(providerId));
-    } catch (e) {
-      throw SecureStorageException('Gagal menghapus token OAuth: $e');
+      await _storage.delete(key: '$legacyOAuthTokenPrefix$providerId');
+    } catch (_) {
+      // Best-effort: token yatim tidak berbahaya setelah fitur dihapus.
     }
   }
 }

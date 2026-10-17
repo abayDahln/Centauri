@@ -1,16 +1,15 @@
 import 'dart:io';
 
-import 'package:centauri/features/provider_config/domain/catalog/catalog_selection.dart';
 import 'package:centauri/features/provider_config/presentation/provider_catalog_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ProviderCatalogViewModel', () {
-    test('tiga section dengan judul yang diharapkan', () {
+    test('dua section dengan judul yang diharapkan', () {
       final titles = ProviderCatalogViewModel.build()
           .map((s) => s.title)
           .toList();
-      expect(titles, ['OAuth', 'Free Tier', 'API Key']);
+      expect(titles, ['Free Tier', 'API Key']);
     });
 
     test('setiap section non-kosong', () {
@@ -19,26 +18,15 @@ void main() {
       }
     });
 
-    test('tepat 22 provider dan id unik', () {
+    test('tepat 12 provider dan id unik', () {
       final cards = ProviderCatalogViewModel.allCards();
-      expect(cards.length, 22);
-      expect(cards.map((c) => c.id).toSet().length, 22);
+      expect(cards.length, 12);
+      expect(cards.map((c) => c.id).toSet().length, 12);
     });
 
     test('id yang diharapkan tersedia', () {
       final ids = ProviderCatalogViewModel.allCards().map((c) => c.id).toSet();
       expect(ids, {
-        'claude-code',
-        'antigravity',
-        'qoder',
-        'openai-codex',
-        'github-copilot',
-        'cursor',
-        'kilo-code',
-        'cline',
-        'codebuddy',
-        'zai-glm',
-        'grok-cli',
         'opencode',
         'openrouter',
         'nvidia',
@@ -48,31 +36,15 @@ void main() {
         'groq',
         'minimax',
         'mistral',
+        'zai',
         'kiro-ai',
         'custom-api',
       });
     });
 
-    test('tipe selection sesuai sumber', () {
-      const oauthIds = {
-        'claude-code',
-        'antigravity',
-        'qoder',
-        'openai-codex',
-        'github-copilot',
-        'cursor',
-        'kilo-code',
-        'cline',
-        'codebuddy',
-        'zai-glm',
-        'grok-cli',
-      };
+    test('setiap kartu menyertakan entri katalog', () {
       for (final card in ProviderCatalogViewModel.allCards()) {
-        if (oauthIds.contains(card.id)) {
-          expect(card.selection, isA<OAuthSelection>(), reason: card.id);
-        } else {
-          expect(card.selection, isA<ApiKeySelection>(), reason: card.id);
-        }
+        expect(card.entry.id, card.id, reason: card.id);
       }
     });
 

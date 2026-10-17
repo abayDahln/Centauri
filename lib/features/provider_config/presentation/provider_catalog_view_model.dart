@@ -3,9 +3,8 @@ import 'package:simple_icons/simple_icons.dart';
 
 import '../../../../app/config/theme.dart';
 import '../data/catalog/provider_catalog.dart';
-import '../data/oauth/oauth_provider_presets.dart';
-import '../domain/catalog/catalog_selection.dart';
-import '../domain/oauth/oauth_provider_preset.dart';
+import '../domain/catalog/provider_catalog_entry.dart';
+import '../domain/entities/api_provider.dart';
 
 /// Data logo satu provider untuk [ProviderLogo].
 ///
@@ -21,7 +20,7 @@ class ProviderLogoData {
 
   final IconData? brandIcon;
 
-  /// Path aset ikon, mis. `assets/icons/claude.png`. Null bila memakai
+  /// Path aset ikon, mis. `assets/icons/groq.png`. Null bila memakai
   /// [brandIcon] atau [textIcon].
   final String? assetPath;
   final Color color;
@@ -35,9 +34,7 @@ class ProviderCardData {
     required this.name,
     required this.subtitle,
     required this.logo,
-    required this.selection,
-    this.isExperimental = false,
-    this.isTokenOnly = false,
+    required this.entry,
   });
 
   final String id;
@@ -45,11 +42,8 @@ class ProviderCardData {
   final String subtitle;
   final ProviderLogoData logo;
 
-  /// Hasil yang dikembalikan ke pemanggil saat kartu dipilih.
-  final CatalogSelection selection;
-
-  final bool isExperimental;
-  final bool isTokenOnly;
+  /// Entri katalog yang dikembalikan ke pemanggil saat kartu dipilih.
+  final ProviderCatalogEntry entry;
 }
 
 /// Section katalog (header + kartu).
@@ -69,22 +63,6 @@ class ProviderCatalogViewModel {
 
   static const List<({String title, List<String> ids})> _sections = [
     (
-      title: 'OAuth',
-      ids: [
-        'claude-code',
-        'antigravity',
-        'qoder',
-        'openai-codex',
-        'github-copilot',
-        'cursor',
-        'kilo-code',
-        'cline',
-        'codebuddy',
-        'zai-glm',
-        'grok-cli',
-      ],
-    ),
-    (
       title: 'Free Tier',
       ids: ['opencode', 'openrouter', 'nvidia', 'ollama-cloud', 'gemini'],
     ),
@@ -95,6 +73,7 @@ class ProviderCatalogViewModel {
         'groq',
         'minimax',
         'mistral',
+        'zai',
         'kiro-ai',
         'custom-api',
       ],
@@ -107,6 +86,10 @@ class ProviderCatalogViewModel {
       for (final id in section.ids) ?_resolve(id),
   ];
 
+  /// Kartu provider custom ("Custom API Key"). Ditampilkan paling atas di
+  /// dialog pemilih provider, terpisah dari section katalog.
+  static ProviderCardData get customCard => _resolve(kCustomCatalogId)!;
+
   /// Bangun section terkurasi; section tanpa kartu yang cocok akan kosong.
   static List<ProviderSection> build() => [
     for (final section in _sections)
@@ -117,36 +100,19 @@ class ProviderCatalogViewModel {
   ];
 
   static ProviderCardData? _resolve(String id) {
-    final preset = OAuthProviderPresets.byId(id);
-    if (preset != null && !preset.isCustom) {
-      return ProviderCardData(
-        id: preset.id,
-        name: _displayName(preset.id, preset.label),
-        subtitle: _presetSubtitle(preset),
-        logo: _logoFor(preset.id),
-        selection: OAuthSelection(preset),
-        isExperimental: preset.isExperimental,
-        isTokenOnly: preset.isTokenOnly,
-      );
-    }
     final entry = ProviderCatalog.byId(id);
-    if (entry != null) {
-      return ProviderCardData(
-        id: entry.id,
-        name: _displayName(entry.id, entry.name),
-        subtitle: entry.note ?? _hostOf(entry.baseUrl),
-        logo: _logoFor(entry.id),
-        selection: ApiKeySelection(entry),
-      );
-    }
-    return null;
+    if (entry == null) return null;
+    return ProviderCardData(
+      id: entry.id,
+      name: _displayName(entry.id, entry.name),
+      subtitle: entry.note ?? _hostOf(entry.baseUrl),
+      logo: _logoFor(entry.id),
+      entry: entry,
+    );
   }
 
   static String _displayName(String id, String fallback) =>
-      id == 'google-gemini' || id == 'gemini' ? 'Gemini' : fallback;
-
-  static String _presetSubtitle(OAuthProviderPreset preset) =>
-      preset.isTokenOnly ? 'Login • tanpa chat' : 'Login OAuth';
+      id == 'gemini' ? 'Gemini' : fallback;
 
   static String _hostOf(String baseUrl) {
     final uri = Uri.tryParse(baseUrl);
@@ -155,30 +121,6 @@ class ProviderCatalogViewModel {
 
   static ProviderLogoData _logoFor(String id) {
     switch (id) {
-      case 'claude-code':
-        return const ProviderLogoData(
-          color: Color(0xFFD97757),
-          textIcon: 'CL',
-          assetPath: 'assets/icons/claude.png',
-        );
-      case 'github-copilot':
-        return const ProviderLogoData(
-          brandIcon: SimpleIcons.githubcopilot,
-          color: Color(0xFF181717),
-          textIcon: 'GH',
-        );
-      case 'cursor':
-        return const ProviderLogoData(
-          brandIcon: SimpleIcons.cursor,
-          color: Color(0xFF1A1A1A),
-          textIcon: 'CU',
-        );
-      case 'cline':
-        return const ProviderLogoData(
-          color: Color(0xFF14B8A6),
-          textIcon: 'CL',
-          assetPath: 'assets/icons/cline.png',
-        );
       case 'opencode':
         return const ProviderLogoData(
           brandIcon: SimpleIcons.opencode,
@@ -203,7 +145,6 @@ class ProviderCatalogViewModel {
           color: Color(0xFF333333),
           textIcon: 'OL',
         );
-      case 'google-gemini':
       case 'gemini':
         return const ProviderLogoData(
           brandIcon: SimpleIcons.googlegemini,
@@ -222,49 +163,12 @@ class ProviderCatalogViewModel {
           color: Color(0xFFFF7000),
           textIcon: 'MI',
         );
-      case 'antigravity':
-        return const ProviderLogoData(
-          color: Color(0xFF7C4DFF),
-          textIcon: 'AG',
-          assetPath: 'assets/icons/antigravity.png',
-        );
-      case 'qoder':
-        return const ProviderLogoData(
-          color: Color(0xFF5B5BD6),
-          textIcon: 'Q',
-          assetPath: 'assets/icons/qoder.png',
-        );
-      case 'openai-codex':
-        return const ProviderLogoData(
-          color: Color(0xFF10A37F),
-          textIcon: 'CX',
-          assetPath: 'assets/icons/codex.png',
-        );
-      case 'kilo-code':
-        return const ProviderLogoData(
-          color: Color(0xFFFF6B35),
-          textIcon: 'KC',
-          assetPath: 'assets/icons/kilo.png',
-        );
-      case 'codebuddy':
-        return const ProviderLogoData(
-          color: Color(0xFF0052D9),
-          textIcon: 'CB',
-          assetPath: 'assets/icons/codebuddy.png',
-        );
-      case 'zai-glm':
+      case 'zai':
         return const ProviderLogoData(
           color: Color(0xFF4E5AF2),
           textIcon: 'GL',
           assetPath: 'assets/icons/zai.png',
         );
-      case 'grok-cli':
-        return const ProviderLogoData(
-          color: Color(0xFF1A1A1A),
-          textIcon: 'GK',
-          assetPath: 'assets/icons/grok.png',
-        );
-      case 'kiro':
       case 'kiro-ai':
         return const ProviderLogoData(
           color: Color(0xFF9046FF),

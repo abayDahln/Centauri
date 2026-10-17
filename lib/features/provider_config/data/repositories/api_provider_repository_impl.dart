@@ -3,33 +3,49 @@ import 'dart:convert';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../domain/entities/api_provider.dart';
-import '../../domain/entities/oauth_token_set.dart';
 import '../../domain/repositories/api_provider_repository.dart';
-import '../../domain/services/oauth_service.dart';
-import '../services/oauth_service_impl.dart';
+import '../catalog/provider_catalog.dart';
 
 class ApiProviderRepositoryImpl implements ApiProviderRepository {
   ApiProviderRepositoryImpl({
     LocalStorageService? localStorage,
     SecureStorageService? secureStorage,
-    OAuthService? oauthService,
   }) : _localStorage = localStorage ?? LocalStorageService(),
-       _secureStorage = secureStorage ?? SecureStorageService(),
-       _oauthService = oauthService ?? OAuthServiceImpl();
+       _secureStorage = secureStorage ?? SecureStorageService();
 
   final LocalStorageService _localStorage;
   final SecureStorageService _secureStorage;
-  final OAuthService _oauthService;
 
   @override
   Future<List<ApiProvider>> getProviders() async {
     final jsonList = _localStorage.readAllProvidersJson();
     return jsonList
         .map(
-          (json) =>
-              ApiProvider.fromJson(jsonDecode(json) as Map<String, dynamic>),
+          (json) => _normalize(
+            ApiProvider.fromJson(jsonDecode(json) as Map<String, dynamic>),
+          ),
         )
         .toList();
+  }
+
+  /// Melengkapi field baru pada provider lama: `catalogId` dicocokkan dari
+  /// Base URL ke katalog template; bila tidak ada yang cocok, dianggap custom.
+  /// Provider baru selalu sudah membawa `catalogId`, jadi langsung dikembalikan.
+  ApiProvider _normalize(ApiProvider provider) {
+    if (provider.catalogId != null) return provider;
+
+    final base = provider.normalizedBaseUrl;
+    if (base.isNotEmpty) {
+      for (final entry in ProviderCatalog.all) {
+        if (entry.baseUrl.trim() == base) {
+          return provider.copyWith(
+            catalogId: entry.id,
+            providerName: entry.name,
+          );
+        }
+      }
+    }
+    return provider.copyWith(catalogId: kCustomCatalogId);
   }
 
   @override
@@ -42,7 +58,7 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
       (p) => p.id == activeId,
       orElse: () => providers.first,
     );
-    return _withCredentials(provider);
+    return _withApiKey(provider);
   }
 
   @override
@@ -53,35 +69,11 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
       if (p.id == id) provider = p;
     }
     if (provider == null) return null;
-    return _withCredentials(provider);
+    return _withApiKey(provider);
   }
 
-  /// Menempelkan kredensial runtime (API Key atau token OAuth) ke [provider].
-  ///
-  /// Untuk provider OAuth, token di-refresh proaktif bila hampir kedaluwarsa.
-  /// Kegagalan refresh tidak melempar: token lama dikembalikan apa adanya
-  /// sehingga permintaan berikutnya gagal 401 dan UI dapat menyarankan login
-  /// ulang, alih-alih menggagalkan pemuatan provider.
-  Future<ApiProvider> _withCredentials(ApiProvider provider) async {
-    if (provider.usesOAuth) {
-      // Dual-auth (Qoder PAT / Zai API Key): API key disimpan sebagai
-      // fallback bearer bila token OAuth belum terhubung.
-      final apiKey = await _secureStorage.readApiKey(provider.id);
-      final tokens = await getTokenSet(provider.id);
-      if (tokens == null) return provider.copyWith(apiKey: apiKey);
-      var current = tokens;
-      if (tokens.needsRefresh && tokens.canRefresh) {
-        try {
-          current = await _oauthService.refresh(provider, tokens);
-          await saveTokenSet(provider.id, current);
-        } catch (_) {
-          // Biarkan token lama; refresh akan dicoba lagi pada permintaan
-          // berikutnya.
-        }
-      }
-      return provider.copyWith(oauthToken: current, apiKey: apiKey);
-    }
-
+  /// Menempelkan API Key runtime (dari secure storage) ke [provider].
+  Future<ApiProvider> _withApiKey(ApiProvider provider) async {
     final apiKey = await _secureStorage.readApiKey(provider.id);
     return provider.copyWith(apiKey: apiKey);
   }
@@ -100,24 +92,12 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
   }
 
   @override
-  Future<void> deleteProvider(String id) async {
-    // Cabut token OAuth (best-effort) sebelum data dihapus, agar sesi tidak
-    // menggantung di sisi provider.
-    final tokens = await getTokenSet(id);
-    if (tokens != null) {
-      final provider = await getProviderById(id);
-      if (provider != null) {
-        try {
-          await _oauthService.revoke(provider, tokens);
-        } catch (_) {
-          // Best-effort: kegagalan revoke tidak menghalangi penghapusan lokal.
-        }
-      }
-    }
+  Future<void> clearApiKey(String id) => _secureStorage.deleteApiKey(id);
 
+  @override
+  Future<void> deleteProvider(String id) async {
     await _localStorage.deleteProviderJson(id);
     await _secureStorage.deleteApiKey(id);
-    await _secureStorage.deleteTokenSet(id);
 
     if (_localStorage.activeProviderId == id) {
       final remaining = await getProviders();
@@ -130,35 +110,5 @@ class ApiProviderRepositoryImpl implements ApiProviderRepository {
   @override
   Future<void> setActiveProvider(String id) {
     return _localStorage.setActiveProviderId(id);
-  }
-
-  // ------------------------------------------------------------- oauth ----
-
-  @override
-  Future<String?> resolveBearerToken(ApiProvider provider) async {
-    final withCredentials = await _withCredentials(provider);
-    return withCredentials.bearerToken;
-  }
-
-  @override
-  Future<void> saveTokenSet(String providerId, OAuthTokenSet tokens) {
-    return _secureStorage.saveTokenSet(providerId, jsonEncode(tokens.toJson()));
-  }
-
-  @override
-  Future<OAuthTokenSet?> getTokenSet(String providerId) async {
-    final raw = await _secureStorage.readTokenSet(providerId);
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      return OAuthTokenSet.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    } on FormatException {
-      // Token rusak / format lama: anggap belum terhubung.
-      return null;
-    }
-  }
-
-  @override
-  Future<void> deleteTokenSet(String providerId) {
-    return _secureStorage.deleteTokenSet(providerId);
   }
 }
