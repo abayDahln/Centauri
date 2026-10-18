@@ -53,6 +53,7 @@ dependencies:
   pdf: ^3.13.1
   url_launcher: ^6.3.0
   simple_icons: ^16.23.0  # Logo brand provider (font-based, tree-shakeable).
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

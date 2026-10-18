@@ -157,6 +157,12 @@ class SessionFolderStore {
     return parts.isEmpty ? path : parts.last;
   }
 
+  /// Hapus folder sesi utuh. Tidak melempar bila folder tidak ada.
+  void delete(String projectId) {
+    final dir = folderFor(projectId);
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  }
+
   /// Sanitasi nama file untuk Windows: buang karakter dilarang, beri awalan
   /// `_` untuk nama reserved device (mis. `con.html`, `nul.html`).
   static String _safeFileName(String slug) {

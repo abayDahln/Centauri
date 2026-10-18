@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../utils/app_constants.dart';
+import 'sessions_root.dart';
 
 /// Hasil inisialisasi penyimpanan, dibaca UI untuk menampilkan banner.
 class StorageStatus {
@@ -34,6 +36,11 @@ class LocalStorageService {
   Box<String>? _providersBox;
   Box<String>? _metaBox;
   Box<String>? _projectsBox;
+  Directory? _sessionsRoot;
+
+  /// Root folder sesi (sumber kebenaran proyek). Diisi saat [init]; `null`
+  /// selama init belum berjalan atau gagal (repository memakai fallback).
+  Directory? get sessionsRoot => _sessionsRoot;
 
   StorageStatus _status = const StorageStatus();
   StorageStatus get status => _status;
@@ -45,7 +52,7 @@ class LocalStorageService {
   ///
   /// [path] memaksa folder data (dipakai test agar tetap terisolasi di temp
   /// dir dan tidak menyentuh penyimpanan pengguna sungguhan).
-  Future<StorageStatus> init({String? path}) async {
+  Future<StorageStatus> init({String? path, String? sessionsPath}) async {
     final failures = <String>[];
     String? directory;
     try {
@@ -53,16 +60,38 @@ class LocalStorageService {
     } catch (e) {
       return _status = StorageStatus(error: 'Gagal menyiapkan folder data: $e');
     }
-    await _open(AppConstants.providersBoxName, (box) => _providersBox = box,
-        failures);
+    await _open(
+      AppConstants.providersBoxName,
+      (box) => _providersBox = box,
+      failures,
+    );
     await _open(AppConstants.metaBoxName, (box) => _metaBox = box, failures);
-    await _open(AppConstants.projectsBoxName, (box) => _projectsBox = box,
-        failures);
+    await _open(
+      AppConstants.projectsBoxName,
+      (box) => _projectsBox = box,
+      failures,
+    );
+    await _prepareSessionsRoot(sessionsPath);
 
     return _status = StorageStatus(
       directory: directory,
       error: failures.isEmpty ? null : failures.join(' · '),
     );
+  }
+
+  /// Siapkan root folder sesi (proyek berbasis file). Kegagalan tidak boleh
+  /// menggagalkan init Hive — repository memakai fallback sinkron.
+  ///
+  /// [sessionsPath] memaksa root (dipakai test agar tetap terisolasi).
+  Future<void> _prepareSessionsRoot(String? sessionsPath) async {
+    try {
+      _sessionsRoot = sessionsPath != null
+          ? Directory(sessionsPath)
+          : await defaultSessionsRoot();
+      await _sessionsRoot!.create(recursive: true);
+    } catch (e) {
+      debugPrint('[storage] folder sesi tidak tersedia: $e');
+    }
   }
 
   Future<void> _open(
@@ -172,8 +201,7 @@ class LocalStorageService {
   void writeProviderJson(String id, String json) =>
       _providersBox?.put(id, json);
 
-  Future<void> deleteProviderJson(String id) async =>
-      _providersBox?.delete(id);
+  Future<void> deleteProviderJson(String id) async => _providersBox?.delete(id);
 
   String? get activeProviderId =>
       _metaBox?.get(AppConstants.activeProviderIdKey);
@@ -193,8 +221,7 @@ class LocalStorageService {
 
   Future<void> deleteProjectJson(String id) async => _projectsBox?.delete(id);
 
-  String? get activeProjectId =>
-      _metaBox?.get(AppConstants.activeProjectIdKey);
+  String? get activeProjectId => _metaBox?.get(AppConstants.activeProjectIdKey);
 
   Future<void> setActiveProjectId(String id) async =>
       _metaBox?.put(AppConstants.activeProjectIdKey, id);
@@ -206,7 +233,8 @@ class LocalStorageService {
 /// Status penyimpanan untuk UI: banner peringatan + tombol coba lagi.
 final storageStatusProvider =
     NotifierProvider<StorageStatusNotifier, StorageStatus>(
-        StorageStatusNotifier.new);
+      StorageStatusNotifier.new,
+    );
 
 class StorageStatusNotifier extends Notifier<StorageStatus> {
   @override
