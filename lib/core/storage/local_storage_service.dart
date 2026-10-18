@@ -228,6 +228,16 @@ class LocalStorageService {
 
   Future<void> clearActiveProjectId() async =>
       _metaBox?.delete(AppConstants.activeProjectIdKey);
+
+  // ---------------------------------------------------------------- flags --
+
+  /// Penanda satu kali migrasi proyek Hive -> folder sesi. `false` selama
+  /// belum berjalan (atau box gagal terbuka — migrasi akan mencoba lagi).
+  bool get sessionsMigrated =>
+      _metaBox?.get(AppConstants.sessionsMigratedKey) != null;
+
+  Future<void> setSessionsMigrated() async =>
+      _metaBox?.put(AppConstants.sessionsMigratedKey, '1');
 }
 
 /// Status penyimpanan untuk UI: banner peringatan + tombol coba lagi.

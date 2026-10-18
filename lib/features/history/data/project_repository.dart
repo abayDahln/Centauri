@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/local_storage_service.dart';
 import '../domain/project.dart';
 import 'session_folder_store.dart';
+import 'session_migrator.dart';
 
 /// Akses penyimpanan proyek. Sejak konsep "satu folder per sesi":
 ///
@@ -46,14 +47,24 @@ class ProjectRepository {
     return Directory.systemTemp;
   }
 
-  /// Semua proyek dari folder sesi, urut pengubahan terbaru.
+  /// Semua proyek dari folder sesi, urut pengubahan terbaru. Jalur pertama
+  /// kali juga menitipkan migrasi proyek Hive -> folder (copy-only).
   List<Project> getAll() {
     try {
+      _ensureMigrated();
       return _sessionStore.loadAll();
     } catch (e) {
       // Daftar riwayat tidak boleh mati total gara-gara satu folder rusak.
       return const [];
     }
+  }
+
+  bool _migrationChecked = false;
+
+  void _ensureMigrated() {
+    if (_migrationChecked) return;
+    _migrationChecked = true;
+    SessionMigrator(_storage, _sessionStore).migrateHiveProjects();
   }
 
   /// Lihat `SessionFolderStore.save`: tulis manifest + file HTML + pointer.

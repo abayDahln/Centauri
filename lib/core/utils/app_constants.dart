@@ -18,6 +18,9 @@ class AppConstants {
   static const String activeProviderIdKey = 'active_provider_id';
   static const String activeProjectIdKey = 'active_project_id';
 
+  // Penanda sekali-jalan: migrasi proyek Hive -> folder sesi.
+  static const String sessionsMigratedKey = 'sessions_migrated_v1';
+
   // Network defaults.
   static const Duration connectTimeout = Duration(seconds: 30);
 
