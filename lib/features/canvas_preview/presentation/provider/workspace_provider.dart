@@ -6,10 +6,12 @@ import '../../../prompt_editor/domain/attachment.dart';
 import '../../../prompt_editor/domain/prompt_templates.dart';
 import '../../../provider_config/data/datasources/ai_api_service.dart';
 import '../../../provider_config/presentation/providers/provider_config_provider.dart';
+import '../../data/services/canvas_service_registry.dart';
 import '../../data/services/canvas_webview_service.dart';
 import '../../domain/dom_tree.dart';
 import '../../domain/page.dart';
 import '../../domain/page_slug.dart';
+import '../../domain/prompt_mention.dart';
 
 enum ChatRole { user, assistant, error }
 
@@ -77,7 +79,8 @@ class WorkspaceState {
     this.generationStartedAt,
     this.status = AiStatus.idle,
     this.attachments = const [],
-    this.linkInterceptEnabled = true,
+    this.selectionMode = false,
+    this.mentions = const [],
   });
 
   /// Semua halaman (urut kronologis).
@@ -103,9 +106,12 @@ class WorkspaceState {
   /// Lampiran yang menunggu dikirim bersama prompt berikutnya.
   final List<Attachment> attachments;
 
-  /// Bila true, klik `<a href>` di preview menavigasi antar-halaman.
-  /// Bila false, klik apa pun menyeleksi elemen (untuk mengedit link).
-  final bool linkInterceptEnabled;
+  /// Mode seleksi elemen. Default false: preview bisa dipakai langsung
+  /// (klik tombol, isi input, hover) seperti halaman biasa.
+  final bool selectionMode;
+
+  /// Mention yang menempel di prompt berikutnya (elemen / halaman).
+  final List<PromptMention> mentions;
 
   AppPage? get activePage {
     if (activePageId == null) return null;
@@ -140,7 +146,8 @@ class WorkspaceState {
     bool clearGenerationStart = false,
     AiStatus? status,
     List<Attachment>? attachments,
-    bool? linkInterceptEnabled,
+    bool? selectionMode,
+    List<PromptMention>? mentions,
   }) {
     return WorkspaceState(
       pages: pages ?? this.pages,
@@ -162,7 +169,8 @@ class WorkspaceState {
           : (generationStartedAt ?? this.generationStartedAt),
       status: status ?? this.status,
       attachments: attachments ?? this.attachments,
-      linkInterceptEnabled: linkInterceptEnabled ?? this.linkInterceptEnabled,
+      selectionMode: selectionMode ?? this.selectionMode,
+      mentions: mentions ?? this.mentions,
     );
   }
 }
@@ -284,8 +292,73 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     state = state.copyWith(outputMode: mode);
   }
 
-  void toggleLinkIntercept() =>
-      state = state.copyWith(linkInterceptEnabled: !state.linkInterceptEnabled);
+  /// Nyalakan/matikan mode seleksi elemen. Saat dimatikan, seleksi dibuang
+  void toggleSelectionMode() {
+    final next = !state.selectionMode;
+    state = state.copyWith(
+      selectionMode: next,
+      clearSelection: !next,
+      clearGeometry: !next,
+    );
+  }
+
+  /// Mention elemen untuk prompt berikutnya (dari menu "Edit dengan AI").
+  void addElementMention({required String nodeId, required String label}) {
+    final page = state.activePage;
+    final mention = PromptMention(
+      kind: PromptMentionKind.element,
+      label: label.trim().isEmpty ? 'Elemen terpilih' : label.trim(),
+      nodeId: nodeId,
+      pageId: page?.id,
+      pageName: page?.name,
+    );
+    state = state.copyWith(
+      mentions: [
+        ...state.mentions.where((m) => m.kind != PromptMentionKind.element),
+        mention,
+      ],
+    );
+  }
+
+  void addPageMention(AppPage page) {
+    if (state.mentions.any(
+      (m) => m.kind == PromptMentionKind.page && m.pageId == page.id,
+    )) {
+      return;
+    }
+    state = state.copyWith(
+      mentions: [
+        ...state.mentions,
+        PromptMention(
+          kind: PromptMentionKind.page,
+          label: page.name,
+          pageId: page.id,
+          pageName: page.name,
+        ),
+      ],
+    );
+  }
+
+  void addAllPagesMention() {
+    if (state.mentions.any((m) => m.kind == PromptMentionKind.allPages)) {
+      return;
+    }
+    state = state.copyWith(
+      mentions: [
+        ...state.mentions,
+        const PromptMention(
+          kind: PromptMentionKind.allPages,
+          label: 'Semua halaman',
+        ),
+      ],
+    );
+  }
+
+  void removeMention(PromptMention mention) {
+    state = state.copyWith(
+      mentions: state.mentions.where((m) => m != mention).toList(),
+    );
+  }
 
   // ---------------------------------------------------------------- pages --
 
@@ -378,7 +451,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       activePageId: activePageId,
       messages: messages,
       outputMode: state.outputMode,
-      linkInterceptEnabled: state.linkInterceptEnabled,
+      selectionMode: state.selectionMode,
     );
   }
 
@@ -459,6 +532,33 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     state = state.copyWith(hoveredNodeId: id);
   }
 
+  /// Hapus satu node di halaman aktif lewat WebView, lalu sinkronkan HTML.
+  /// Mengembalikan false bila WebView halaman belum siap atau gagal.
+  Future<bool> deleteNode(String nodeId) async {
+    final pageId = state.activePageId;
+    if (pageId == null) return false;
+    final service = CanvasServiceRegistry.forFrame(pageId);
+    if (service == null) return false;
+    try {
+      final htmlFuture = service.selectionEvents
+          .firstWhere((e) => e.type == 'html')
+          .timeout(const Duration(seconds: 12));
+      await service.deleteNode(nodeId);
+      await service.requestHtml();
+      final html = (await htmlFuture).html;
+      if (html == null || html.trim().isEmpty) return false;
+      final tree = await buildDomTreeInIsolate(html);
+      updatePageHtml(
+        pageId: pageId,
+        stampedHtml: tree.stampedHtml,
+        tree: tree,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ------------------------------------------------------------- generate --
 
   /// Generate halaman dari prompt. Satu blok HTML = satu halaman.
@@ -485,21 +585,27 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
     final pendingAttachments = state.attachments;
 
-    final wantsUi = isUiRequestPrompt(
-      trimmed,
-      hasAttachments: pendingAttachments.isNotEmpty,
-      hasSelectedNode:
-          state.selectedNodeId != null && state.selectedNodeGeometry != null,
-    );
+    // Mention (elemen / halaman) selalu berarti permintaan perubahan UI.
+    final wantsUi =
+        state.mentions.isNotEmpty ||
+        isUiRequestPrompt(
+          trimmed,
+          hasAttachments: pendingAttachments.isNotEmpty,
+          hasSelectedNode:
+              state.selectedNodeId != null &&
+              state.selectedNodeGeometry != null,
+        );
 
     final userText = wantsUi
-        ? '$trimmed${_uiContext()}${_selectedNodeContext()}'
+        ? '$trimmed${_uiContext()}${_selectedNodeContext()}${_mentionContext()}'
         : trimmed;
 
     state = state.copyWith(
       isGenerating: true,
       generationStartedAt: DateTime.now(),
       status: AiStatus.thinking,
+      // Mention sudah masuk ke teks prompt, chip tidak perlu bertahan.
+      mentions: const [],
       messages: [
         ...state.messages,
         CanvasMessage(
@@ -740,6 +846,33 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     if (cleaned.contains(':') || cleaned.contains('—')) return fallback;
     if (cleaned.split(' ').length > 4) return fallback;
     return cleaned;
+  }
+
+  /// Blok konteks dari mention di prompt bar (elemen / halaman / semua).
+  String _mentionContext() {
+    if (state.mentions.isEmpty) return '';
+    final lines = <String>[];
+    for (final mention in state.mentions) {
+      switch (mention.kind) {
+        case PromptMentionKind.element:
+          final page = mention.pageName ?? state.activePage?.name;
+          final where = page == null ? '' : ' on page "$page"';
+          final id = mention.nodeId;
+          lines.add(
+            '- Element "${mention.label}"$where'
+            '${id == null ? '' : ' (data-centauri-id="$id")'} — change only '
+            'this element and leave the rest of the page untouched.',
+          );
+        case PromptMentionKind.page:
+          final page = mention.pageName ?? mention.label;
+          lines.add('- Page "$page" — apply the change to this page only.');
+        case PromptMentionKind.allPages:
+          lines.add(
+            '- All pages — apply the change consistently to every page.',
+          );
+      }
+    }
+    return '\n\n[USER MENTIONS]\n${lines.join('\n')}';
   }
 
   /// Konteks format UI: fluid/responsive wajib + konvensi link antar-halaman.

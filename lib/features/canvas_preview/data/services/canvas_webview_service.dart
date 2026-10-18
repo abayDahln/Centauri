@@ -65,6 +65,7 @@ class CanvasSelectEvent {
     this.errorMessage,
     this.html,
     this.href,
+    this.label,
     this.payload,
   });
 
@@ -104,6 +105,10 @@ class CanvasSelectEvent {
   /// Target link yang diklik (untuk event `navigate`).
   final String? href;
 
+  /// Label ringkas elemen (untuk event `select`/`editWithAi`), mis.
+  /// `button · Masukkan Keranjang`.
+  final String? label;
+
   /// Payload struktur halaman (untuk event `figma`): tree node + ukuran.
   final Map<String, dynamic>? payload;
 
@@ -142,6 +147,7 @@ class CanvasSelectEvent {
       final message = decoded['message'];
       final html = decoded['html'];
       final href = decoded['href'];
+      final label = decoded['label'];
       final payload = decoded['payload'];
       return CanvasSelectEvent(
         type: type,
@@ -153,6 +159,7 @@ class CanvasSelectEvent {
         errorMessage: message is String ? message : null,
         html: html is String ? html : null,
         href: href is String ? href : null,
+        label: label is String ? label : null,
         payload: payload is Map ? Map<String, dynamic>.from(payload) : null,
       );
     } on FormatException {
@@ -170,9 +177,12 @@ abstract class CanvasWebviewService {
   /// Render HTML halaman. Null = reset ke placeholder kosong.
   Future<void> renderHtml(String? html);
 
-  /// Aktif/matikan intersep klik `<a href>` (navigasi antar-halaman).
-  /// Saat mati, klik apa pun menyeleksi elemen (untuk mengedit link).
-  Future<void> setLinkIntercept(bool enabled);
+  /// Aktif/matikan mode seleksi elemen.
+  ///
+  /// Nonaktif (default): klik, hover, dan input berjalan seperti halaman biasa;
+  /// hanya `<a href>` antar-halaman yang tetap di-intercept. Aktif: klik
+  /// memilih elemen dan menampilkan menu aksi.
+  Future<void> setSelectionMode(bool enabled);
 
   /// Tandai node sebagai terpilih (selection box + scroll into view).
   /// Implementasi JS juga mengirim balik event `geometry`.

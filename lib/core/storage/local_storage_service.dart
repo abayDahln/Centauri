@@ -233,11 +233,21 @@ class LocalStorageService {
 
   /// Penanda satu kali migrasi proyek Hive -> folder sesi. `false` selama
   /// belum berjalan (atau box gagal terbuka — migrasi akan mencoba lagi).
-  bool get sessionsMigrated =>
-      _metaBox?.get(AppConstants.sessionsMigratedKey) != null;
+  bool get sessionsMigrated {
+    final box = _metaBox;
+    if (box == null || !box.isOpen) return false;
+    return box.get(AppConstants.sessionsMigratedKey) != null;
+  }
 
-  Future<void> setSessionsMigrated() async =>
-      _metaBox?.put(AppConstants.sessionsMigratedKey, '1');
+  Future<void> setSessionsMigrated() =>
+      _metaBox?.put(AppConstants.sessionsMigratedKey, '1') ?? Future.value();
+
+  /// Kotak proyek siap dibaca (terbuka dan belum ditutup). Dipakai migrator
+  /// agar flag sekali-jalan tidak tertulis padahal daftar proyek tak terbaca.
+  bool get projectsBoxHealthy => _projectsBox != null && _projectsBox!.isOpen;
+
+  /// Untuk test: paksa status root sesi (null = tidak tersedia).
+  void debugSetSessionsRoot(Directory? root) => _sessionsRoot = root;
 }
 
 /// Status penyimpanan untuk UI: banner peringatan + tombol coba lagi.

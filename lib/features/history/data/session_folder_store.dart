@@ -75,6 +75,17 @@ class SessionFolderStore {
       File(_join(dir.path, pageMeta[i]['file']!))
           .writeAsStringSync(project.pages[i].html, flush: true);
     }
+
+    // Bersihkan sisa file halaman yang dihapus/ganti nama agar folder selalu
+    // persis deskripsi manifest (folder ini juga dibuka langsung oleh user).
+    final referenced = pageMeta.map((m) => m['file']!.toLowerCase()).toSet();
+    for (final entry in dir.listSync()) {
+      if (entry is! File) continue;
+      final name = _nameOf(entry.path).toLowerCase();
+      if (!name.endsWith('.html')) continue;
+      if (name == kSessionManifestName) continue;
+      if (!referenced.contains(name)) entry.deleteSync();
+    }
   }
 
   /// Muat satu sesi; `null` bila folder tidak ada atau manifest rusak.

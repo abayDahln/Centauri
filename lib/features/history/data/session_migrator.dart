@@ -22,6 +22,10 @@ class SessionMigrator {
   /// Pindahkan semua proyek Hive yang belum punya folder sesi. Idempoten:
   /// dipanggil ulang tetap aman (flag + cek `.manifest` per folder).
   void migrateHiveProjects() {
+    // Kotak sumber tidak sehat (gagal terbuka / sudah ditutup): JANGAN
+    // menulis flag — migrasi ulang akan dicoba di boot berikutnya, dan
+    // proyek lama tidak boleh hilang dari riwayat begitu saja.
+    if (!_storage.projectsBoxHealthy) return;
     if (_storage.sessionsMigrated) return;
     var migrated = 0;
     for (final json in _storage.readAllProjectsJson()) {

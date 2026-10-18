@@ -125,5 +125,21 @@ void main() {
       ) as Map<String, dynamic>;
       expect(json['title'], 'Proyek lama');
     });
+
+    test('kotak proyek tidak sehat: flag jangan tertulis dan tidak melempar',
+        () async {
+      storage.writeProjectJson(
+        'legacy-1',
+        jsonEncode(_project('legacy-1').toJson()),
+      );
+      // Simulasi kotak gagal terbuka: tutup Hive (seperti saat app lain
+      // mengunci foldernya atau init sebagian gagal).
+      await Hive.close();
+
+      migrator.migrateHiveProjects();
+
+      expect(storage.projectsBoxHealthy, isFalse);
+      expect(storage.sessionsMigrated, isFalse);
+    });
   });
 }

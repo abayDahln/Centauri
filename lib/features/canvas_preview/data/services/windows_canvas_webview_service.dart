@@ -31,6 +31,11 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
 
   StreamSubscription<dynamic>? _messageSubscription;
   StreamSubscription<LoadingState>? _loadStateSubscription;
+  StreamSubscription<String>? _urlSubscription;
+
+  /// Error navigasi diabaikan sampai waktu ini: kita sendiri yang
+  /// membatalkan navigasi internal (lihat [_onUrlChanged]).
+  DateTime? _ignoreLoadErrorUntil;
 
   bool _ready = false;
   bool _disposed = false;
@@ -80,9 +85,23 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
       }
     });
 
+    // Navigasi yang dipicu JS di dalam halaman (mis. `location.href`) tidak
+    // boleh dimuat WebView: batalkan lalu teruskan ke host sebagai pindah
+    // halaman. Tanpa ini WebView2 gagal memuat file yang tidak ada.
+    _urlSubscription = _controller.url.listen(_onUrlChanged);
+
     // Gagal navigasi (mis. WebView2 rusak) jangan diam: catat + laporkan ke
     // stream agar frame menampilkan pesan error, bukan putih kosong.
     _controller.onLoadError.listen((status) {
+      final ignoreUntil = _ignoreLoadErrorUntil;
+      if (ignoreUntil != null && DateTime.now().isBefore(ignoreUntil)) {
+        return;
+      }
+      // Dokumen lokal yang navigasinya dibatalkan bukan kegagalan nyata.
+      if (status == WebErrorStatus.WebErrorStatusConnectionAborted) {
+        debugPrint('[canvas] navigasi dibatalkan (diabaikan)');
+        return;
+      }
       debugPrint('[canvas] WebView load error: $status');
       if (!_selectionEvents.isClosed) {
         _selectionEvents.add(
@@ -167,9 +186,11 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
-  Future<void> setLinkIntercept(bool enabled) async {
+  Future<void> setSelectionMode(bool enabled) async {
     if (!_ready || _disposed) return;
-    await _safeExecute('window.centauriSetLinkIntercept(${enabled ? 'true' : 'false'})');
+    await _safeExecute(
+      "window.centauriSetMode('${enabled ? 'select' : 'interact'}')",
+    );
   }
 
   @override
@@ -233,7 +254,11 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
-  Future<void> addNode(String? parentId, String html, {String? position}) async {
+  Future<void> addNode(
+    String? parentId,
+    String html, {
+    String? position,
+  }) async {
     if (!_ready || _disposed) return;
     await _safeExecute(
       'window.centauriAddNode('
@@ -280,11 +305,44 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   @override
   Widget buildView() => Webview(_controller);
 
+  /// Tangkap navigasi yang dipicu halaman sendiri (mis. `location.href`).
+  /// Navigasi dibatalkan agar WebView tidak memuat URL yang tidak ada, lalu
+  /// host yang mengganti halaman lewat event `navigate`.
+  void _onUrlChanged(String url) {
+    if (_disposed) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    if (uri.scheme == 'about' || uri.scheme == 'data' || uri.scheme == 'blob') {
+      return;
+    }
+    String? href;
+    if (uri.host == _virtualHost) {
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      if (segments.isEmpty) return;
+      final file = Uri.decodeComponent(segments.last);
+      // Dokumen aktif kita sendiri (index.html) — bukan pindah halaman.
+      if (file == 'index.html') return;
+      href = file;
+    } else if (uri.scheme == 'http' || uri.scheme == 'https') {
+      href = url;
+    }
+    if (href == null) return;
+
+    _ignoreLoadErrorUntil = DateTime.now().add(const Duration(seconds: 2));
+    _controller.stop();
+    if (!_selectionEvents.isClosed) {
+      _selectionEvents.add(
+        CanvasSelectEvent(type: 'navigate', id: null, href: href),
+      );
+    }
+  }
+
   @override
   Future<void> dispose() async {
     _disposed = true;
     await _messageSubscription?.cancel();
     await _loadStateSubscription?.cancel();
+    await _urlSubscription?.cancel();
     await _selectionEvents.close();
     // Lepas mapping host virtual + hapus folder temp (jangan bocorkan file).
     try {

@@ -101,9 +101,11 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
-  Future<void> setLinkIntercept(bool enabled) async {
+  Future<void> setSelectionMode(bool enabled) async {
     if (!_ready || _disposed) return;
-    await _safeRun('window.centauriSetLinkIntercept(${enabled ? 'true' : 'false'})');
+    await _safeRun(
+      "window.centauriSetMode('${enabled ? 'select' : 'interact'}')",
+    );
   }
 
   @override
@@ -167,7 +169,11 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
-  Future<void> addNode(String? parentId, String html, {String? position}) async {
+  Future<void> addNode(
+    String? parentId,
+    String html, {
+    String? position,
+  }) async {
     if (!_ready || _disposed) return;
     await _safeRun(
       'window.centauriAddNode('

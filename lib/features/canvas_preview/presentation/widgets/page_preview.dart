@@ -11,6 +11,8 @@ import '../../data/services/canvas_webview_service_factory.dart';
 import '../../domain/page.dart';
 import '../../domain/page_slug.dart';
 import '../provider/workspace_provider.dart';
+import 'chat_side_panel.dart';
+import 'page_switch_tracker.dart';
 
 /// Host preview halaman: SATU WebView untuk seluruh app yang selalu
 /// menampilkan halaman aktif. Fluid — mengisi penuh kontainer, tanpa lebar
@@ -30,6 +32,11 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   String? _error;
   String? _registeredPageId;
 
+  /// Overlay "Memuat…" hanya untuk pergantian halaman (bukan mutasi HTML
+  /// halaman yang sama) — lihat [PageSwitchTracker].
+  final PageSwitchTracker _switchTracker = PageSwitchTracker();
+  bool _switching = false;
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +55,9 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
         _registeredPageId = page.id;
         CanvasServiceRegistry.register(page.id, _service);
         await _service.renderHtml(page.html.isEmpty ? null : page.html);
+        await _service.setSelectionMode(
+          ref.read(workspaceProvider).selectionMode,
+        );
       } else {
         await _service.renderHtml(null);
       }
@@ -65,6 +75,9 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       await _service.renderHtml(
         page == null || page.html.isEmpty ? null : page.html,
       );
+      await _service.setSelectionMode(
+        ref.read(workspaceProvider).selectionMode,
+      );
     } catch (e) {
       debugPrint('[workspace] retry render gagal: $e');
       if (mounted) setState(() => _error = '$e');
@@ -74,6 +87,10 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   /// Registrasi service di bawah id halaman aktif (agar MCP/exporter bisa
   /// menemukannya) dan muat HTML-nya.
   Future<void> _renderPage(String? pageId, String? html) async {
+    // Berpindah halaman → tindih preview dengan indikator memuat selagi
+    // WebView memuat dokumen baru (klik tab langsung terasa responsif).
+    final switching = _switchTracker.isSwitching(pageId);
+    if (switching && mounted && _ready) setState(() => _switching = true);
     if (_registeredPageId != null && _registeredPageId != pageId) {
       CanvasServiceRegistry.unregister(_registeredPageId!);
       _registeredPageId = null;
@@ -82,12 +99,20 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       CanvasServiceRegistry.register(pageId, _service);
       _registeredPageId = pageId;
     }
+    // Error halaman sebelumnya tidak relevan lagi.
+    if (mounted && _error != null) setState(() => _error = null);
     try {
       await _service.renderHtml(html == null || html.isEmpty ? null : html);
+      // Dokumen baru selalu mulai di mode interaksi; terapkan ulang.
+      await _service.setSelectionMode(
+        ref.read(workspaceProvider).selectionMode,
+      );
       if (mounted && _error != null) setState(() => _error = null);
     } catch (e) {
       debugPrint('[workspace] renderHtml gagal: $e');
       if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted && _switching) setState(() => _switching = false);
     }
   }
 
@@ -100,7 +125,8 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       case 'outerHtmlError':
         return; // dikonsumsi peminta via stream yang sama.
       case 'error':
-        final message = event.errorMessage ?? 'Terjadi kesalahan pada pratinjau.';
+        final message =
+            event.errorMessage ?? 'Terjadi kesalahan pada pratinjau.';
         debugPrint('[workspace] bridge error: $message');
         if (mounted) setState(() => _error = message);
         return;
@@ -118,6 +144,12 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
         return;
       case 'select':
         ref.read(workspaceProvider.notifier).selectNodeFromCanvas(event.id);
+        return;
+      case 'editWithAi':
+        _editElementWithAi(event.id, event.label);
+        return;
+      case 'deleteNode':
+        _deleteNodeFromCanvas(event.id);
         return;
       case 'hover':
         ref.read(workspaceProvider.notifier).hoverNode(event.id);
@@ -151,6 +183,23 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     }
   }
 
+  /// "Edit dengan AI" dari menu elemen: tempel mention lalu buka chat.
+  void _editElementWithAi(String? nodeId, String? label) {
+    if (nodeId == null) return;
+    ref
+        .read(workspaceProvider.notifier)
+        .addElementMention(nodeId: nodeId, label: label ?? '');
+    ref.read(panelTabProvider.notifier).select(PanelTab.chat);
+    ref.read(panelVisibleProvider.notifier).show();
+  }
+
+  /// "Hapus komponen" dari menu elemen: hapus node lalu sinkronkan HTML.
+  Future<void> _deleteNodeFromCanvas(String? nodeId) async {
+    if (nodeId == null) return;
+    final ok = await ref.read(workspaceProvider.notifier).deleteNode(nodeId);
+    if (!ok) _toast('Gagal menghapus komponen. Coba lagi.');
+  }
+
   void _toast(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -170,9 +219,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
 
   @override
   Widget build(BuildContext context) {
-    final html = ref.watch(
-      workspaceProvider.select((s) => s.activePage?.html),
-    );
+    final html = ref.watch(workspaceProvider.select((s) => s.activePage?.html));
 
     // Muat ulang saat halaman aktif berganti atau HTML-nya berubah.
     // `activePage` mengembalikan instance baru setiap halaman berubah, jadi
@@ -191,8 +238,8 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       (_, id) => _service.hoverNode(id),
     );
     ref.listen<bool>(
-      workspaceProvider.select((s) => s.linkInterceptEnabled),
-      (_, enabled) => _service.setLinkIntercept(enabled),
+      workspaceProvider.select((s) => s.selectionMode),
+      (_, enabled) => _service.setSelectionMode(enabled),
     );
 
     Widget content;
@@ -214,7 +261,54 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
           borderRadius: AppRadius.lg,
           border: Border.all(color: AppColors.borderSubtle),
         ),
-        child: RepaintBoundary(child: content),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            RepaintBoundary(child: content),
+            // Selagi dokumen baru dimuat, halaman lama tetap terlihat dan
+            // ditindih scrim + spinner supaya pindah halaman terasa responsif.
+            if (_switching) const _PageSwitchLoading(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PageSwitchLoading extends StatelessWidget {
+  const _PageSwitchLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ColoredBox(
+        color: Colors.white.withValues(alpha: 0.72),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: AppColors.accentPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Memuat…',
+                style: TextStyle(
+                  fontFamily: AppFonts.uiFamily,
+                  fontFamilyFallback: AppFonts.uiFallback,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -296,7 +390,9 @@ class _WebviewError extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                message.length > 220 ? '${message.substring(0, 220)}…' : message,
+                message.length > 220
+                    ? '${message.substring(0, 220)}…'
+                    : message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontFamily: AppFonts.monoFamily,

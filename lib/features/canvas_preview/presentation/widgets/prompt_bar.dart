@@ -11,6 +11,8 @@ import '../../../../app/config/theme.dart';
 import '../../../history/presentation/history_provider.dart';
 import '../../../prompt_editor/data/attachment_service.dart';
 import '../../../prompt_editor/domain/attachment.dart';
+import '../../domain/page.dart';
+import '../../domain/prompt_mention.dart';
 import '../provider/workspace_provider.dart';
 import 'attachment_strip.dart';
 import 'chat_side_panel.dart';
@@ -66,7 +68,9 @@ class _PromptBarState extends ConsumerState<PromptBar> {
   // ------------------------------------------------------- attachment adds --
 
   void _addAttachment(Attachment attachment) {
-    final error = ref.read(workspaceProvider.notifier).addAttachment(attachment);
+    final error = ref
+        .read(workspaceProvider.notifier)
+        .addAttachment(attachment);
     if (error != null) _toast(error);
   }
 
@@ -164,6 +168,18 @@ class _PromptBarState extends ConsumerState<PromptBar> {
   Widget build(BuildContext context) {
     final state = ref.watch(workspaceProvider);
 
+    // Mention elemen dari menu kanvas: fokuskan input agar user bisa
+    // langsung menulis instruksinya.
+    ref.listen<List<PromptMention>>(
+      workspaceProvider.select((s) => s.mentions),
+      (previous, next) {
+        final hadElement = previous?.any((m) => m.isElement) ?? false;
+        if (!hadElement && next.any((m) => m.isElement)) {
+          _focusNode.requestFocus();
+        }
+      },
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final available = constraints.maxWidth;
@@ -197,6 +213,15 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (state.mentions.isNotEmpty) ...[
+                      _MentionStrip(
+                        mentions: state.mentions,
+                        onRemove: (mention) => ref
+                            .read(workspaceProvider.notifier)
+                            .removeMention(mention),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     if (state.attachments.isNotEmpty) ...[
                       AttachmentStrip(
                         attachments: state.attachments,
@@ -210,6 +235,15 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        _MentionButton(
+                          pages: state.pages,
+                          onPage: (page) => ref
+                              .read(workspaceProvider.notifier)
+                              .addPageMention(page),
+                          onAllPages: () => ref
+                              .read(workspaceProvider.notifier)
+                              .addAllPagesMention(),
+                        ),
                         _AttachButton(onPressed: _pickFiles),
                         const SizedBox(width: 4),
                         Expanded(
@@ -233,7 +267,9 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                                 if (event is KeyDownEvent &&
                                     event.logicalKey ==
                                         LogicalKeyboardKey.keyV &&
-                                    HardwareKeyboard.instance.isControlPressed) {
+                                    HardwareKeyboard
+                                        .instance
+                                        .isControlPressed) {
                                   _pasteFromClipboard();
                                 }
                                 return KeyEventResult.ignored;
@@ -256,8 +292,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                   filled: false,
-                                  hintText:
-                                      'Apa yang ingin dibuat?',
+                                  hintText: 'Apa yang ingin dibuat?',
                                   hintStyle: TextStyle(
                                     fontFamily: AppFonts.uiFamily,
                                     fontFamilyFallback: AppFonts.uiFallback,
@@ -364,6 +399,159 @@ class _SendButton extends StatelessWidget {
           backgroundColor: AppColors.accentPrimary,
         ),
         child: const Icon(Icons.arrow_upward, size: 18),
+      ),
+    );
+  }
+}
+
+/// Deretan chip mention (elemen / halaman) di atas field prompt.
+class _MentionStrip extends StatelessWidget {
+  const _MentionStrip({required this.mentions, required this.onRemove});
+
+  final List<PromptMention> mentions;
+  final ValueChanged<PromptMention> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final mention in mentions)
+            _MentionChip(mention: mention, onRemove: () => onRemove(mention)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MentionChip extends StatelessWidget {
+  const _MentionChip({required this.mention, required this.onRemove});
+
+  final PromptMention mention;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (mention.kind) {
+      PromptMentionKind.element => Icons.ads_click,
+      PromptMentionKind.page => Icons.web_asset_outlined,
+      PromptMentionKind.allPages => Icons.layers_outlined,
+    };
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 220),
+      padding: const EdgeInsets.only(left: 9, right: 2),
+      decoration: BoxDecoration(
+        color: AppColors.accentSoft,
+        borderRadius: AppRadius.pill,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppColors.accentPrimary),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              mention.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: AppFonts.uiFamily,
+                fontFamilyFallback: AppFonts.uiFallback,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          InkWell(
+            onTap: onRemove,
+            borderRadius: AppRadius.pill,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(
+                Icons.close,
+                size: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tombol untuk menyebut satu halaman atau semua halaman.
+class _MentionButton extends StatelessWidget {
+  const _MentionButton({
+    required this.pages,
+    required this.onPage,
+    required this.onAllPages,
+  });
+
+  static const String _allPagesValue = '__all_pages__';
+
+  final List<AppPage> pages;
+  final ValueChanged<AppPage> onPage;
+  final VoidCallback onAllPages;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Sebut halaman',
+      child: PopupMenuButton<String>(
+        tooltip: '',
+        enabled: pages.isNotEmpty,
+        padding: EdgeInsets.zero,
+        onSelected: (value) {
+          if (value == _allPagesValue) {
+            onAllPages();
+            return;
+          }
+          for (final page in pages) {
+            if (page.id == value) {
+              onPage(page);
+              return;
+            }
+          }
+        },
+        itemBuilder: (context) => [
+          for (final page in pages)
+            PopupMenuItem<String>(
+              value: page.id,
+              height: 36,
+              child: Text(
+                page.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.uiSmall,
+              ),
+            ),
+          if (pages.length > 1) ...[
+            const PopupMenuDivider(),
+            const PopupMenuItem<String>(
+              value: _allPagesValue,
+              height: 36,
+              child: Text('Semua halaman', style: AppText.uiSmall),
+            ),
+          ],
+        ],
+        child: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          child: Icon(
+            Icons.alternate_email,
+            size: 20,
+            color: pages.isEmpty
+                ? AppColors.textDisabled
+                : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }

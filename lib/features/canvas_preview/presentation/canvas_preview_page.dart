@@ -15,7 +15,6 @@ import '../../history/presentation/history_provider.dart';
 import '../../mcp/data/mcp_bridge.dart';
 import '../../mcp/data/mcp_server.dart';
 import '../../provider_config/presentation/providers/provider_config_provider.dart';
-import '../data/services/canvas_service_registry.dart';
 import 'provider/workspace_provider.dart';
 import 'widgets/ai_status_indicator.dart';
 import 'widgets/chat_landing.dart';
@@ -61,9 +60,7 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     }
     if (Platform.environment.containsKey('FLUTTER_TEST')) return;
     try {
-      await ref
-          .read(mcpServerProvider)
-          .start(bridge: McpBridge(ref.container));
+      await ref.read(mcpServerProvider).start(bridge: McpBridge(ref.container));
     } catch (_) {
       // Server opsional: kegagalan bind tidak boleh mengganggu workspace.
     }
@@ -109,7 +106,11 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
 
   /// Catat snapshot untuk undo bila perubahan menyentuh konten workspace
   /// (pages / messages / halaman aktif) — bukan sekadar seleksi.
-  void _recordUndo(WidgetRef ref, WorkspaceState previous, WorkspaceState next) {
+  void _recordUndo(
+    WidgetRef ref,
+    WorkspaceState previous,
+    WorkspaceState next,
+  ) {
     final contentChanged =
         !identical(previous.pages, next.pages) ||
         !identical(previous.messages, next.messages) ||
@@ -177,16 +178,11 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     return isEditable;
   }
 
-  /// Hapus node terpilih via service WebView (jalur yang sama seperti MCP).
+  /// Hapus node terpilih via WebView (jalur yang sama seperti menu elemen).
   Future<void> _deleteSelectedNode() async {
-    final state = ref.read(workspaceProvider);
-    final pageId = state.activePageId;
-    final nodeId = state.selectedNodeId;
-    if (pageId == null || nodeId == null) return;
-    final service = CanvasServiceRegistry.forFrame(pageId);
-    if (service == null) return;
-    await service.deleteNode(nodeId);
-    await service.requestHtml();
+    final nodeId = ref.read(workspaceProvider).selectedNodeId;
+    if (nodeId == null) return;
+    await ref.read(workspaceProvider.notifier).deleteNode(nodeId);
   }
 }
 
@@ -431,7 +427,10 @@ class _TopBar extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(active?.name ?? 'Pilih provider', style: AppText.uiSmall),
+                    Text(
+                      active?.name ?? 'Pilih provider',
+                      style: AppText.uiSmall,
+                    ),
                   ],
                 ),
               ),
@@ -440,11 +439,11 @@ class _TopBar extends ConsumerWidget {
             if (workspaceActive) ...[
               SoftIconButton(
                 icon: Icons.touch_app_outlined,
-                tooltip: state.linkInterceptEnabled
-                    ? 'Mode: navigasi link'
-                    : 'Mode: seleksi elemen',
-                active: state.linkInterceptEnabled,
-                onPressed: notifier.toggleLinkIntercept,
+                tooltip: state.selectionMode
+                    ? 'Seleksi elemen aktif'
+                    : 'Aktifkan seleksi',
+                active: state.selectionMode,
+                onPressed: notifier.toggleSelectionMode,
               ),
               const SizedBox(width: 8),
               const PageExportButton(),
@@ -576,10 +575,7 @@ class _EmptyPreviewHint extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
-                'Ketik pesan untuk mulai.',
-                style: AppText.caption,
-              ),
+              Text('Ketik pesan untuk mulai.', style: AppText.caption),
             ],
           ),
         ),
@@ -730,10 +726,7 @@ class _StorageBannerState extends ConsumerState<StorageBanner> {
                 ),
               )
             else
-              TextButton(
-                onPressed: _retry,
-                child: const Text('Coba lagi'),
-              ),
+              TextButton(onPressed: _retry, child: const Text('Coba lagi')),
             IconButton(
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.close_rounded, size: 16),

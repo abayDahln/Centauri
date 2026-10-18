@@ -3,13 +3,19 @@ import 'dart:typed_data';
 import 'package:centauri/features/canvas_preview/data/services/canvas_webview_service.dart';
 import 'package:centauri/features/canvas_preview/domain/dom_tree.dart';
 import 'package:centauri/features/canvas_preview/domain/page.dart';
+import 'package:centauri/features/canvas_preview/domain/prompt_mention.dart';
 import 'package:centauri/features/canvas_preview/presentation/provider/workspace_provider.dart';
 import 'package:centauri/features/prompt_editor/domain/attachment.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 AppPage _page(String id, String name, {String slug = '', String html = ''}) =>
-    AppPage(id: id, name: name, slug: slug.isEmpty ? '$id.html' : slug, html: html);
+    AppPage(
+      id: id,
+      name: name,
+      slug: slug.isEmpty ? '$id.html' : slug,
+      html: html,
+    );
 
 Attachment _attachment(String id, String name, {int size = 10}) => Attachment(
   id: id,
@@ -37,13 +43,14 @@ void main() {
   WorkspaceState state() => container.read(workspaceProvider);
 
   group('initial state', () {
-    test('starts empty in design mode with link intercept on', () {
+    test('starts empty in design mode with selection mode off', () {
       expect(state().pages, isEmpty);
       expect(state().activePageId, isNull);
       expect(state().activePage, isNull);
       expect(state().hasPages, isFalse);
       expect(state().outputMode, OutputMode.design);
-      expect(state().linkInterceptEnabled, isTrue);
+      expect(state().selectionMode, isFalse);
+      expect(state().mentions, isEmpty);
     });
   });
 
@@ -145,7 +152,11 @@ void main() {
       n.selectNode('node-that-does-not-exist');
 
       final tree = _tree('<div id="x">Hello</div>');
-      n.updatePageHtml(pageId: 'page_0', stampedHtml: tree.stampedHtml, tree: tree);
+      n.updatePageHtml(
+        pageId: 'page_0',
+        stampedHtml: tree.stampedHtml,
+        tree: tree,
+      );
 
       expect(state().activePage!.html, contains('data-centauri-id'));
       expect(state().activePage!.domTree, isNotNull);
@@ -164,7 +175,11 @@ void main() {
       final existingId = tree.selectableNodes.first.id;
       n.selectNode(existingId);
 
-      n.updatePageHtml(pageId: 'page_0', stampedHtml: tree.stampedHtml, tree: tree);
+      n.updatePageHtml(
+        pageId: 'page_0',
+        stampedHtml: tree.stampedHtml,
+        tree: tree,
+      );
       expect(state().selectedNodeId, existingId);
     });
   });
@@ -173,9 +188,7 @@ void main() {
     test('resets pages, messages and generation flags', () async {
       final n = notifier();
       await n.loadSession(
-        messages: const [
-          CanvasMessage(role: ChatRole.user, text: 'hi'),
-        ],
+        messages: const [CanvasMessage(role: ChatRole.user, text: 'hi')],
         pages: [_page('page_0', 'Home')],
         activePageId: 'page_0',
       );
@@ -200,12 +213,26 @@ void main() {
       final n = notifier();
       n.selectNode('n1');
       n.updateNodeGeometry(
-        const NodeGeometry(id: 'other', tag: 'div', x: 0, y: 0, width: 1, height: 1),
+        const NodeGeometry(
+          id: 'other',
+          tag: 'div',
+          x: 0,
+          y: 0,
+          width: 1,
+          height: 1,
+        ),
       );
       expect(state().selectedNodeGeometry, isNull);
 
       n.updateNodeGeometry(
-        const NodeGeometry(id: 'n1', tag: 'div', x: 1, y: 2, width: 3, height: 4),
+        const NodeGeometry(
+          id: 'n1',
+          tag: 'div',
+          x: 1,
+          y: 2,
+          width: 3,
+          height: 4,
+        ),
       );
       expect(state().selectedNodeGeometry!.width, 3);
     });
@@ -230,13 +257,13 @@ void main() {
       expect(state().outputMode, OutputMode.dev);
     });
 
-    test('toggleLinkIntercept flips the flag', () {
+    test('toggleSelectionMode flips the flag', () {
       final n = notifier();
-      expect(state().linkInterceptEnabled, isTrue);
-      n.toggleLinkIntercept();
-      expect(state().linkInterceptEnabled, isFalse);
-      n.toggleLinkIntercept();
-      expect(state().linkInterceptEnabled, isTrue);
+      expect(state().selectionMode, isFalse);
+      n.toggleSelectionMode();
+      expect(state().selectionMode, isTrue);
+      n.toggleSelectionMode();
+      expect(state().selectionMode, isFalse);
     });
   });
 
@@ -265,6 +292,41 @@ void main() {
       expect(state().attachments.map((a) => a.id), ['a2']);
       n.clearAttachments();
       expect(state().attachments, isEmpty);
+    });
+  });
+
+  group('prompt mentions', () {
+    test('element mention replaces the previous element', () async {
+      final n = notifier();
+      await n.loadSession(
+        messages: const [],
+        pages: [_page('page_0', 'Beranda')],
+        activePageId: 'page_0',
+      );
+      n.addElementMention(nodeId: 'n1', label: 'button · Kirim');
+      expect(state().mentions.length, 1);
+      expect(state().mentions.first.kind, PromptMentionKind.element);
+      expect(state().mentions.first.pageName, 'Beranda');
+      n.addElementMention(nodeId: 'n2', label: 'input · Email');
+      expect(state().mentions.length, 1);
+      expect(state().mentions.first.nodeId, 'n2');
+    });
+
+    test('page and all-pages mentions dedupe and can be removed', () async {
+      final n = notifier();
+      await n.loadSession(
+        messages: const [],
+        pages: [_page('page_0', 'Beranda'), _page('page_1', 'Harga')],
+        activePageId: 'page_0',
+      );
+      n.addPageMention(state().pages.first);
+      n.addPageMention(state().pages.first);
+      n.addAllPagesMention();
+      n.addAllPagesMention();
+      expect(state().mentions.length, 2);
+      n.removeMention(state().mentions.last);
+      expect(state().mentions.length, 1);
+      expect(state().mentions.single.kind, PromptMentionKind.page);
     });
   });
 

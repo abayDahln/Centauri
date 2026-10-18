@@ -6,32 +6,90 @@ import '../../domain/page.dart';
 import '../provider/workspace_provider.dart';
 
 /// Tab strip untuk berpindah halaman (navigasi cadangan selain link di HTML).
-class PageSwitcherBar extends ConsumerWidget {
+///
+/// Tab aktif selalu ikut state `activePageId` — termasuk saat berganti lewat
+/// link `<a href>` di dalam HTML — dan otomatis di-scroll agar terlihat.
+class PageSwitcherBar extends ConsumerStatefulWidget {
   const PageSwitcherBar({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PageSwitcherBar> createState() => _PageSwitcherBarState();
+}
+
+class _PageSwitcherBarState extends ConsumerState<PageSwitcherBar> {
+  final ScrollController _controller = ScrollController();
+  final Map<String, GlobalKey> _tabKeys = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Dengarkan perubahan halaman aktif di luar build agar auto-scroll tidak
+    // ikut me-rebuild tab ketika hanya penanda aktif yang berpindah.
+    ref.listenManual<String?>(
+      workspaceProvider.select((s) => s.activePageId),
+      (_, activeId) => _ensureActiveVisible(activeId),
+      fireImmediately: true,
+    );
+  }
+
+  /// Pastikan tab aktif kelihatan layar (mis. halaman baru jauh di ujung).
+  /// Semua tab dibangun lewat [Row] (bukan ListView lazy), jadi context-nya
+  /// langsung tersedia kapan pun halaman aktifnya berpindah.
+  void _ensureActiveVisible(String? activeId) {
+    if (activeId == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_controller.hasClients) return;
+      final tabContext = _tabKeys[activeId]?.currentContext;
+      if (tabContext == null) return;
+      Scrollable.ensureVisible(
+        tabContext,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        alignment: 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pages = ref.watch(workspaceProvider.select((s) => s.pages));
     final activeId = ref.watch(workspaceProvider.select((s) => s.activePageId));
     if (pages.isEmpty) return const SizedBox.shrink();
+    _tabKeys.removeWhere((id, _) => pages.every((p) => p.id != id));
 
     return SizedBox(
       height: 38,
-      child: ListView.separated(
+      child: SingleChildScrollView(
+        controller: _controller,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        itemCount: pages.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 6),
-        itemBuilder: (context, i) {
-          final page = pages[i];
-          return _PageTab(
-            page: page,
-            active: page.id == activeId,
-            onTap: () =>
-                ref.read(workspaceProvider.notifier).setActivePage(page.id),
-            onRename: () => _rename(context, ref, page),
-          );
-        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Row(
+            children: [
+              for (final page in pages) ...[
+                KeyedSubtree(
+                  key: _tabKeys.putIfAbsent(page.id, GlobalKey.new),
+                  child: _PageTab(
+                    page: page,
+                    active: page.id == activeId,
+                    onTap: () => ref
+                        .read(workspaceProvider.notifier)
+                        .setActivePage(page.id),
+                    onRename: () => _rename(context, ref, page),
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

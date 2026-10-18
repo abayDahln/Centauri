@@ -165,6 +165,33 @@ void main() {
       );
       expect(safe, contains(endsWith('.html')));
     });
+
+    test('save menghapus file html halaman yang sudah dihapus (orphan)', () {
+      store.save(project()); // 2 halaman: home.html + cart.html
+      final dir = store.folderFor('sess-1');
+      expect(File('${dir.path}${Platform.pathSeparator}cart.html').existsSync(), isTrue);
+
+      // Halaman Cart dihapus — simpan ulang, file-nya tidak boleh tertinggal.
+      store.save(
+        project(
+          pages: const [
+            ProjectPage(
+              id: 'page_1',
+              name: 'Home',
+              slug: 'home.html',
+              html: 'a',
+            ),
+          ],
+        ),
+      );
+
+      expect(File('${dir.path}${Platform.pathSeparator}cart.html').existsSync(), isFalse);
+      expect(File('${dir.path}${Platform.pathSeparator}home.html').existsSync(), isTrue);
+      final manifest =
+          jsonDecode(File(manifestPath()).readAsStringSync())
+              as Map<String, dynamic>;
+      expect(manifest['pages'] as List<dynamic>, hasLength(1));
+    });
   });
 
   group('load', () {

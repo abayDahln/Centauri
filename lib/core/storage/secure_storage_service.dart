@@ -77,9 +77,7 @@ class SecureStorageService {
     try {
       return await _storage.read(key: _keyFor(providerId));
     } catch (e) {
-      throw SecureStorageException(
-        'Gagal membaca API key terenkripsi: $e',
-      );
+      throw SecureStorageException('Gagal membaca API key terenkripsi: $e');
     }
   }
 
