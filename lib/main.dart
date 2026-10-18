@@ -6,6 +6,7 @@ import 'package:webview_windows/webview_windows.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
+import 'core/platform/windows_clipboard_history_paste.dart';
 import 'core/storage/local_storage_service.dart';
 import 'core/storage/provider_oauth_cleanup.dart';
 
@@ -15,6 +16,10 @@ final bool _isDesktopShell = Platform.isWindows || Platform.isLinux;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Win+V mengirim key event rusak di Windows 11; intersepsi harus terpasang
+  // setelah binding memasang callback keyboard-nya.
+  if (Platform.isWindows) WindowsClipboardHistoryPaste.instance.install();
 
   if (_isDesktopShell) {
     await windowManager.ensureInitialized();

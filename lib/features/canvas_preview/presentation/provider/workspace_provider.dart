@@ -331,10 +331,14 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     required DomTreeResult tree,
   }) {
     final pages = state.pages
-        .map((p) => p.id == pageId ? p.copyWith(html: stampedHtml, domTree: tree) : p)
+        .map(
+          (p) =>
+              p.id == pageId ? p.copyWith(html: stampedHtml, domTree: tree) : p,
+        )
         .toList();
     final selectedId = state.selectedNodeId;
-    final keepSelection = selectedId != null && tree.findById(selectedId) != null;
+    final keepSelection =
+        selectedId != null && tree.findById(selectedId) != null;
     state = state.copyWith(
       pages: pages,
       clearSelection: !keepSelection && selectedId != null,
@@ -473,8 +477,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       _appendMessage(
         const CanvasMessage(
           role: ChatRole.error,
-          text:
-              'Belum ada provider aktif. Tambahkan provider untuk mulai.',
+          text: 'Belum ada provider aktif. Tambahkan provider untuk mulai.',
         ),
       );
       return;
@@ -602,7 +605,9 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       final screen = screens[i];
       final tree = await buildDomTreeInIsolate(screen.html);
       final pageId = 'page_${_pageCounter++}';
-      final fallbackTitle = screens.length > 1 ? '$baseTitle ${i + 1}' : baseTitle;
+      final fallbackTitle = screens.length > 1
+          ? '$baseTitle ${i + 1}'
+          : baseTitle;
       final name = _sanitizeScreenTitle(screen.title, fallbackTitle);
       final declared = screen.slug?.trim();
       final baseSlug = (declared != null && declared.isNotEmpty)
@@ -718,7 +723,9 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
         .join(' ')
         .replaceAll(RegExp(r'[,.:;!?]+$'), '');
     if (words.isEmpty) return 'Tanpa judul';
-    final titled = words.length > 32 ? '${words.substring(0, 32).trim()}...' : words;
+    final titled = words.length > 32
+        ? '${words.substring(0, 32).trim()}...'
+        : words;
     return titled
         .split(' ')
         .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
@@ -728,8 +735,10 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
   String _sanitizeScreenTitle(String candidate, String fallback) {
     final cleaned = candidate.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (cleaned.isEmpty) return fallback;
-    if (cleaned.length > 48 || cleaned.contains('.')) return fallback;
-    if (cleaned.split(' ').length > 6) return fallback;
+    // Judul yang layak tampil di tab: pendek, bukan kalimat penjelasan.
+    if (cleaned.length > 40 || cleaned.contains('.')) return fallback;
+    if (cleaned.contains(':') || cleaned.contains('—')) return fallback;
+    if (cleaned.split(' ').length > 4) return fallback;
     return cleaned;
   }
 

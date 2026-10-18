@@ -16,6 +16,7 @@ class ModelCard extends StatefulWidget {
     required this.modelId,
     required this.onTap,
     this.selected = false,
+    this.onDelete,
   });
 
   /// Label tampilan bergaya 9router, mis. `cbai/glm-5.2`.
@@ -32,6 +33,10 @@ class ModelCard extends StatefulWidget {
 
   /// Kartu ini mewakili model yang sedang dipakai provider.
   final bool selected;
+
+  /// Menghapus model dari daftar provider ini. Null berarti tidak bisa
+  /// dihapus (mis. model yang sedang dipakai).
+  final VoidCallback? onDelete;
 
   @override
   State<ModelCard> createState() => _ModelCardState();
@@ -115,6 +120,15 @@ class _ModelCardState extends State<ModelCard> {
                 ),
               ),
               const SizedBox(width: 4),
+              if (widget.onDelete != null)
+                IconButton(
+                  tooltip: 'Hapus model',
+                  icon: const Icon(Icons.delete_outline, size: 15),
+                  color: AppColors.textDisabled,
+                  splashRadius: 16,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: widget.onDelete,
+                ),
               IconButton(
                 tooltip: 'Salin id model',
                 icon: const Icon(Icons.copy_outlined, size: 15),

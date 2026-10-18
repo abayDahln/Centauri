@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
+import 'package:centauri/core/utils/app_constants.dart';
 import 'package:centauri/features/provider_config/data/datasources/ai_api_service.dart';
+import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -316,5 +320,195 @@ void main() {
       expect(message, contains('401'));
       expect(message, contains('Kunci akses'));
     });
+
+    test('429 menjelaskan batas layanan dan menyertakan detail', () {
+      final message = AiApiService.mapDioError(
+        badResponse(
+          429,
+          body: {
+            'error': {'message': 'Provider returned error'},
+          },
+        ),
+      );
+
+      expect(message, contains('429'));
+      expect(message, contains('membatasi'));
+      expect(message, contains('Provider returned error'));
+    });
+
+    test('403 menampilkan pesan asli provider', () {
+      final message = AiApiService.mapDioError(
+        badResponse(
+          403,
+          body: {
+            'error': {
+              'message': 'Key limit exceeded (total limit).',
+              'code': 403,
+            },
+          },
+        ),
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        model: 'x-ai/grok-4.5',
+      );
+
+      expect(message, contains('403'));
+      expect(message, contains('Key limit exceeded'));
+      expect(message, contains('x-ai/grok-4.5'));
+    });
   });
+
+  group('testConnection', () {
+    const provider = ApiProvider(
+      id: 'p1',
+      name: 'OpenRouter',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      model: 'openai/gpt-5.4',
+      apiKey: 'sk-test',
+    );
+
+    AiApiService serviceWith(String body, {int status = 200}) => AiApiService(
+      clientFactory: (_) =>
+          Dio()..httpClientAdapter = _FakeAdapter(body, statusCode: status),
+    );
+
+    test('lolos saat model tercantum di /models', () async {
+      await serviceWith('{"data":[{"id":"openai/gpt-5.4"}]}')
+          .testConnection(provider);
+    });
+
+    test('gagal saat model tidak ada di /models', () async {
+      final service = serviceWith('{"data":[{"id":"openai/gpt-5.4"}]}');
+      await expectLater(
+        service.testConnection(provider.copyWith(model: 'space-bunny-alpha')),
+        throwsA(
+          isA<ApiConnectionException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('space-bunny-alpha'), contains('tidak tersedia')),
+          ),
+        ),
+      );
+    });
+
+    test('menerima bentuk Ollama models[].name', () async {
+      await serviceWith('{"models":[{"name":"llama3:latest"}]}')
+          .testConnection(provider.copyWith(model: 'llama3'));
+    });
+
+    test('melewati cek model bila respons tanpa daftar', () async {
+      await serviceWith('{}').testConnection(provider);
+    });
+
+    test('tetap menolak halaman HTML', () async {
+      await expectLater(
+        serviceWith('<!DOCTYPE html><html></html>').testConnection(provider),
+        throwsA(isA<ApiConnectionException>()),
+      );
+    });
+  });
+
+  group('generateUI', () {
+    const provider = ApiProvider(
+      id: 'p1',
+      name: 'OpenRouter',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      model: 'x-ai/grok-4.5',
+      apiKey: 'sk-test',
+    );
+
+    test(
+      'tidak mengirim max_tokens agar tidak melewati context window',
+      () async {
+        final adapter = _FakeAdapter(
+          '{"choices":[{"message":{"content":"<html></html>"}}]}',
+        );
+        final service = AiApiService(
+          clientFactory: (_) => Dio()..httpClientAdapter = adapter,
+        );
+
+        await service.generateUI(
+          provider: provider,
+          messages: const [
+            {'role': 'user', 'content': 'buat halaman login'},
+          ],
+        );
+
+        final body = adapter.lastRequest!.data as Map<String, dynamic>;
+        expect(body.containsKey('max_tokens'), isFalse);
+        expect(body['model'], 'x-ai/grok-4.5');
+        expect(body['stream'], isFalse);
+      },
+    );
+
+    test('mengirim header atribusi ke OpenRouter', () async {
+      final adapter = _FakeAdapter(
+        '{"choices":[{"message":{"content":"<html></html>"}}]}',
+      );
+      final service = AiApiService(
+        clientFactory: (_) => Dio()..httpClientAdapter = adapter,
+      );
+
+      await service.generateUI(
+        provider: provider,
+        messages: const [
+          {'role': 'user', 'content': 'halo'},
+        ],
+      );
+
+      final headers = adapter.lastRequest!.headers;
+      expect(headers['HTTP-Referer'], AppConstants.appReferer);
+      expect(headers['X-OpenRouter-Title'], 'Centauri');
+      expect(headers['X-OpenRouter-Categories'], 'native-app-builder');
+    });
+
+    test('provider lain tidak dikirimi header atribusi', () async {
+      final adapter = _FakeAdapter(
+        '{"choices":[{"message":{"content":"<html></html>"}}]}',
+      );
+      final service = AiApiService(
+        clientFactory: (_) => Dio()..httpClientAdapter = adapter,
+      );
+
+      await service.generateUI(
+        provider: provider.copyWith(baseUrl: 'https://api.openai.com/v1'),
+        messages: const [
+          {'role': 'user', 'content': 'halo'},
+        ],
+      );
+
+      final headers = adapter.lastRequest!.headers;
+      expect(headers.containsKey('HTTP-Referer'), isFalse);
+      expect(headers.containsKey('X-OpenRouter-Title'), isFalse);
+    });
+  });
+}
+
+/// Adapter Dio palsu: membalas body tetap tanpa menyentuh jaringan.
+class _FakeAdapter implements HttpClientAdapter {
+  _FakeAdapter(this.body, {this.statusCode = 200});
+
+  final String body;
+  final int statusCode;
+
+  /// Request terakhir, dipakai untuk memeriksa body yang dikirim.
+  RequestOptions? lastRequest;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    lastRequest = options;
+    return ResponseBody.fromString(
+      body,
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

@@ -132,6 +132,32 @@ Berikut 3 layar:
       expect(result.note, contains('3 layar'));
     });
 
+    test('nama halaman diambil dari <title>, bukan kalimat penjelasan', () {
+      const raw = '''
+Berikut adalah kelima halaman yang diminta:
+
+```html
+<!DOCTYPE html><html><head><title>Produk</title></head><body>x</body></html>
+```
+''';
+      final result = classifyAiResponse(raw);
+
+      expect(result.screens.single.title, 'Produk');
+    });
+
+    test('kalimat penjelasan tanpa heading tidak dipakai sebagai judul', () {
+      const raw = '''
+Berikut adalah kelima halaman yang diminta:
+
+```html
+<!DOCTYPE html><html><body>x</body></html>
+```
+''';
+      final result = classifyAiResponse(raw);
+
+      expect(result.screens.single.title, isEmpty);
+    });
+
     test('does not treat a tiny partial snippet as a screen', () {
       const raw = 'Contoh markup:\n\n```html\n<div class="x">hi</div>\n```\n';
       final result = classifyAiResponse(raw);

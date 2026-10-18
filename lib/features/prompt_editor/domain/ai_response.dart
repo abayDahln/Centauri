@@ -108,9 +108,7 @@ class AiResponse {
 AiResponse classifyAiResponse(String rawResponse) {
   final raw = rawResponse.trim();
   if (raw.isEmpty) {
-    return const AiResponse.chat(
-      'Respons AI kosong. Kirim ulang pesan Anda.',
-    );
+    return const AiResponse.chat('Respons AI kosong. Kirim ulang pesan Anda.');
   }
 
   // 1. Kumpulkan semua fence berisi HTML (satu per layar).
@@ -123,7 +121,7 @@ AiResponse classifyAiResponse(String rawResponse) {
     if (!_looksLikeHtml(body)) continue;
     screens.add(
       UiScreen(
-        title: _titleBeforeFence(raw, match.start),
+        title: _extractHtmlTitle(body) ?? _titleBeforeFence(raw, match.start),
         html: _ensureDoctype(body),
         slug: _extractPageSlug(body),
       ),
@@ -150,6 +148,7 @@ AiResponse classifyAiResponse(String rawResponse) {
     }
     return AiResponse.ui(
       _ensureDoctype(htmlPart.trim()),
+      title: _extractHtmlTitle(htmlPart),
       note: _noteText(raw, startIndex),
     );
   }
@@ -165,11 +164,15 @@ AiResponse classifyAiResponse(String rawResponse) {
           if (item is Map<String, dynamic>) {
             final screen = UiScreen.fromJson(item);
             if (_looksLikeHtml(screen.html)) {
-              list.add(UiScreen(
-                title: screen.title,
-                html: _ensureDoctype(screen.html.trim()),
-                slug: screen.slug ?? _extractPageSlug(screen.html),
-              ));
+              list.add(
+                UiScreen(
+                  title: screen.title.isNotEmpty
+                      ? screen.title
+                      : _extractHtmlTitle(screen.html) ?? '',
+                  html: _ensureDoctype(screen.html.trim()),
+                  slug: screen.slug ?? _extractPageSlug(screen.html),
+                ),
+              );
             }
           }
         }
@@ -225,13 +228,17 @@ String _titleBeforeFence(String raw, int fenceStart) {
       if (cleaned.isEmpty || cleaned.length > 60) return '';
       return cleaned;
     }
-    // Tanpa heading: tolak kalimat panjang (catatan PART 1), hanya terima
-    // label pendek satu baris tanpa titik (mis. "Pricing Page").
-    if (line.length > 60 || line.contains('.') || line.contains('!')) {
+    // Tanpa heading: tolak kalimat (catatan PART 1), hanya terima label
+    // pendek satu baris (mis. "Pricing Page").
+    if (line.length > 40 ||
+        line.contains('.') ||
+        line.contains('!') ||
+        line.contains(':') ||
+        line.contains('—')) {
       return '';
     }
     final words = line.split(RegExp(r'\s+'));
-    if (words.length > 8) return '';
+    if (words.length > 4) return '';
     return line.replaceAll(RegExp(r'^#+\s*'), '').replaceAll(':', '').trim();
   }
   return '';
@@ -273,13 +280,27 @@ String _ensureDoctype(String html) {
   return '<!DOCTYPE html>\n$html';
 }
 
+/// Nama halaman dari `<title>` dokumen. Ini sumber nama yang paling jelas:
+/// AI menuliskannya sendiri sebagai identitas halaman, bukan potongan kalimat
+/// penjelasan sebelum blok kode.
+String? _extractHtmlTitle(String html) {
+  final match = RegExp(
+    r'<title[^>]*>([\s\S]*?)</title>',
+    caseSensitive: false,
+  ).firstMatch(html);
+  final value = match?.group(1)?.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (value == null || value.isEmpty) return null;
+  return value;
+}
+
 /// Ekstrak nama file halaman dari `<meta name="centauri-page" content="...">`.
 /// Mengembalikan null bila tidak ada.
 String? _extractPageSlug(String html) {
-  final match = RegExp(
-    "<meta\\s+[^>]*name=[\"']centauri-page[\"']\\s+[^>]*content=[\"']([^\"']+)[\"']",
-    caseSensitive: false,
-  ).firstMatch(html) ??
+  final match =
+      RegExp(
+        "<meta\\s+[^>]*name=[\"']centauri-page[\"']\\s+[^>]*content=[\"']([^\"']+)[\"']",
+        caseSensitive: false,
+      ).firstMatch(html) ??
       RegExp(
         "<meta\\s+[^>]*content=[\"']([^\"']+)[\"']\\s+[^>]*name=[\"']centauri-page[\"']",
         caseSensitive: false,

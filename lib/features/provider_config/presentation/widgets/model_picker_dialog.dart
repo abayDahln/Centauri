@@ -6,25 +6,34 @@ import 'model_card.dart';
 
 /// Hasil pemilihan model dari [showModelPickerDialog].
 class ModelPickerResult {
-  const ModelPickerResult({required this.modelId, required this.customModels});
+  const ModelPickerResult({
+    required this.modelId,
+    required this.customModels,
+    required this.removedModels,
+  });
 
   /// Id model polos yang dipakai provider.
   final String modelId;
 
   /// Model di luar saran provider yang ditambahkan pengguna.
   final List<String> customModels;
+
+  /// Model template yang dihapus khusus untuk provider ini.
+  final List<String> removedModels;
 }
 
 /// Dialog pemilih model untuk provider terpilih.
 ///
 /// Isinya hybrid: saran model statis provider (bila ada) + model yang
 /// ditambahkan pengguna sendiri lewat "Tambah Model". Mengetuk satu kartu
-/// langsung memilih model itu dan menutup dialog.
+/// langsung memilih model itu dan menutup dialog. Tombol hapus di tiap kartu
+/// hanya mengubah daftar milik provider ini — template aslinya tidak tersentuh.
 Future<ModelPickerResult?> showModelPickerDialog(
   BuildContext context, {
   required String? catalogId,
   required String selectedModel,
   required List<String> customModels,
+  required List<String> removedModels,
 }) {
   return showDialog<ModelPickerResult>(
     context: context,
@@ -32,6 +41,7 @@ Future<ModelPickerResult?> showModelPickerDialog(
       catalogId: catalogId,
       selectedModel: selectedModel,
       customModels: customModels,
+      removedModels: removedModels,
     ),
   );
 }
@@ -41,11 +51,13 @@ class _ModelPickerDialog extends StatefulWidget {
     required this.catalogId,
     required this.selectedModel,
     required this.customModels,
+    required this.removedModels,
   });
 
   final String? catalogId;
   final String selectedModel;
   final List<String> customModels;
+  final List<String> removedModels;
 
   @override
   State<_ModelPickerDialog> createState() => _ModelPickerDialogState();
@@ -54,7 +66,11 @@ class _ModelPickerDialog extends StatefulWidget {
 class _ModelPickerDialogState extends State<_ModelPickerDialog> {
   final _newModelController = TextEditingController();
   late final List<String> _custom;
+  late final List<String> _removed;
   bool _adding = false;
+
+  /// Daftar berubah (ada model ditambah/dihapus) tanpa memilih model baru.
+  bool _changed = false;
 
   ProviderModelSet? get _set =>
       ProviderModelCatalog.forProvider(widget.catalogId);
@@ -63,6 +79,7 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
   void initState() {
     super.initState();
     _custom = List.of(widget.customModels);
+    _removed = List.of(widget.removedModels);
   }
 
   @override
@@ -71,9 +88,19 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
     super.dispose();
   }
 
+  ModelPickerResult _result(String modelId) => ModelPickerResult(
+    modelId: modelId,
+    customModels: List.of(_custom),
+    removedModels: List.of(_removed),
+  );
+
   void _select(String id) {
-    Navigator.of(context)
-        .pop(ModelPickerResult(modelId: id, customModels: List.of(_custom)));
+    Navigator.of(context).pop(_result(id));
+  }
+
+  /// Tutup tanpa memilih model: perubahan daftar tetap dibawa keluar.
+  void _close() {
+    Navigator.of(context).pop(_changed ? _result(widget.selectedModel) : null);
   }
 
   /// Menambahkan id model yang diketik, lalu langsung memakainya.
@@ -81,15 +108,34 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
     final id = _newModelController.text.trim();
     if (id.isEmpty) return;
     final inCatalog = _set?.models.any((model) => model.id == id) ?? false;
-    if (!inCatalog && !_custom.contains(id)) _custom.add(id);
+    if (inCatalog) {
+      // Model template yang pernah dihapus: cukup tampilkan kembali.
+      _removed.remove(id);
+    } else if (!_custom.contains(id)) {
+      _custom.add(id);
+    }
     _newModelController.clear();
     _select(id);
+  }
+
+  /// Menghapus model dari daftar provider ini saja.
+  void _delete(String id) {
+    setState(() {
+      _changed = true;
+      if (_custom.contains(id)) {
+        _custom.remove(id);
+      } else if (!_removed.contains(id)) {
+        _removed.add(id);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final set = _set;
-    final suggestions = set?.models ?? const <ProviderModel>[];
+    final suggestions = (set?.models ?? const <ProviderModel>[])
+        .where((model) => !_removed.contains(model.id))
+        .toList();
 
     return AlertDialog(
       title: const Text('Pilih Model'),
@@ -109,6 +155,11 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
                     modelId: model.id,
                     selected: model.id == widget.selectedModel,
                     onTap: () => _select(model.id),
+                    // Model yang sedang dipakai tidak bisa dihapus: pilih
+                    // model lain dulu agar provider tidak tanpa model.
+                    onDelete: model.id == widget.selectedModel
+                        ? null
+                        : () => _delete(model.id),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -122,6 +173,9 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
                     modelId: id,
                     selected: id == widget.selectedModel,
                     onTap: () => _select(id),
+                    onDelete: id == widget.selectedModel
+                        ? null
+                        : () => _delete(id),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -131,12 +185,7 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Batal'),
-        ),
-      ],
+      actions: [TextButton(onPressed: _close, child: const Text('Batal'))],
     );
   }
 

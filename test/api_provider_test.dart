@@ -43,6 +43,28 @@ void main() {
       expect(restored.apiKey, isNull);
     });
 
+    test('daftar model kustom & terhapus ikut tersimpan', () {
+      final withModels = provider.copyWith(
+        customModels: const ['my-model'],
+        removedModels: const ['llama3-8b-8192'],
+      );
+      final restored = ApiProvider.fromJson(
+        jsonDecode(jsonEncode(withModels.toJson())) as Map<String, dynamic>,
+      );
+
+      expect(restored.customModels, ['my-model']);
+      expect(restored.removedModels, ['llama3-8b-8192']);
+    });
+
+    test('provider lama tanpa daftar model tetap terbaca', () {
+      final restored = ApiProvider.fromJson(
+        jsonDecode(jsonEncode(provider.toJson())) as Map<String, dynamic>,
+      );
+
+      expect(restored.customModels, isEmpty);
+      expect(restored.removedModels, isEmpty);
+    });
+
     test('copyWith preserves unmasked fields', () {
       final edited = provider.copyWith(model: 'mixtral-8x7b');
       expect(edited.model, 'mixtral-8x7b');

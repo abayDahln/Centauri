@@ -14,6 +14,8 @@ class ApiProvider {
     this.providerName = '',
     this.catalogId,
     this.apiKey,
+    this.customModels = const [],
+    this.removedModels = const [],
   });
 
   final String id;
@@ -32,6 +34,14 @@ class ApiProvider {
   final String baseUrl;
   final String model;
   final String? apiKey;
+
+  /// Model tambahan milik provider ini (di luar daftar template).
+  final List<String> customModels;
+
+  /// Model template yang disembunyikan khusus untuk provider ini. Disimpan
+  /// sebagai daftar terpisah supaya penghapusan tidak mengubah provider lain
+  /// maupun template bawaan.
+  final List<String> removedModels;
 
   /// True bila provider memakai template katalog (bukan custom).
   bool get usesTemplate => catalogId != null && catalogId != kCustomCatalogId;
@@ -55,6 +65,8 @@ class ApiProvider {
     String? model,
     String? apiKey,
     String? catalogId,
+    List<String>? customModels,
+    List<String>? removedModels,
   }) {
     return ApiProvider(
       id: id,
@@ -64,6 +76,8 @@ class ApiProvider {
       model: model ?? this.model,
       apiKey: apiKey ?? this.apiKey,
       catalogId: catalogId ?? this.catalogId,
+      customModels: customModels ?? this.customModels,
+      removedModels: removedModels ?? this.removedModels,
     );
   }
 
@@ -74,6 +88,8 @@ class ApiProvider {
     'catalogId': catalogId,
     'baseUrl': baseUrl,
     'model': model,
+    'customModels': customModels,
+    'removedModels': removedModels,
   };
 
   /// [providerName] dan [catalogId] opsional agar JSON provider lama (sebelum
@@ -85,5 +101,16 @@ class ApiProvider {
     catalogId: json['catalogId'] as String?,
     baseUrl: json['baseUrl'] as String,
     model: json['model'] as String,
+    customModels: _stringList(json['customModels']),
+    removedModels: _stringList(json['removedModels']),
   );
+
+  /// Membaca daftar string dari JSON; provider lama belum punya field ini.
+  static List<String> _stringList(dynamic value) {
+    if (value is! List) return const [];
+    return [
+      for (final item in value)
+        if (item is String && item.trim().isNotEmpty) item,
+    ];
+  }
 }

@@ -116,9 +116,32 @@ const String canvasBridgeScript = r'''
     } catch (e) { /* abaikan */ }
   }
 
+  // Scrollbar bawaan WebView2 mengikuti tema Windows dan bisa tampil hitam di
+  // halaman terang. Warna netral ini jadi cadangan; disisipkan paling awal di
+  // <head> supaya CSS halaman (yang tahu paletnya sendiri) tetap menang.
+  function ensureScrollbarDefaults() {
+    try {
+      if (document.getElementById('centauri-scrollbar')) return;
+      var head = document.head || document.documentElement;
+      if (!head) return;
+      var style = document.createElement('style');
+      style.id = 'centauri-scrollbar';
+      style.textContent =
+        'html{scrollbar-width:thin;' +
+        'scrollbar-color:rgba(120,120,120,.45) transparent;}' +
+        '::-webkit-scrollbar{width:10px;height:10px;}' +
+        '::-webkit-scrollbar-track{background:transparent;}' +
+        '::-webkit-scrollbar-thumb{background:rgba(120,120,120,.45);' +
+        'border-radius:999px;}' +
+        '::-webkit-scrollbar-thumb:hover{background:rgba(120,120,120,.65);}';
+      head.insertBefore(style, head.firstChild);
+    } catch (e) { /* abaikan */ }
+  }
+
   function attachPicker() {
     if (!document.body) return;
     ensureViewportMeta();
+    ensureScrollbarDefaults();
     applySharpnessDefaults();
     ensureOverlay();
     ensureImageFallback();

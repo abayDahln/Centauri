@@ -36,11 +36,22 @@ class AiApiService {
   }
 
   /// Header bersama (Content-Type + Authorization) untuk semua request.
+  ///
+  /// Khusus OpenRouter, header atribusi ikut dikirim: model tertentu (mis.
+  /// rilis agentic) menolak request dari app yang tidak dikenal dengan 403.
   Map<String, String> _headers(ApiProvider provider) {
     final bearer = provider.bearerToken?.trim() ?? '';
+    final isOpenRouter = provider.normalizedBaseUrl.toLowerCase().contains(
+      'openrouter.ai',
+    );
     return {
       'Content-Type': 'application/json',
       if (bearer.isNotEmpty) 'Authorization': 'Bearer $bearer',
+      if (isOpenRouter) ...{
+        'HTTP-Referer': AppConstants.appReferer,
+        'X-OpenRouter-Title': AppConstants.appName,
+        'X-OpenRouter-Categories': 'native-app-builder',
+      },
     };
   }
 
@@ -105,32 +116,105 @@ class AiApiService {
     return '$base$separator$endpointPath';
   }
 
-  /// Memvalidasi endpoint & kredensial dengan GET {baseUrl}/models (FR-01).
+  /// Memvalidasi endpoint & kredensial dengan GET {baseUrl}/models (FR-01),
+  /// lalu memastikan model yang dipilih memang tersedia. Kredensial bisa valid
+  /// sementara modelnya tidak ada; tanpa pemeriksaan ini Test selalu hijau dan
+  /// kesalahannya baru muncul saat chat.
   /// Melempar [ApiConnectionException] jika gagal.
   Future<void> testConnection(ApiProvider provider) async {
     final url = resolveEndpoint(
       provider.normalizedBaseUrl,
       AppConstants.testConnectionPath,
     );
+
+    final Response<dynamic> response;
     try {
-      final response = await _clientFor(provider).get(
+      response = await _clientFor(provider).get(
         url,
         options: Options(
           responseType: ResponseType.plain,
           receiveTimeout: AppConstants.testConnectionTimeout,
         ),
       );
-      if (response.statusCode == 200) {
-        // Beberapa endpoint membalas JSON non-standar; pastikan bukan HTML.
-        _assertNotHtml(response);
-        return;
-      }
-      throw ApiConnectionException(
-        'Endpoint membalas dengan status ${response.statusCode}.',
-      );
     } on DioException catch (e) {
       throw ApiConnectionException(mapDioError(e));
     }
+
+    if (response.statusCode != 200) {
+      throw ApiConnectionException(
+        'Endpoint membalas dengan status ${response.statusCode}.',
+      );
+    }
+
+    // Beberapa endpoint membalas JSON non-standar; pastikan bukan HTML.
+    _assertNotHtml(response);
+    _assertModelAvailable(response.data, provider.model);
+  }
+
+  /// Memastikan [model] tercantum di daftar /models.
+  ///
+  /// Dilewati bila respons tidak memuat daftar model sama sekali (gateway
+  /// lokal atau proxy tertentu tidak menyediakannya) agar Test tidak gagal
+  /// palsu.
+  void _assertModelAvailable(dynamic data, String model) {
+    final wanted = model.trim();
+    if (wanted.isEmpty) return;
+
+    final ids = _modelIds(data);
+    if (ids.isEmpty) return;
+
+    final target = wanted.toLowerCase();
+    final found = ids.any((id) {
+      final value = id.trim().toLowerCase();
+      // Ollama menambahkan ':latest' untuk model yang sama.
+      return value == target || value == '$target:latest';
+    });
+    if (found) return;
+
+    throw ApiConnectionException(
+      'Model $wanted tidak tersedia di layanan ini. Pilih model lain.',
+    );
+  }
+
+  /// Mengambil id model dari berbagai bentuk respons /models: OpenAI
+  /// (data[].id), Ollama (models[].name), atau array polos.
+  List<String> _modelIds(dynamic data) {
+    var value = data;
+    if (value is String) {
+      final text = value.trim();
+      if (text.isEmpty) return const [];
+      try {
+        value = jsonDecode(text);
+      } on FormatException {
+        return const [];
+      }
+    }
+
+    final ids = <String>[];
+    void collect(dynamic item) {
+      if (item is String) {
+        if (item.trim().isNotEmpty) ids.add(item);
+        return;
+      }
+      if (item is! Map) return;
+      for (final key in const ['id', 'name', 'model']) {
+        final candidate = item[key];
+        if (candidate is String && candidate.trim().isNotEmpty) {
+          ids.add(candidate);
+          return;
+        }
+      }
+    }
+
+    if (value is List) {
+      value.forEach(collect);
+    } else if (value is Map) {
+      for (final key in const ['data', 'models']) {
+        final list = value[key];
+        if (list is List) list.forEach(collect);
+      }
+    }
+    return ids;
   }
 
   Future<String> generateUI({
@@ -163,7 +247,9 @@ class AiApiService {
           'model': provider.model,
           'messages': messages,
           'temperature': AppConstants.designTemperature,
-          'max_tokens': AppConstants.designMaxTokens,
+          // max_tokens tidak dikirim: provider memakai batas maksimum modelnya,
+          // dan nilai besar justru ditolak saat input + max_tokens melewati
+          // context window (mis. OpenRouter HTTP 400).
           // Minta respons tunggal. Sebagian gateway tetap membalas SSE;
           // keduanya ditangani di bawah.
           'stream': false,
@@ -241,10 +327,13 @@ class AiApiService {
         'URL: $url\nCuplikan: ${_snippet(raw)}',
       );
     } on ApiConnectionException catch (e) {
-      throw ApiConnectionException(
-        '${e.message}\nURL: $url\n'
-        'Status: ${response.statusCode}, Content-Type: $contentType',
-      );
+      // Status 200 dengan body error berarti provider melaporkan kegagalan di
+      // dalam respons sukses (mis. upstream overload); baris status hanya
+      // menambah kebisingan.
+      final statusLine = response.statusCode == 200
+          ? ''
+          : '\nStatus: ${response.statusCode}, Content-Type: $contentType';
+      throw ApiConnectionException('${e.message}\nURL: $url$statusLine');
     }
   }
 
@@ -513,8 +602,22 @@ class AiApiService {
       case DioExceptionType.badResponse:
         final status = e.response?.statusCode;
         if (status == 401 || status == 403) {
+          // Kunci bisa saja valid tetapi ditolak untuk model atau kebijakan
+          // tertentu (OpenRouter membalas 403), jadi pesan asli provider ikut
+          // ditampilkan agar penyebabnya tidak tertutup pesan generik.
+          final detail = _providerErrorMessage(detailSource);
+          final suffix = detail == null ? '' : ': $detail';
           return 'Kunci akses tidak valid atau tidak memiliki akses '
-              '(HTTP $status).';
+              '(HTTP $status)$suffix$context';
+        }
+        if (status == 429) {
+          // Model gratis di OpenRouter sering kehabisan kapasitas upstream;
+          // pengguna perlu tahu bahwa menunggu atau ganti model adalah jalan
+          // keluarnya, bukan memperbaiki kunci.
+          final detail = _providerErrorMessage(detailSource);
+          final suffix = detail == null ? '' : ': $detail';
+          return 'Layanan sedang membatasi permintaan (HTTP 429)$suffix. '
+              'Coba lagi atau pilih model lain.$context';
         }
         if (status == 404) {
           // 404 pada API OpenAI-compatible paling sering berarti model tidak

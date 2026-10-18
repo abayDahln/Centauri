@@ -52,10 +52,15 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   /// Model di luar saran provider yang ditambahkan pengguna.
   final List<String> _customModels = [];
 
+  /// Model template yang dihapus untuk provider ini saja; template aslinya
+  /// tetap utuh sehingga provider baru masih menampilkan semua model bawaan.
+  final List<String> _removedModels = [];
+
   /// True bila provider yang sedang diedit punya API Key di secure storage.
   bool _hasStoredApiKey = false;
 
-  /// Pengguna menekan Reset: key tersimpan sudah dihapus dan isian dibuka.
+  /// Pengguna menekan Reset: key tersimpan akan dihapus saat Simpan. Selama
+  /// belum disimpan key lama tetap utuh, sehingga Batal tidak menghapus apa pun.
   bool _apiKeyCleared = false;
 
   bool get _hasProvider => _catalogId != null;
@@ -114,7 +119,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     _apiKeyCleared = false;
     _catalogId = provider.catalogId ?? kCustomCatalogId;
     _model = provider.model;
-    _customModels.clear();
+    _customModels
+      ..clear()
+      ..addAll(provider.customModels);
+    _removedModels
+      ..clear()
+      ..addAll(provider.removedModels);
     _seedCustomModel(_model);
   }
 
@@ -170,7 +180,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         .getProviderById(editingId);
     if (stored == null) return provider;
 
-    if (provider.apiKey == null && stored.apiKey != null) {
+    // Setelah Reset, key lama sengaja tidak dipakai: Test harus mencerminkan
+    // keadaan yang akan disimpan.
+    if (provider.apiKey == null && !_apiKeyCleared && stored.apiKey != null) {
       provider = provider.copyWith(apiKey: stored.apiKey);
     }
     return provider;
@@ -194,6 +206,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   void _applyCatalogEntry(ProviderCatalogEntry entry) {
     _catalogId = entry.id;
     _customModels.clear();
+    // Provider baru memakai template apa adanya: penghapusan model di provider
+    // lain tidak boleh ikut terbawa.
+    _removedModels.clear();
 
     if (entry.id == kCustomCatalogId) {
       _providerNameController.text = '';
@@ -215,6 +230,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       catalogId: _catalogId,
       selectedModel: _model,
       customModels: _customModels,
+      removedModels: _removedModels,
     );
     if (result == null || !mounted) return;
     setState(() {
@@ -222,6 +238,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       _customModels
         ..clear()
         ..addAll(result.customModels);
+      _removedModels
+        ..clear()
+        ..addAll(result.removedModels);
     });
   }
 
@@ -254,6 +273,8 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           baseUrl: provider.baseUrl,
           model: provider.model,
           apiKey: provider.apiKey,
+          customModels: _customModels,
+          removedModels: _removedModels,
         );
 
     if (!mounted) return null;
@@ -262,6 +283,22 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       _showSnackBar('Gagal menyimpan: ${result.error}', isError: true);
       return null;
     }
+
+    // Reset baru menghapus key setelah Simpan, bukan saat tombolnya ditekan,
+    // supaya Batal membatalkan Reset juga.
+    if (_apiKeyCleared && provider.apiKey == null) {
+      await ref.read(providerConfigProvider.notifier).clearApiKey(id);
+      if (!mounted) return null;
+      final cleared = ref.read(providerConfigProvider);
+      if (cleared.hasError) {
+        _showSnackBar(
+          'Gagal menghapus API Key: ${cleared.error}',
+          isError: true,
+        );
+        return null;
+      }
+    }
+
     return id;
   }
 
@@ -297,27 +334,14 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     }
   }
 
-  /// Menghapus API Key tersimpan lalu membuka isian agar bisa diisi key baru.
-  /// Field dibuka hanya setelah penghapusan berhasil, supaya UI tidak pernah
-  /// menampilkan keadaan yang tidak sesuai isi secure storage.
-  Future<void> _resetApiKey() async {
-    final id = _editingProviderId;
-    if (id == null) return;
-
-    await ref.read(providerConfigProvider.notifier).clearApiKey(id);
-    if (!mounted) return;
-
-    final result = ref.read(providerConfigProvider);
-    if (result.hasError) {
-      _showSnackBar('Gagal menghapus API Key: ${result.error}', isError: true);
-      return;
-    }
-
+  /// Menandai API Key tersimpan untuk dihapus, lalu membuka isian agar bisa
+  /// diisi key baru. Penghapusan sebenarnya terjadi saat Simpan; selama belum
+  /// disimpan key lama tetap utuh, jadi Batal membatalkan Reset juga.
+  void _resetApiKey() {
     setState(() {
       _apiKeyCleared = true;
       _apiKeyController.clear();
     });
-    _showSnackBar('API Key dihapus.', isError: false);
   }
 
   Future<void> _confirmDelete() async {
@@ -553,8 +577,17 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     );
   }
 
+  /// Keterangan di bawah field API Key, mengikuti keadaan field.
+  String get _apiKeyHelper {
+    if (_apiKeyLocked) return 'API Key tersimpan. Reset untuk mengganti.';
+    if (_apiKeyCleared && _apiKeyController.text.trim().isEmpty) {
+      return 'API Key dihapus saat disimpan.';
+    }
+    return 'Kosongkan untuk layanan lokal tanpa autentikasi.';
+  }
+
   /// Field API Key: terkunci bila provider sudah punya key tersimpan. Tombol
-  /// Reset menghapus key itu (secure storage) lalu membuka isian untuk key baru.
+  /// Reset membuka isian dan menandai key lama untuk dihapus saat Simpan.
   Widget _buildApiKeyField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -569,6 +602,8 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                   controller: _apiKeyController,
                   enabled: !_apiKeyLocked,
                   obscureText: true,
+                  // Helper di bawah field ikut berubah saat key baru diketik.
+                  onChanged: (_) => setState(() {}),
                   style: const TextStyle(
                     fontFamily: AppFonts.monoFamily,
                     fontFamilyFallback: AppFonts.monoFallback,
@@ -592,9 +627,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          _apiKeyLocked
-              ? 'API Key tersimpan. Reset untuk mengganti.'
-              : 'Kosongkan untuk layanan lokal tanpa autentikasi.',
+          _apiKeyHelper,
           style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
         ),
       ],

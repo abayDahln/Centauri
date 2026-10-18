@@ -4,6 +4,10 @@ class AppConstants {
   static const String appName = 'Centauri';
   static const String appVersion = '0.1.0';
 
+  /// Identitas aplikasi untuk header atribusi OpenRouter. Sebagian model di
+  /// sana hanya terbuka untuk app yang dikenal lewat header ini.
+  static const String appReferer = 'https://github.com/abayDahln/Centauri';
+
   // Secure storage: API key disimpan per-provider, tidak pernah di Hive.
   static const String apiKeyPrefix = 'centauri_provider_api_key_';
 
@@ -34,9 +38,12 @@ class AppConstants {
   static const String chatCompletionsPath = '/chat/completions';
 
   // Parameter generasi UI. Temperature lebih tinggi dari chat agar model
-  // berani berkreasi desain (bukan output dasar yang seragam). max_tokens
-  // sangat besar agar multi-screen (login+home+profile, dst.) tidak terpotong;
-  // sebagian provider mengabaikan/menge-clamp-nya ke batas model masing-masing.
+  // berani berkreasi desain (bukan output dasar yang seragam).
+  //
+  // `max_tokens` sengaja TIDAK dikirim: nilainya ikut dihitung terhadap context
+  // window (OpenRouter menolak request bila input + max_tokens melewati batas
+  // model), sementara batas output tiap provider berbeda-beda. Tanpa parameter
+  // ini provider memakai batas maksimum modelnya sendiri, jadi output panjang
+  // tetap utuh dan tidak ada request yang ditolak karena anggaran token.
   static const double designTemperature = 0.7;
-  static const int designMaxTokens = 500000;
 }

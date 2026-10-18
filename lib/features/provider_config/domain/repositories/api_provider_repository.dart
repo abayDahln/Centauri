@@ -17,8 +17,9 @@ abstract class ApiProviderRepository {
   /// null, key lama di secure storage dipertahankan.
   Future<void> saveProvider(ApiProvider provider);
 
-  /// Menghapus API Key tersimpan milik [id] dari secure storage. Dipakai tombol
-  /// Reset di form provider: setelah ini provider tidak punya kredensial lagi.
+  /// Menghapus API Key tersimpan milik [id] dari secure storage. Dipanggil saat
+  /// Simpan setelah pengguna menekan Reset di form provider, sehingga Batal
+  /// tetap mempertahankan key lama.
   Future<void> clearApiKey(String id);
 
   Future<void> deleteProvider(String id);

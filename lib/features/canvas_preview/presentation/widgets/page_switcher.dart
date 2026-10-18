@@ -30,9 +30,6 @@ class PageSwitcherBar extends ConsumerWidget {
             onTap: () =>
                 ref.read(workspaceProvider.notifier).setActivePage(page.id),
             onRename: () => _rename(context, ref, page),
-            onDelete: pages.length <= 1
-                ? null
-                : () => ref.read(workspaceProvider.notifier).deletePage(page.id),
           );
         },
       ),
@@ -79,14 +76,12 @@ class _PageTab extends StatelessWidget {
     required this.active,
     required this.onTap,
     required this.onRename,
-    required this.onDelete,
   });
 
   final AppPage page;
   final bool active;
   final VoidCallback onTap;
   final VoidCallback onRename;
-  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +92,7 @@ class _PageTab extends StatelessWidget {
         onDoubleTap: onRename,
         borderRadius: AppRadius.pill,
         child: Container(
-          padding: const EdgeInsets.only(left: 12, right: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: active ? AppColors.accentSoft : AppColors.bgSurface,
             borderRadius: AppRadius.pill,
@@ -111,7 +106,9 @@ class _PageTab extends StatelessWidget {
               Icon(
                 Icons.description_outlined,
                 size: 13,
-                color: active ? AppColors.accentPrimary : AppColors.textSecondary,
+                color: active
+                    ? AppColors.accentPrimary
+                    : AppColors.textSecondary,
               ),
               const SizedBox(width: 6),
               ConstrainedBox(
@@ -131,24 +128,7 @@ class _PageTab extends StatelessWidget {
                   ),
                 ),
               ),
-              if (onDelete != null) ...[
-                const SizedBox(width: 4),
-                InkWell(
-                  onTap: onDelete,
-                  borderRadius: AppRadius.pill,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.close,
-                      size: 13,
-                      color: active
-                          ? AppColors.accentPrimary
-                          : AppColors.textDisabled,
-                    ),
-                  ),
-                ),
-              ] else
-                const SizedBox(width: 8),
+              const SizedBox(width: 2),
             ],
           ),
         ),

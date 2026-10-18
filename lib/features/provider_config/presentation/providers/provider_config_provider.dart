@@ -65,6 +65,8 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
     required String baseUrl,
     required String model,
     String? apiKey,
+    List<String> customModels = const [],
+    List<String> removedModels = const [],
   }) async {
     final isNew = id == null;
     final targetId = id ?? const Uuid().v4();
@@ -84,6 +86,8 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
             baseUrl: baseUrl.trim(),
             model: model.trim(),
             apiKey: apiKey,
+            customModels: customModels,
+            removedModels: removedModels,
           ),
         );
         // Provider yang baru ditambahkan langsung dipakai.
@@ -102,6 +106,8 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
           baseUrl: baseUrl.trim(),
           model: model.trim(),
           apiKey: apiKey,
+          customModels: customModels,
+          removedModels: removedModels,
         );
         await repository.saveProvider(updated);
       }
@@ -120,8 +126,9 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
     });
   }
 
-  /// Menghapus API Key tersimpan milik [id] (tombol Reset di form provider),
-  /// lalu memuat ulang state agar provider aktif tidak lagi membawa key lama.
+  /// Menghapus API Key tersimpan milik [id]. Dipanggil setelah Simpan bila
+  /// pengguna menekan Reset, lalu memuat ulang state agar provider aktif tidak
+  /// lagi membawa key lama.
   Future<void> clearApiKey(String id) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
