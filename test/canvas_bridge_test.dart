@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('injectBridge', () {
-    const html = '<!DOCTYPE html><html><body><div id="a">Hi</div></body></html>';
+    const html =
+        '<!DOCTYPE html><html><body><div id="a">Hi</div></body></html>';
 
     test('injects the bridge script before </body>', () {
       final out = injectBridge(html);
@@ -38,7 +39,6 @@ void main() {
         'window.centauriGetHtml',
         'window.centauriGetOuterHtml',
         'window.centauriExportPng',
-        'window.centauriSetLinkIntercept',
         'window.centauriGetSize',
         'window.centauriAddNode',
         'window.centauriSetText',
@@ -46,6 +46,31 @@ void main() {
         'window.centauriExportFigma',
       ]) {
         expect(out, contains(fn), reason: 'API $fn harus ada');
+      }
+    });
+
+    test('bridge defines every identifier it assigns to window', () {
+      // Regresi: marker `window.centauriSetLinkIntercept = ...` pernah
+      // tersisa tanpa definisinya, sehingga seluruh bridge mati (ReferenceError
+      // sebelum boot) dan semua link antar-halaman gagal ("file not found").
+      final assignPattern =
+          RegExp(r'window\.(centauri\w+)\s*=\s*([A-Za-z_$][\w$]*)');
+      final definedPattern = RegExp(r'function\s+([A-Za-z_$][\w$]*)');
+      final defined = definedPattern
+          .allMatches(canvasBridgeScript)
+          .map((m) => m.group(1))
+          .toSet();
+      final assigned = assignPattern
+          .allMatches(canvasBridgeScript)
+          .where((m) => m.group(2) != m.group(1))
+          .map((m) => m.group(2)!)
+          .toSet();
+      for (final name in assigned) {
+        expect(
+          defined,
+          contains(name),
+          reason: 'fungsi `$name` di-assign ke window tapi tidak didefinisikan',
+        );
       }
     });
   });
@@ -94,9 +119,22 @@ void main() {
       expect(canvasBridgeScript, contains("href.indexOf('javascript:') !== 0"));
     });
 
-    test('exposes a toggle for link interception', () {
-      expect(canvasBridgeScript, contains('centauriSetLinkIntercept'));
-      expect(canvasBridgeScript, contains('var linkIntercept = true;'));
+    test('exposes a selection/interaction mode toggle', () {
+      expect(canvasBridgeScript, contains('centauriSetMode'));
+      expect(canvasBridgeScript, contains("var mode = 'interact';"));
+    });
+
+    test('offers inline actions for the selected element', () {
+      expect(canvasBridgeScript, contains("'editWithAi'"));
+      expect(canvasBridgeScript, contains("'deleteNode'"));
+    });
+
+    test('redirects JS-driven navigation to the host', () {
+      // `location.href='x.html'` di handler inline tidak boleh membuat
+      // WebView memuat URL yang tidak ada.
+      expect(canvasBridgeScript, contains('inlineNavTarget'));
+      expect(canvasBridgeScript, contains('patchNavigationApis'));
+      expect(canvasBridgeScript, contains("sendToHost({ type: 'navigate'"));
     });
   });
 

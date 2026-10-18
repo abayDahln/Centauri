@@ -24,7 +24,11 @@ const String canvasBridgeScript = r'''
   var hoverBox = null;
   var selectBox = null;
   var selectedId = null;
-  var linkIntercept = true;
+  // Mode interaksi (default) membiarkan input, tombol, dan hover bekerja
+  // seperti halaman biasa. Mode seleksi menangkap klik untuk memilih elemen.
+  var mode = 'interact';
+  var actionsBox = null;
+  var actionsId = null;
 
   function sendToHost(payload) {
     try {
@@ -138,6 +142,43 @@ const String canvasBridgeScript = r'''
     } catch (e) { /* abaikan */ }
   }
 
+  // Cari target halaman pada handler inline, mis.
+  // `onclick="location.href='cart.html'"` atau `window.location='cart.html'`.
+  function inlineNavTarget(el) {
+    var node = el;
+    while (node && node.getAttribute) {
+      var attr = node.getAttribute('onclick');
+      if (attr) {
+        var m = attr.match(/['"]([^'"]*\.html[^'"]*)['"]/i);
+        if (m) return m[1];
+      }
+      if (node === document.body) break;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  // Navigasi yang dipicu JS (location.assign/replace, window.open) diteruskan
+  // ke host tanpa membuat WebView memuat URL yang tidak ada. `location.href`
+  // ditangani host lewat pemantauan URL.
+  function patchNavigationApis() {
+    try {
+      var proto = Location.prototype;
+      ['assign', 'replace'].forEach(function (name) {
+        if (typeof proto[name] !== 'function') return;
+        proto[name] = function (url) {
+          sendToHost({ type: 'navigate', href: String(url) });
+        };
+      });
+    } catch (e) { /* abaikan */ }
+    try {
+      window.open = function (url) {
+        if (url) sendToHost({ type: 'navigate', href: String(url) });
+        return null;
+      };
+    } catch (e) { /* abaikan */ }
+  }
+
   function attachPicker() {
     if (!document.body) return;
     ensureViewportMeta();
@@ -145,8 +186,10 @@ const String canvasBridgeScript = r'''
     applySharpnessDefaults();
     ensureOverlay();
     ensureImageFallback();
+    patchNavigationApis();
 
     document.addEventListener('mouseover', function (e) {
+      if (mode !== 'select') return;
       var id = idFromEvent(e);
       if (!id) return;
       placeBox(hoverBox, rectOf(id));
@@ -159,33 +202,46 @@ const String canvasBridgeScript = r'''
     }, true);
 
     document.addEventListener('click', function (e) {
-      // Mode navigasi: klik <a href> membuka halaman lain (link antar-halaman)
-      // atau link eksternal. Anchor (#...) dibiarkan (browser scroll sendiri).
-      if (linkIntercept) {
-        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
-        if (a) {
-          var href = a.getAttribute('href') || '';
-          if (href && href.charAt(0) !== '#' &&
-              href.indexOf('javascript:') !== 0) {
-            e.preventDefault();
-            e.stopPropagation();
-            sendToHost({ type: 'navigate', href: href });
-            return;
-          }
+      // Mode seleksi: klik memilih elemen untuk memberi konteks ke AI.
+      // Link tidak dinavigasi agar elemen <a> pun bisa ikut diedit.
+      if (mode === 'select') {
+        var pickedId = idFromEvent(e);
+        if (!pickedId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        selectedId = pickedId;
+        placeBox(selectBox, rectOf(pickedId));
+        showActions(pickedId);
+        sendToHost({ type: 'select', id: pickedId, label: labelOf(pickedId) });
+        setTimeout(function () { centauriInspect(pickedId); }, 30);
+        return;
+      }
+      // Mode interaksi: klik diteruskan ke halaman apa adanya. Link
+      // antar-halaman di-intercept agar host yang mengganti halaman;
+      // anchor (#...) dibiarkan agar browser menggulir seperti biasa.
+      // Handler inline yang memanggil `location.href='x.html'` juga
+      // diarahkan ke host supaya WebView tidak memuat URL yang tidak ada.
+      var inlineHref = inlineNavTarget(e.target);
+      if (inlineHref) {
+        e.preventDefault();
+        e.stopPropagation();
+        sendToHost({ type: 'navigate', href: inlineHref });
+        return;
+      }
+      var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (a) {
+        var href = a.getAttribute('href') || '';
+        if (href && href.charAt(0) !== '#' &&
+            href.indexOf('javascript:') !== 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          sendToHost({ type: 'navigate', href: href });
         }
       }
-      // Mode seleksi: klik elemen untuk memberi konteks ke AI.
-      var id = idFromEvent(e);
-      if (!id) return;
-      e.preventDefault();
-      e.stopPropagation();
-      selectedId = id;
-      placeBox(selectBox, rectOf(id));
-      sendToHost({ type: 'select', id: id });
-      setTimeout(function () { centauriInspect(id); }, 30);
     }, true);
 
     document.addEventListener('scroll', function () {
+      hideActions();
       refreshSelection();
     }, true);
 
@@ -243,10 +299,91 @@ const String canvasBridgeScript = r'''
     } catch (e) { /* abaikan */ }
   }
 
+  // Label ringkas untuk mention di prompt, mis. `button · Masukkan Keranjang`.
+  function labelOf(id) {
+    var el = id ? document.querySelector('[data-centauri-id="' + id + '"]') : null;
+    if (!el) return '';
+    var tag = (el.tagName || '').toLowerCase();
+    var text = '';
+    try { text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim(); }
+    catch (e) { text = ''; }
+    if (text.length > 28) text = text.slice(0, 28) + '…';
+    return text ? (tag + ' · ' + text) : tag;
+  }
+
+  // Menu aksi kecil di dekat elemen terpilih (mode seleksi).
+  function makeAction(text, color, onClick) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = text;
+    btn.style.cssText = 'all:unset;cursor:pointer;padding:8px 10px;' +
+      'border-radius:7px;display:block;width:100%;box-sizing:border-box;' +
+      'color:' + color + ';font:500 12px Inter,system-ui,sans-serif;';
+    btn.addEventListener('mouseenter', function () {
+      btn.style.background = '#27272A';
+    });
+    btn.addEventListener('mouseleave', function () {
+      btn.style.background = 'transparent';
+    });
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    }, true);
+    return btn;
+  }
+
+  function ensureActions() {
+    if (actionsBox && actionsBox.ownerDocument === document &&
+        actionsBox.parentNode) return;
+    actionsBox = document.createElement('div');
+    actionsBox.setAttribute('data-centauri-actions', '1');
+    actionsBox.style.cssText = 'position:absolute;display:none;pointer-events:auto;' +
+      'flex-direction:column;background:#18181B;border:1px solid #3F3F46;' +
+      'border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,0.45);' +
+      'padding:4px;min-width:150px;z-index:2147483647;';
+    actionsBox.appendChild(makeAction('Edit dengan AI', '#FAFAFA', function () {
+      sendToHost({ type: 'editWithAi', id: actionsId, label: labelOf(actionsId) });
+      hideActions();
+    }));
+    actionsBox.appendChild(makeAction('Hapus komponen', '#F87171', function () {
+      sendToHost({ type: 'deleteNode', id: actionsId });
+      hideActions();
+    }));
+    (overlay || document.body).appendChild(actionsBox);
+  }
+
+  function showActions(id) {
+    ensureActions();
+    var rect = rectOf(id);
+    if (!rect || rect.w <= 0 || rect.h <= 0) { hideActions(); return; }
+    actionsId = id;
+    var sx = window.scrollX || 0;
+    var sy = window.scrollY || 0;
+    actionsBox.style.display = 'flex';
+    var w = actionsBox.offsetWidth || 150;
+    var h = actionsBox.offsetHeight || 76;
+    var left = Math.max(sx + 4, Math.min(rect.x + sx,
+      sx + (window.innerWidth || 0) - w - 8));
+    var top = rect.y + sy - h - 8;
+    if (top < sy + 4) top = rect.y + sy + rect.h + 8;
+    actionsBox.style.left = left + 'px';
+    actionsBox.style.top = top + 'px';
+  }
+
+  function hideActions() {
+    actionsId = null;
+    if (actionsBox) actionsBox.style.display = 'none';
+  }
+
   // Dipanggil dari Dart saat memilih / hover node.
   function centauriSelect(id) {
     selectedId = id;
-    if (!id) { if (selectBox) selectBox.style.display = 'none'; return; }
+    if (!id) {
+      if (selectBox) selectBox.style.display = 'none';
+      hideActions();
+      return;
+    }
     var el = document.querySelector('[data-centauri-id="' + id + '"]');
     if (el && el.scrollIntoView) {
       el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -260,8 +397,14 @@ const String canvasBridgeScript = r'''
     placeBox(hoverBox, rectOf(id));
   }
 
-  function centauriSetLinkIntercept(enabled) {
-    linkIntercept = !!enabled;
+  function centauriSetMode(next) {
+    mode = next === 'select' ? 'select' : 'interact';
+    if (mode !== 'select') {
+      selectedId = null;
+      if (hoverBox) hoverBox.style.display = 'none';
+      if (selectBox) selectBox.style.display = 'none';
+      hideActions();
+    }
   }
 
   var __centauriWatchedProps = ['display', 'position', 'left', 'top',
@@ -691,7 +834,6 @@ const String canvasBridgeScript = r'''
   window.centauriInspect = centauriInspect;
   window.centauriApplyStyle = centauriApplyStyle;
   window.centauriMoveResize = centauriMoveResize;
-  window.centauriSetLinkIntercept = centauriSetLinkIntercept;
   window.centauriGetSize = centauriGetSize;
   window.centauriAddNode = centauriAddNode;
   window.centauriSetText = centauriSetText;
