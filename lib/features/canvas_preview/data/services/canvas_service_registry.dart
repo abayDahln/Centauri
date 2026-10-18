@@ -14,6 +14,5 @@ class CanvasServiceRegistry {
     _services.remove(frameId);
   }
 
-  static CanvasWebviewService? forFrame(String frameId) =>
-      _services[frameId];
+  static CanvasWebviewService? forFrame(String frameId) => _services[frameId];
 }

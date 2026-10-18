@@ -69,7 +69,6 @@ class CentauriTable<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildHeader(),
-        const SizedBox(height: 6),
         for (final row in rows) ...[
           _buildRow(context, row),
           const SizedBox(height: 6),
@@ -80,13 +79,19 @@ class CentauriTable<T> extends StatelessWidget {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
       child: Row(
         children: [
           for (final column in columns)
             _box(
               column,
-              child: Text(column.label, style: AppText.sectionTitle),
+              child: Text(
+                column.label,
+                style: AppText.label.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ),
         ],
       ),

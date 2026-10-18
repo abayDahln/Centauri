@@ -10,10 +10,17 @@ import '../provider/workspace_provider.dart';
 /// Tombol ekspor halaman aktif ke PNG/SVG/PDF dan payload Figma.
 /// Dipakai di top bar desktop dan AppBar mobile.
 class PageExportButton extends ConsumerStatefulWidget {
-  const PageExportButton({super.key, this.compact = false});
+  const PageExportButton({
+    super.key,
+    this.compact = false,
+    this.primary = false,
+  });
 
   /// Bila true, tampil sebagai icon saja (mobile).
   final bool compact;
+
+  /// Bila true, tampil sebagai tombol utama "Ekspor" (top bar desktop).
+  final bool primary;
 
   @override
   ConsumerState<PageExportButton> createState() => _PageExportButtonState();
@@ -127,10 +134,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
             value: _PageExportKind.pdf,
             child: Text('PDF (dokumen)'),
           ),
-          PopupMenuItem(
-            value: _PageExportKind.figma,
-            child: Text('Figma'),
-          ),
+          PopupMenuItem(value: _PageExportKind.figma, child: Text('Figma')),
         ],
       );
     }
@@ -142,19 +146,63 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
       itemBuilder: (_) => const [
         PopupMenuItem(value: _PageExportKind.png, child: Text('PNG (gambar)')),
         PopupMenuItem(value: _PageExportKind.svg, child: Text('SVG (vektor)')),
-        PopupMenuItem(
-          value: _PageExportKind.pdf,
-          child: Text('PDF (dokumen)'),
-        ),
-        PopupMenuItem(
-          value: _PageExportKind.figma,
-          child: Text('Figma'),
-        ),
+        PopupMenuItem(value: _PageExportKind.pdf, child: Text('PDF (dokumen)')),
+        PopupMenuItem(value: _PageExportKind.figma, child: Text('Figma')),
       ],
-      child: SoftIconButton(
-        icon: _busy ? Icons.hourglass_empty : Icons.download_outlined,
-        tooltip: 'Ekspor halaman',
-        onPressed: () {},
+      child: widget.primary
+          ? _PrimaryExportButton(busy: _busy, enabled: hasPage)
+          : SoftIconButton(
+              icon: _busy ? Icons.hourglass_empty : Icons.download_outlined,
+              tooltip: 'Ekspor halaman',
+              onPressed: () {},
+            ),
+    );
+  }
+}
+
+/// Tombol utama "Ekspor" pada top bar.
+class _PrimaryExportButton extends StatelessWidget {
+  const _PrimaryExportButton({required this.busy, required this.enabled});
+
+  final bool busy;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = enabled && !busy;
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: active ? AppColors.accentPrimary : AppColors.bgSunken,
+        borderRadius: AppRadius.sm,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (busy)
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          else
+            Icon(
+              Icons.download_outlined,
+              size: 16,
+              color: active ? Colors.white : AppColors.textDisabled,
+            ),
+          const SizedBox(width: 8),
+          Text(
+            'Ekspor',
+            style: AppText.button.copyWith(
+              color: active ? Colors.white : AppColors.textDisabled,
+            ),
+          ),
+        ],
       ),
     );
   }

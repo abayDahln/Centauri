@@ -64,29 +64,20 @@ class _Welcome extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 44,
+              height: 44,
               decoration: const BoxDecoration(
                 color: AppColors.accentSoft,
-                borderRadius: AppRadius.lg,
+                borderRadius: AppRadius.md,
               ),
               child: const Icon(
                 Icons.brush_outlined,
-                size: 26,
+                size: 22,
                 color: AppColors.accentPrimary,
               ),
             ),
-            const SizedBox(height: 18),
-            Text(
-              'Mulai dengan pesan',
-              style: TextStyle(
-                fontFamily: AppFonts.uiFamily,
-                fontFamilyFallback: AppFonts.uiFallback,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            const SizedBox(height: 16),
+            Text('Mulai dengan pesan', style: AppText.panelTitle),
             const SizedBox(height: 8),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 380),
@@ -119,16 +110,28 @@ class _Bubble extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 620),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: isUser ? 14 : 0,
+            vertical: isUser ? 10 : 0,
+          ),
           decoration: BoxDecoration(
             color: isUser
-                ? AppColors.accentPrimary
+                ? AppColors.textPrimary
                 : isError
-                ? const Color(0xFFFCEEEE)
-                : AppColors.bgSunken,
-            borderRadius: AppRadius.lg,
+                ? AppColors.statusError.withValues(alpha: 0.05)
+                : Colors.transparent,
+            borderRadius: isUser
+                ? const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    topRight: Radius.circular(10),
+                    bottomLeft: Radius.circular(10),
+                    bottomRight: Radius.circular(2),
+                  )
+                : AppRadius.md,
             border: isError
-                ? Border.all(color: AppColors.statusError)
+                ? Border.all(
+                    color: AppColors.statusError.withValues(alpha: 0.32),
+                  )
                 : null,
           ),
           // Lampiran (gambar) di atas teks; tap untuk pratinjau.
@@ -157,13 +160,24 @@ class _Bubble extends StatelessWidget {
                     color: Colors.white,
                   ),
                 )
-              else
+              else ...[
+                if (!isError)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      'Alpha',
+                      style: AppText.label.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 MarkdownMessage(
                   text: message.text,
                   baseColor: isError
                       ? AppColors.statusError
                       : AppColors.textPrimary,
                 ),
+              ],
             ],
           ),
         ),

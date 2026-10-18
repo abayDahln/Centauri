@@ -58,6 +58,8 @@ class _CodePanelState extends ConsumerState<CodePanel> {
   @override
   Widget build(BuildContext context) {
     final html = ref.watch(workspaceProvider.select((s) => s.activePage?.html));
+    // Output Alpha bisa kosong; jangan tampilkan panel kode yang hampa.
+    final hasCode = html != null && html.trim().isNotEmpty;
 
     return ColoredBox(
       color: AppColors.bgSurface,
@@ -65,12 +67,12 @@ class _CodePanelState extends ConsumerState<CodePanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _CodeBreadcrumb(
-            onCopy: html == null ? null : () => _copy(html),
-            onSave: html == null ? null : () => _save(html),
+            onCopy: hasCode ? () => _copy(html) : null,
+            onSave: hasCode ? () => _save(html) : null,
           ),
           const Divider(height: 1),
           Expanded(
-            child: html == null
+            child: !hasCode
                 ? const _CodeEmptyState()
                 : _CodeBody(
                     code: html,
@@ -95,8 +97,11 @@ class _CodeBreadcrumb extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: AppColors.toolbarHeight,
-      color: AppColors.bgBase,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: const BoxDecoration(
+        color: AppColors.bgSurface,
+        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+      ),
       child: Row(
         children: [
           const Icon(Icons.description_outlined, size: 13),
@@ -179,7 +184,7 @@ class _CodeBody extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(12),
       child: ClipRRect(
-        borderRadius: AppRadius.md,
+        borderRadius: AppRadius.sm,
         child: ColoredBox(
           color: const Color(0xFF16181D),
           child: Scrollbar(
@@ -237,7 +242,7 @@ class _LineGutter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      color: const Color(0xFF13151A),
+      color: const Color(0xFF101216),
       padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,

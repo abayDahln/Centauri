@@ -136,4 +136,32 @@ void main() {
       expect(result, contains('class GeneratedUIScreen'));
     });
   });
+
+  group('transformCode - output Alpha yang rusak', () {
+    test('melempar CodeTransformException saat sumber kosong', () {
+      expect(
+        () => transformCode(htmlSource: '   ', format: CodeFormat.reactJsx),
+        throwsA(isA<CodeTransformException>()),
+      );
+    });
+
+    test('pesan galat siap tampil, tanpa istilah teknis', () {
+      try {
+        transformCode(htmlSource: '', format: CodeFormat.flutterDart);
+        fail('seharusnya melempar CodeTransformException');
+      } on CodeTransformException catch (e) {
+        expect(e.message, isNotEmpty);
+        expect(e.message.contains('Exception'), isFalse);
+        expect(e.message.contains('null'), isFalse);
+      }
+    });
+
+    test('HTML tidak lengkap tetap dikonversi, bukan crash', () {
+      const broken = '<html><body><div><p>Halo<span></div></body>';
+      expect(
+        () => transformCode(htmlSource: broken, format: CodeFormat.html),
+        returnsNormally,
+      );
+    });
+  });
 }

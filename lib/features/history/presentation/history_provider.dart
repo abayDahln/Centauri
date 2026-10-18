@@ -49,8 +49,9 @@ class HistoryState {
   }
 }
 
-final historyProvider =
-    NotifierProvider<HistoryNotifier, HistoryState>(HistoryNotifier.new);
+final historyProvider = NotifierProvider<HistoryNotifier, HistoryState>(
+  HistoryNotifier.new,
+);
 
 class HistoryNotifier extends Notifier<HistoryState> {
   final _uuid = const Uuid();
@@ -158,14 +159,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
         .toList();
 
     final pages = project.pages
-        .map(
-          (p) => AppPage(
-            id: p.id,
-            name: p.name,
-            slug: p.slug,
-            html: p.html,
-          ),
-        )
+        .map((p) => AppPage(id: p.id, name: p.name, slug: p.slug, html: p.html))
         .toList();
 
     await ref
@@ -229,7 +223,8 @@ class HistoryNotifier extends Notifier<HistoryState> {
     await open(id);
   }
 
-  Future<void> rename(String id, String title) async {    final repo = ref.read(projectRepositoryProvider);
+  Future<void> rename(String id, String title) async {
+    final repo = ref.read(projectRepositoryProvider);
     final updatedProjects = <Project>[];
     for (final project in state.projects) {
       if (project.id == id) {

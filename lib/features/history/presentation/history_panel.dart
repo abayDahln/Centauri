@@ -44,7 +44,6 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _PanelHeader(title: 'Riwayat'),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
           child: _NewChatButton(onTap: _newChat),
@@ -68,9 +67,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
         const SizedBox(height: 4),
         Expanded(
           child: projects.isEmpty
-              ? _EmptyState(
-                  searching: state.query.trim().isNotEmpty,
-                )
+              ? _EmptyState(searching: state.query.trim().isNotEmpty)
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
                   itemCount: projects.length,
@@ -124,25 +121,6 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
   }
 }
 
-class _PanelHeader extends StatelessWidget {
-  const _PanelHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      alignment: Alignment.centerLeft,
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
-      ),
-      child: Text(title, style: AppText.sectionTitle),
-    );
-  }
-}
-
 class _NewChatButton extends StatelessWidget {
   const _NewChatButton({required this.onTap});
 
@@ -151,31 +129,23 @@ class _NewChatButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.accentSoft,
-      borderRadius: AppRadius.md,
+      color: AppColors.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppRadius.sm,
+        side: BorderSide(color: AppColors.borderSubtle),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppRadius.md,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        borderRadius: AppRadius.sm,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.centerLeft,
           child: Row(
             children: [
-              const Icon(
-                Icons.edit_outlined,
-                size: 18,
-                color: AppColors.accentPrimary,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Chat baru',
-                style: TextStyle(
-                  fontFamily: AppFonts.uiFamily,
-                  fontFamilyFallback: AppFonts.uiFallback,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.accentPrimary,
-                ),
-              ),
+              const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
+              const SizedBox(width: 8),
+              Text('Chat baru', style: AppText.button),
             ],
           ),
         ),
@@ -193,10 +163,11 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 38,
+      height: 36,
       decoration: BoxDecoration(
-        color: AppColors.bgSunken,
-        borderRadius: AppRadius.pill,
+        color: AppColors.bgSurface,
+        borderRadius: AppRadius.sm,
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: TextField(
         controller: controller,
@@ -212,7 +183,11 @@ class _SearchField extends StatelessWidget {
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          prefixIcon: Icon(Icons.search, size: 18, color: AppColors.textSecondary),
+          prefixIcon: Icon(
+            Icons.search,
+            size: 16,
+            color: AppColors.textSecondary,
+          ),
           hintText: 'Cari percakapan',
           hintStyle: TextStyle(
             fontFamily: AppFonts.uiFamily,
@@ -267,7 +242,7 @@ class _ProjectTileState extends State<_ProjectTile> {
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          height: 40,
+          height: 36,
           margin: const EdgeInsets.symmetric(vertical: 1),
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
@@ -276,8 +251,8 @@ class _ProjectTileState extends State<_ProjectTile> {
           ),
           child: Row(
             children: [
-              Icon(Icons.chat_bubble_outline, size: 15, color: foreground),
-              const SizedBox(width: 10),
+              Icon(Icons.chat_bubble_outline, size: 14, color: foreground),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   widget.title,
@@ -354,11 +329,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.history,
-              size: 26,
-              color: AppColors.textDisabled,
-            ),
+            const Icon(Icons.history, size: 26, color: AppColors.textDisabled),
             const SizedBox(height: 10),
             Text(
               searching

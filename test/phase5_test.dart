@@ -14,49 +14,53 @@ void main() {
   }
 
   group('WorkspaceNotifier undo/redo (Fase 5a)', () {
-    test('a content change is recorded and undo restores prior pages',
-        () async {
-      final container = makeContainer();
-      final notifier = container.read(workspaceProvider.notifier);
+    test(
+      'a content change is recorded and undo restores prior pages',
+      () async {
+        final container = makeContainer();
+        final notifier = container.read(workspaceProvider.notifier);
 
-      expect(notifier.canUndo, isFalse);
+        expect(notifier.canUndo, isFalse);
 
-      // Simulasi satu perubahan konten: state kosong -> 1 halaman.
-      final before = container.read(workspaceProvider);
-      await notifier.loadSession(
-        messages: const [],
-        pages: [_page('page_0')],
-        activePageId: 'page_0',
-      );
-      notifier.recordHistory(before);
-      expect(notifier.canUndo, isTrue);
+        // Simulasi satu perubahan konten: state kosong -> 1 halaman.
+        final before = container.read(workspaceProvider);
+        await notifier.loadSession(
+          messages: const [],
+          pages: [_page('page_0')],
+          activePageId: 'page_0',
+        );
+        notifier.recordHistory(before);
+        expect(notifier.canUndo, isTrue);
 
-      expect(notifier.undo(), isTrue);
-      expect(container.read(workspaceProvider).pages, isEmpty);
-      expect(notifier.canRedo, isTrue);
-      expect(notifier.redo(), isTrue);
-      expect(notifier.canRedo, isFalse);
-    });
+        expect(notifier.undo(), isTrue);
+        expect(container.read(workspaceProvider).pages, isEmpty);
+        expect(notifier.canRedo, isTrue);
+        expect(notifier.redo(), isTrue);
+        expect(notifier.canRedo, isFalse);
+      },
+    );
 
-    test('loadSession is undoable and restores the previous workspace',
-        () async {
-      final container = makeContainer();
-      final notifier = container.read(workspaceProvider.notifier);
+    test(
+      'loadSession is undoable and restores the previous workspace',
+      () async {
+        final container = makeContainer();
+        final notifier = container.read(workspaceProvider.notifier);
 
-      final before = container.read(workspaceProvider);
-      await notifier.loadSession(
-        messages: const [],
-        pages: [_page('page_0')],
-        activePageId: 'page_0',
-      );
-      notifier.recordHistory(before);
+        final before = container.read(workspaceProvider);
+        await notifier.loadSession(
+          messages: const [],
+          pages: [_page('page_0')],
+          activePageId: 'page_0',
+        );
+        notifier.recordHistory(before);
 
-      expect(container.read(workspaceProvider).pages.length, 1);
-      expect(notifier.canUndo, isTrue);
+        expect(container.read(workspaceProvider).pages.length, 1);
+        expect(notifier.canUndo, isTrue);
 
-      notifier.undo();
-      expect(container.read(workspaceProvider).pages, isEmpty);
-    });
+        notifier.undo();
+        expect(container.read(workspaceProvider).pages, isEmpty);
+      },
+    );
 
     test('pushUndoSnapshot records current state exactly once', () {
       final container = makeContainer();

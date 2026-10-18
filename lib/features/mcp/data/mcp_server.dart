@@ -54,8 +54,10 @@ class McpServer {
       return;
     }
     _server = bound;
-    debugPrint('[mcp] Berjalan di http://127.0.0.1:${bound.port} '
-        '(POST /mcp, GET /events, GET /status)');
+    debugPrint(
+      '[mcp] Berjalan di http://127.0.0.1:${bound.port} '
+      '(POST /mcp, GET /events, GET /status)',
+    );
     _heartbeat = Timer.periodic(const Duration(seconds: 25), (_) {
       _broadcast(event: 'ping', data: {'stateVersion': _stateVersion});
     });
@@ -66,10 +68,10 @@ class McpServer {
   void notifyState() {
     _stateVersion++;
     final snapshot = _bridge?.snapshot();
-    _broadcast(event: 'state', data: {
-      'stateVersion': _stateVersion,
-      if (snapshot != null) ...snapshot,
-    });
+    _broadcast(
+      event: 'state',
+      data: {'stateVersion': _stateVersion, if (snapshot != null) ...snapshot},
+    );
   }
 
   Future<void> stop() async {
@@ -155,12 +157,12 @@ class McpServer {
     });
 
     // Tetap buka sampai klien pergi; jangan close di sini.
-    response.done
-        .then((_) => _sseClients.remove(client))
-        .catchError((Object _) {
-          _sseClients.remove(client);
-          return true;
-        });
+    response.done.then((_) => _sseClients.remove(client)).catchError((
+      Object _,
+    ) {
+      _sseClients.remove(client);
+      return true;
+    });
   }
 
   Future<void> _handleRpc(HttpRequest request) async {
@@ -211,9 +213,7 @@ class McpServer {
         case 'initialize':
           return _rpcOk(id, {
             'protocolVersion': '2024-11-05',
-            'capabilities': {
-              'tools': {},
-            },
+            'capabilities': {'tools': {}},
             'serverInfo': {'name': 'centauri-canvas', 'version': '1.0.0'},
           });
         case 'notifications/initialized':
@@ -227,10 +227,7 @@ class McpServer {
           if (params is! Map<String, dynamic>) {
             return _rpcError(id, -32602, 'params harus object.');
           }
-          final result = await _callTool(
-            params['name'],
-            params['arguments'],
-          );
+          final result = await _callTool(params['name'], params['arguments']);
           return _rpcOk(id, {
             'content': [
               {'type': 'text', 'text': jsonEncode(result)},
@@ -334,8 +331,7 @@ class McpServer {
   static List<Map<String, dynamic>> toolSchemas() => [
     {
       'name': 'get_canvas_structure',
-      'description':
-          'Baca struktur workspace: daftar halaman + layers tree DOM halaman aktif.',
+      'description': 'Baca struktur workspace: daftar halaman + layers tree DOM halaman aktif.',
       'inputSchema': {'type': 'object', 'properties': {}},
     },
     {
@@ -357,15 +353,17 @@ class McpServer {
     },
     {
       'name': 'add_node',
-      'description':
-          'Tambah elemen HTML ke halaman aktif (atau pageId). parentId opsional (default body).',
+      'description': 'Tambah elemen HTML ke halaman aktif (atau pageId). parentId opsional (default body).',
       'inputSchema': {
         'type': 'object',
         'properties': {
           'html': {'type': 'string'},
           'parentId': {'type': 'string'},
           'pageId': {'type': 'string'},
-          'frameId': {'type': 'string', 'description': 'Deprecated: pakai pageId.'},
+          'frameId': {
+            'type': 'string',
+            'description': 'Deprecated: pakai pageId.',
+          },
           'position': {
             'type': 'string',
             'enum': ['beforeend', 'afterbegin', 'beforebegin', 'afterend'],
@@ -385,7 +383,10 @@ class McpServer {
           'text': {'type': 'string'},
           'styles': {'type': 'object'},
           'pageId': {'type': 'string'},
-          'frameId': {'type': 'string', 'description': 'Deprecated: pakai pageId.'},
+          'frameId': {
+            'type': 'string',
+            'description': 'Deprecated: pakai pageId.',
+          },
         },
         'required': ['nodeId'],
       },
@@ -398,21 +399,26 @@ class McpServer {
         'properties': {
           'nodeId': {'type': 'string'},
           'pageId': {'type': 'string'},
-          'frameId': {'type': 'string', 'description': 'Deprecated: pakai pageId.'},
+          'frameId': {
+            'type': 'string',
+            'description': 'Deprecated: pakai pageId.',
+          },
         },
         'required': ['nodeId'],
       },
     },
     {
       'name': 'rearrange_layout',
-      'description':
-          'Geser/ubah ukuran satu node (dx/dy delta CSS, width/height absolut).',
+      'description': 'Geser/ubah ukuran satu node (dx/dy delta CSS, width/height absolut).',
       'inputSchema': {
         'type': 'object',
         'properties': {
           'id': {'type': 'string'},
           'pageId': {'type': 'string'},
-          'frameId': {'type': 'string', 'description': 'Deprecated: pakai pageId.'},
+          'frameId': {
+            'type': 'string',
+            'description': 'Deprecated: pakai pageId.',
+          },
           'dx': {'type': 'number'},
           'dy': {'type': 'number'},
           'width': {'type': 'number'},

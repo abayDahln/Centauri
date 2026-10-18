@@ -31,7 +31,8 @@ class ProjectPage {
   };
 
   static ProjectPage fromJson(Map<String, dynamic> json) {
-    final name = json['name'] as String? ?? json['title'] as String? ?? 'Untitled';
+    final name =
+        json['name'] as String? ?? json['title'] as String? ?? 'Untitled';
     final slug = json['slug'] as String? ?? slugify(name);
     return ProjectPage(
       id: json['id'] as String? ?? 'page',
@@ -76,10 +77,9 @@ class ProjectMessage {
     text: json['text'] as String? ?? '',
     kind: json['kind'] as String? ?? 'chat',
     displayText: json['displayText'] as String?,
-    attachmentNames:
-        (json['attachmentNames'] as List<dynamic>? ?? [])
-            .map((e) => e as String)
-            .toList(),
+    attachmentNames: (json['attachmentNames'] as List<dynamic>? ?? [])
+        .map((e) => e as String)
+        .toList(),
     attachments: (json['attachments'] as List<dynamic>? ?? [])
         .map((a) => Attachment.fromJson(a as Map<String, dynamic>))
         .toList(),
@@ -230,12 +230,8 @@ class Project {
           .toList(),
       pages: state.pages
           .map(
-            (p) => ProjectPage(
-              id: p.id,
-              name: p.name,
-              slug: p.slug,
-              html: p.html,
-            ),
+            (p) =>
+                ProjectPage(id: p.id, name: p.name, slug: p.slug, html: p.html),
           )
           .toList(),
       activePageId: state.activePageId,

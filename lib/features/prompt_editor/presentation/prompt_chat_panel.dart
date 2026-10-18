@@ -45,7 +45,6 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
 
     return Column(
       children: [
-        _buildHeader(),
         Expanded(
           child: canvasState.messages.isEmpty
               ? (canvasState.isGenerating
@@ -85,21 +84,6 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
-      ),
-      child: const Row(
-        children: [
-          Text('Riwayat', style: AppText.sectionTitle),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyState() {
     return const Center(
       child: Padding(
@@ -107,11 +91,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.forum_outlined,
-              size: 28,
-              color: AppColors.textDisabled,
-            ),
+            Icon(Icons.forum_outlined, size: 28, color: AppColors.textDisabled),
             SizedBox(height: 12),
             Text(
               'Belum ada percakapan',
@@ -144,8 +124,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
 
   Widget _buildMessageList(WorkspaceState state) {
     final extra = state.isGenerating ? 1 : 0;
-    final hasUserMessage =
-        state.messages.any((m) => m.role == ChatRole.user);
+    final hasUserMessage = state.messages.any((m) => m.role == ChatRole.user);
     return SelectionArea(
       child: ListView.separated(
         controller: _scrollController,
@@ -182,10 +161,15 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
           alignment: Alignment.centerRight,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: const BoxDecoration(
-              color: AppColors.accentPrimary,
-              borderRadius: AppRadius.md,
+              color: AppColors.textPrimary,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(10),
+                topRight: Radius.circular(10),
+                bottomLeft: Radius.circular(10),
+                bottomRight: Radius.circular(2),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -241,7 +225,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                   style: const TextStyle(
                     fontFamily: AppFonts.uiFamily,
                     fontFamilyFallback: AppFonts.uiFallback,
-                    fontSize: 12.5,
+                    fontSize: 13.5,
                     height: 1.5,
                     color: Colors.white,
                   ),
@@ -260,8 +244,10 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
           alignment: Alignment.centerLeft,
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFFCEEEE),
-              border: Border.all(color: AppColors.statusError),
+              color: AppColors.statusError.withValues(alpha: 0.05),
+              border: Border.all(
+                color: AppColors.statusError.withValues(alpha: 0.32),
+              ),
               borderRadius: AppRadius.md,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -302,9 +288,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                             await ref
                                 .read(workspaceProvider.notifier)
                                 .retryLastPrompt();
-                            ref
-                                .read(historyProvider.notifier)
-                                .persistCurrent();
+                            ref.read(historyProvider.notifier).persistCurrent();
                           },
                     icon: const Icon(Icons.refresh, size: 14),
                     label: const Text('Coba lagi'),
@@ -328,19 +312,23 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     }
   }
 
-  /// Bubble untuk jawaban percakapan biasa (mode chat).
+  /// Jawaban percakapan biasa (mode chat): teks langsung, tanpa bubble.
   Widget _buildChatBubble(String text) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Container(
+      child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 340),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.bgSunken,
-          border: Border.all(color: AppColors.borderSubtle),
-          borderRadius: AppRadius.md,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Alpha',
+              style: AppText.label.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            MarkdownMessage(text: text),
+          ],
         ),
-        child: MarkdownMessage(text: text),
       ),
     );
   }
@@ -352,15 +340,16 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
       alignment: Alignment.centerLeft,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.bgSunken,
+          color: AppColors.bgSurface,
           border: Border.all(color: AppColors.borderSubtle),
           borderRadius: AppRadius.md,
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Row(
                 children: [
                   const Icon(

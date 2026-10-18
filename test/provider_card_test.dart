@@ -24,7 +24,9 @@ ProviderCardData _card({String name = 'Groq Test'}) => ProviderCardData(
 );
 
 Widget _host(ProviderCardData data, {VoidCallback? onTap}) => MaterialApp(
-  home: Scaffold(body: ProviderCard(data: data, onTap: onTap ?? () {})),
+  home: Scaffold(
+    body: ProviderCard(data: data, onTap: onTap ?? () {}),
+  ),
 );
 
 void main() {

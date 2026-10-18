@@ -69,22 +69,24 @@ void main() {
       expect(repo.getAll(), isEmpty);
     });
 
-    test('root sesi tidak tersedia -> penyimpanan nonaktif, bukan lokasi lain',
-        () {
-      // Simulasi root gagal di-resolve saat init.
-      storage.debugSetSessionsRoot(null);
-      final degraded = ProjectRepository(storage: storage);
+    test(
+      'root sesi tidak tersedia -> penyimpanan nonaktif, bukan lokasi lain',
+      () {
+        // Simulasi root gagal di-resolve saat init.
+        storage.debugSetSessionsRoot(null);
+        final degraded = ProjectRepository(storage: storage);
 
-      expect(degraded.isPersisting, isFalse);
-      expect(degraded.getAll(), isEmpty);
-      // Tidak melempar dan tidak menulis ke temp/manapun.
-      expect(() => degraded.save(_project('p1')), returnsNormally);
-      expect(
-        store.folderFor('p1').existsSync(),
-        isFalse,
-        reason: 'harus tidak menulis ke folder sesi yang tersedia',
-      );
-      expect(() => degraded.delete('p1'), returnsNormally);
-    });
+        expect(degraded.isPersisting, isFalse);
+        expect(degraded.getAll(), isEmpty);
+        // Tidak melempar dan tidak menulis ke temp/manapun.
+        expect(() => degraded.save(_project('p1')), returnsNormally);
+        expect(
+          store.folderFor('p1').existsSync(),
+          isFalse,
+          reason: 'harus tidak menulis ke folder sesi yang tersedia',
+        );
+        expect(() => degraded.delete('p1'), returnsNormally);
+      },
+    );
   });
 }

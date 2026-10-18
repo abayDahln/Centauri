@@ -27,30 +27,66 @@ void main() {
 
     expect(find.text('Mulai dengan pesan'), findsOneWidget);
     expect(find.text('Belum ada halaman'), findsNothing);
-    expect(
-      find.text('Apa yang ingin dibuat?'),
-      findsOneWidget,
-    );
+    expect(find.text('Tulis pesan…'), findsOneWidget);
 
     addTearDown(tester.view.reset);
   });
 
-  testWidgets('Top-left exposes menu and provider settings', (tester) async {
+  testWidgets('Top bar keeps panel toggle on the left, settings right', (
+    tester,
+  ) async {
     tester.view
       ..physicalSize = const Size(4320, 2700)
       ..devicePixelRatio = 3.0;
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    // Tombol menu panel + konfigurasi provider selalu ada di kiri atas.
-    expect(find.byIcon(Icons.menu), findsOneWidget);
-    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
-    // Provider pill juga tersedia.
-    expect(find.text('Pilih provider'), findsOneWidget);
+    final panel = find.byIcon(Icons.view_sidebar_outlined);
+    final settings = find.byIcon(Icons.settings_outlined);
+    expect(panel, findsOneWidget);
+    expect(settings, findsOneWidget);
     expect(
-      find.text('Apa yang ingin dibuat?'),
-      findsOneWidget,
+      tester.getCenter(settings).dx,
+      greaterThan(tester.getCenter(panel).dx),
     );
+
+    // Tanpa halaman: belum ada ekspor, pemilih mode, maupun undo/redo.
+    expect(find.text('Desain'), findsNothing);
+    expect(find.text('Kode'), findsNothing);
+    expect(find.text('Ekspor'), findsNothing);
+    expect(find.text('Tulis pesan…'), findsOneWidget);
+
+    addTearDown(() async => tester.binding.setSurfaceSize(null));
+  });
+
+  testWidgets('Preview closes so the chat fills the window', (tester) async {
+    tester.view
+      ..physicalSize = const Size(4320, 2700)
+      ..devicePixelRatio = 3.0;
+    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pump();
+
+    // Kanvas terbuka: tombol tutup pratinjau ada, panel chat masih tertutup.
+    expect(find.byIcon(Icons.close_fullscreen_outlined), findsOneWidget);
+    expect(find.text('Belum ada percakapan'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.close_fullscreen_outlined));
+    await tester.pumpAndSettle();
+
+    // Mode fokus chat: percakapan tampil penuh, tombol berubah jadi buka.
+    expect(find.byIcon(Icons.open_in_full_outlined), findsOneWidget);
+    expect(find.text('Belum ada percakapan'), findsOneWidget);
+    expect(find.text('Tulis pesan…'), findsOneWidget);
+    // Sidebar riwayat tetap ada, toggle panel chat disembunyikan.
+    expect(find.text('Chat baru'), findsOneWidget);
+    expect(find.byIcon(Icons.view_sidebar_outlined), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.open_in_full_outlined));
+    await tester.pumpAndSettle();
+
+    // Kanvas kembali, panel chat tetap terbuka.
+    expect(find.byIcon(Icons.view_sidebar_outlined), findsOneWidget);
+    expect(find.text('Belum ada percakapan'), findsOneWidget);
 
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });
@@ -72,7 +108,7 @@ void main() {
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });
 
-  testWidgets('Side panel with Chat/History opens when workspace empty', (
+  testWidgets('History sits in the sidebar, chat panel has no tabs', (
     tester,
   ) async {
     tester.view
@@ -81,21 +117,18 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    // Panel tertutup: belum ada tab "Riwayat" di panel samping.
+    // Sidebar riwayat selalu tampil; panel chat masih tertutup.
+    expect(find.text('Chat baru'), findsOneWidget);
+    expect(find.text('Belum ada percakapan'), findsNothing);
     expect(find.text('Riwayat'), findsNothing);
 
-    // Klik tombol menu di kiri atas.
-    await tester.tap(find.byIcon(Icons.menu));
+    // Klik tombol panel chat di bar atas.
+    await tester.tap(find.byIcon(Icons.view_sidebar_outlined));
     await tester.pumpAndSettle();
 
-    // Panel samping muncul dengan dua tab: Chat, Riwayat
-    // (label tab + judul panel Riwayat = 2 teks sama).
-    expect(find.text('Chat'), findsOneWidget);
-    expect(find.text('Riwayat'), findsNWidgets(2));
-
-    // Buka tab Riwayat -> tombol "Chat baru" tampil.
-    await tester.tap(find.text('Riwayat').first);
-    await tester.pumpAndSettle();
+    // Chat muncul tanpa tab; riwayat tetap di sidebar, bukan di panel.
+    expect(find.text('Belum ada percakapan'), findsOneWidget);
+    expect(find.text('Riwayat'), findsNothing);
     expect(find.text('Chat baru'), findsOneWidget);
 
     addTearDown(() async => tester.binding.setSurfaceSize(null));

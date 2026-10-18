@@ -73,10 +73,7 @@ void main() {
     test('replaces inline style with classes, keeps existing class', () {
       const html =
           '<div class="card" style="color: red; padding: 8px;">Hi</div>';
-      final out = transformCode(
-        htmlSource: html,
-        format: CodeFormat.tailwind,
-      );
+      final out = transformCode(htmlSource: html, format: CodeFormat.tailwind);
       expect(out, contains('class="card [color:red] [padding:8px]"'));
       expect(out, isNot(contains('style=')));
     });

@@ -548,11 +548,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       final html = (await htmlFuture).html;
       if (html == null || html.trim().isEmpty) return false;
       final tree = await buildDomTreeInIsolate(html);
-      updatePageHtml(
-        pageId: pageId,
-        stampedHtml: tree.stampedHtml,
-        tree: tree,
-      );
+      updatePageHtml(pageId: pageId, stampedHtml: tree.stampedHtml, tree: tree);
       return true;
     } catch (_) {
       return false;

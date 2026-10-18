@@ -39,6 +39,6 @@ void main() {
     await tester.pumpAndSettle();
 
     // Kembali ke canvas.
-    expect(find.text('Apa yang ingin dibuat?'), findsOneWidget);
+    expect(find.text('Tulis pesan…'), findsOneWidget);
   });
 }

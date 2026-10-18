@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../canvas_preview/data/services/canvas_service_registry.dart';
 import '../../canvas_preview/data/services/canvas_webview_service.dart';
 import '../../canvas_preview/domain/dom_tree.dart';
@@ -27,7 +28,8 @@ class McpBridge {
   final ProviderContainer _container;
 
   WorkspaceState get _state => _container.read(workspaceProvider);
-  WorkspaceNotifier get _notifier => _container.read(workspaceProvider.notifier);
+  WorkspaceNotifier get _notifier =>
+      _container.read(workspaceProvider.notifier);
 
   AppPage _resolvePage(String? pageId) {
     final state = _state;
@@ -154,7 +156,12 @@ class McpBridge {
     if (event.type != 'outerHtml' || event.html == null) {
       throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
     }
-    return {'ok': true, 'pageId': page.id, 'nodeId': nodeId, 'html': event.html};
+    return {
+      'ok': true,
+      'pageId': page.id,
+      'nodeId': nodeId,
+      'html': event.html,
+    };
   }
 
   // --------------------------------------------------------------- tulis --
@@ -180,7 +187,10 @@ class McpBridge {
     if (parentId != null) {
       final tree = page.domTree;
       if (tree == null || tree.findById(parentId) == null) {
-        throw McpException('parentId "$parentId" tidak ditemukan.', code: -32602);
+        throw McpException(
+          'parentId "$parentId" tidak ditemukan.',
+          code: -32602,
+        );
       }
     }
     return _mutateAndSync(

@@ -35,9 +35,8 @@ class _SkeletonBoxState extends State<SkeletonBox>
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeOf(
-      context,
-    )?.disableAnimations ?? false;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return AnimatedBuilder(
       animation: _controller,
@@ -47,11 +46,7 @@ class _SkeletonBoxState extends State<SkeletonBox>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: Color.lerp(
-              AppColors.bgSunken,
-              const Color(0xFFE4E6EB),
-              t,
-            ),
+            color: Color.lerp(AppColors.bgSunken, AppColors.borderSubtle, t),
             borderRadius: widget.radius,
           ),
         );

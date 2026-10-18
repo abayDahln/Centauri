@@ -100,11 +100,7 @@ class _AttachmentChip extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.65),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.close,
-                    size: 13,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.close, size: 13, color: Colors.white),
                 ),
               ),
             ),

@@ -59,17 +59,14 @@ class _ModelCardState extends State<ModelCard> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.accentPrimary.withValues(alpha: 0.08)
+                ? AppColors.accentSoft
                 : (_hovered ? AppColors.hoverBg : AppColors.bgSurface),
-            borderRadius: AppRadius.lg,
+            borderRadius: AppRadius.md,
             border: Border.all(
               color: selected
                   ? AppColors.accentPrimary
-                  : (_hovered
-                        ? AppColors.accentPrimary
-                        : AppColors.borderSubtle),
+                  : AppColors.borderSubtle,
             ),
-            boxShadow: _hovered ? AppColors.shadowSoft : null,
           ),
           child: Row(
             children: [
@@ -142,15 +139,7 @@ class _ModelCardState extends State<ModelCard> {
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       SnackBar(
-                        content: Text(
-                          'Disalin: ${widget.modelId}',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 13,
-                          ),
-                        ),
-                        backgroundColor: AppColors.bgElevated,
-                        behavior: SnackBarBehavior.floating,
+                        content: Text('Disalin: ${widget.modelId}'),
                         duration: const Duration(seconds: 2),
                       ),
                     );

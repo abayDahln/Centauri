@@ -10,37 +10,17 @@ Future<bool> showDeleteProviderDialog(BuildContext context, String name) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      backgroundColor: AppColors.bgSurface,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.md,
-        side: const BorderSide(color: AppColors.borderSubtle),
-      ),
-      title: const Text(
-        'Hapus Provider',
-        style: TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      content: Text(
-        'Hapus $label beserta data tersimpan? Data yang dihapus tidak dapat dikembalikan.',
-        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-      ),
+      title: const Text('Hapus provider ini?'),
+      content: Text('$label beserta data tersimpan akan dihapus permanen.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text(
-            'Batal',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
+          child: const Text('Batal'),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
-          child: const Text(
-            'Hapus',
-            style: TextStyle(color: AppColors.statusError),
-          ),
+          style: TextButton.styleFrom(foregroundColor: AppColors.statusError),
+          child: const Text('Hapus'),
         ),
       ],
     ),

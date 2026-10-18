@@ -54,14 +54,8 @@ void main() {
     });
 
     test('attachment-only or node-only requests stay chat', () {
-      expect(
-        isUiRequestPrompt('lihat ini', hasAttachments: true),
-        isFalse,
-      );
-      expect(
-        isUiRequestPrompt('ini apa', hasSelectedNode: true),
-        isFalse,
-      );
+      expect(isUiRequestPrompt('lihat ini', hasAttachments: true), isFalse);
+      expect(isUiRequestPrompt('ini apa', hasSelectedNode: true), isFalse);
     });
   });
 

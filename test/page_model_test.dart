@@ -33,12 +33,7 @@ void main() {
     });
 
     test('copyWith with no arguments keeps every field', () {
-      const original = AppPage(
-        id: 'p',
-        name: 'N',
-        slug: 'n.html',
-        html: 'x',
-      );
+      const original = AppPage(id: 'p', name: 'N', slug: 'n.html', html: 'x');
       final copy = original.copyWith();
       expect(copy.id, original.id);
       expect(copy.name, original.name);

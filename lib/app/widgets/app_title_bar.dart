@@ -5,8 +5,10 @@ import 'package:window_manager/window_manager.dart';
 
 import '../config/theme.dart';
 
-/// Title bar kustom untuk shell desktop (Windows). Gaya lembut ala Stitch:
-/// latar putih, teks gelap, tombol window minimalis.
+/// Title bar kustom untuk shell desktop (Windows).
+///
+/// Latar panel putih, garis bawah 1 px, logo gelap, dan tombol window
+/// minimalis. Mengikuti Centauri Design System.
 class AppTitleBar extends StatefulWidget {
   const AppTitleBar({super.key, this.title = 'Centauri'});
 
@@ -67,65 +69,63 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
       behavior: HitTestBehavior.opaque,
       onPanStart: (_) => _safe(windowManager.startDragging),
       onDoubleTap: _toggleMaximize,
-      child: SizedBox(
+      child: Container(
         height: AppColors.titleBarHeight,
-        child: ColoredBox(
+        decoration: const BoxDecoration(
           color: AppColors.bgSurface,
-          child: Row(
-            children: [
-              const SizedBox(width: 14),
-              Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  color: AppColors.accentPrimary,
-                  borderRadius: BorderRadius.all(Radius.circular(6)),
-                ),
-                alignment: Alignment.center,
-                child: const Text(
-                  'C',
-                  style: TextStyle(
-                    fontFamily: AppFonts.uiFamily,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
+          border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 12),
+            Container(
+              width: 20,
+              height: 20,
+              decoration: const BoxDecoration(
+                color: AppColors.textPrimary,
+                borderRadius: BorderRadius.all(Radius.circular(6)),
               ),
-              const SizedBox(width: 10),
-              Text(
-                widget.title,
-                style: const TextStyle(
+              alignment: Alignment.center,
+              child: const Text(
+                'C',
+                style: TextStyle(
                   fontFamily: AppFonts.uiFamily,
-                  fontFamilyFallback: AppFonts.uiFallback,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-              const Spacer(),
-              _WindowButton(
-                icon: Icons.remove,
-                tooltip: 'Perkecil',
-                onTap: () => _safe(windowManager.minimize),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              widget.title,
+              style: AppText.label.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
               ),
-              _WindowButton(
-                icon: _isMaximized
-                    ? Icons.filter_none
-                    : Icons.crop_square_outlined,
-                tooltip: _isMaximized ? 'Kembalikan' : 'Perbesar',
-                onTap: _toggleMaximize,
-              ),
-              _WindowButton(
-                icon: Icons.close,
-                tooltip: 'Tutup',
-                isClose: true,
-                onTap: () => _safe(windowManager.close),
-              ),
-            ],
-          ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            _WindowButton(
+              icon: Icons.remove,
+              tooltip: 'Perkecil',
+              onTap: () => _safe(windowManager.minimize),
+            ),
+            _WindowButton(
+              icon: _isMaximized
+                  ? Icons.filter_none
+                  : Icons.crop_square_outlined,
+              tooltip: _isMaximized ? 'Kembalikan' : 'Perbesar',
+              onTap: _toggleMaximize,
+            ),
+            _WindowButton(
+              icon: Icons.close,
+              tooltip: 'Tutup',
+              isClose: true,
+              onTap: () => _safe(windowManager.close),
+            ),
+          ],
         ),
       ),
     );

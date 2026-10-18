@@ -53,8 +53,9 @@ void main() {
       // Regresi: marker `window.centauriSetLinkIntercept = ...` pernah
       // tersisa tanpa definisinya, sehingga seluruh bridge mati (ReferenceError
       // sebelum boot) dan semua link antar-halaman gagal ("file not found").
-      final assignPattern =
-          RegExp(r'window\.(centauri\w+)\s*=\s*([A-Za-z_$][\w$]*)');
+      final assignPattern = RegExp(
+        r'window\.(centauri\w+)\s*=\s*([A-Za-z_$][\w$]*)',
+      );
       final definedPattern = RegExp(r'function\s+([A-Za-z_$][\w$]*)');
       final defined = definedPattern
           .allMatches(canvasBridgeScript)

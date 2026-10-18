@@ -253,23 +253,18 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       content = _service.buildView();
     }
 
-    return ClipRRect(
-      borderRadius: AppRadius.lg,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: AppRadius.lg,
-          border: Border.all(color: AppColors.borderSubtle),
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            RepaintBoundary(child: content),
-            // Selagi dokumen baru dimuat, halaman lama tetap terlihat dan
-            // ditindih scrim + spinner supaya pindah halaman terasa responsif.
-            if (_switching) const _PageSwitchLoading(),
-          ],
-        ),
+    // Bingkai (border, radius, bilah browser) disediakan pemanggil agar
+    // WebView bisa mengisi penuh area tanpa clipping tambahan.
+    return ColoredBox(
+      color: Colors.white,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          RepaintBoundary(child: content),
+          // Selagi dokumen baru dimuat, halaman lama tetap terlihat dan
+          // ditindih scrim + spinner supaya pindah halaman terasa responsif.
+          if (_switching) const _PageSwitchLoading(),
+        ],
       ),
     );
   }

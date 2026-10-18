@@ -48,120 +48,44 @@ class ChatSidePanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(panelTabProvider);
-    return SoftPanel(
-      padding: EdgeInsets.zero,
-      clip: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _TabBar(
-            index: tab.index,
-            onChanged: (value) =>
-                ref.read(panelTabProvider.notifier).select(PanelTab.values[value]),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          height: AppColors.toolbarHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
           ),
-          Expanded(
-            child: switch (tab) {
-              PanelTab.chat => const PromptChatPanel(),
-              // Buka/buat chat dari History langsung mengantar ke tab Chat.
-              PanelTab.history => HistoryPanel(
-                onOpenProject: () => ref
+          child: Row(
+            children: [
+              AppTab(
+                label: 'Chat',
+                active: tab == PanelTab.chat,
+                onTap: () =>
+                    ref.read(panelTabProvider.notifier).select(PanelTab.chat),
+              ),
+              AppTab(
+                label: 'Riwayat',
+                active: tab == PanelTab.history,
+                onTap: () => ref
                     .read(panelTabProvider.notifier)
-                    .select(PanelTab.chat),
+                    .select(PanelTab.history),
               ),
-            },
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TabBar extends StatelessWidget {
-  const _TabBar({required this.index, required this.onChanged});
-
-  final int index;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _TabButton(
-              label: 'Chat',
-              icon: Icons.forum_outlined,
-              active: index == 0,
-              onTap: () => onChanged(0),
-            ),
-          ),
-          const SizedBox(width: 2),
-          Expanded(
-            child: _TabButton(
-              label: 'Riwayat',
-              icon: Icons.history,
-              active: index == 1,
-              onTap: () => onChanged(1),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TabButton extends StatelessWidget {
-  const _TabButton({
-    required this.label,
-    required this.icon,
-    required this.active,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? AppColors.accentPrimary : AppColors.textSecondary;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: AppRadius.sm,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? AppColors.accentSoft : Colors.transparent,
-          borderRadius: AppRadius.sm,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 15, color: color),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: AppFonts.uiFamily,
-                  fontFamilyFallback: AppFonts.uiFallback,
-                  fontSize: 12.5,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                  color: color,
-                ),
-              ),
+        Expanded(
+          child: switch (tab) {
+            PanelTab.chat => const PromptChatPanel(),
+            // Buka/buat chat dari History langsung mengantar ke tab Chat.
+            PanelTab.history => HistoryPanel(
+              onOpenProject: () =>
+                  ref.read(panelTabProvider.notifier).select(PanelTab.chat),
             ),
-          ],
+          },
         ),
-      ),
+      ],
     );
   }
 }

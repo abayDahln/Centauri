@@ -13,8 +13,10 @@ import '../../../core/storage/local_storage_service.dart';
 import '../../history/data/project_repository.dart';
 import '../../history/presentation/history_provider.dart';
 import '../../mcp/data/mcp_bridge.dart';
+import '../../history/presentation/history_panel.dart';
 import '../../mcp/data/mcp_server.dart';
-import '../../provider_config/presentation/providers/provider_config_provider.dart';
+import '../../prompt_editor/presentation/prompt_chat_panel.dart';
+import 'provider/layout_provider.dart';
 import 'provider/workspace_provider.dart';
 import 'widgets/ai_status_indicator.dart';
 import 'widgets/chat_landing.dart';
@@ -252,13 +254,14 @@ class _DesktopShell extends ConsumerStatefulWidget {
 }
 
 class _DesktopShellState extends ConsumerState<_DesktopShell> {
-  bool _showCode = false;
   bool _autoShownChat = false;
 
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(workspaceProvider.select((s) => s.outputMode));
-    final showChat = ref.watch(panelVisibleProvider);
+    final canvasVisible = ref.watch(canvasVisibleProvider);
+    // Mode fokus chat: tanpa kanvas, panel chat selalu tampil.
+    final showChat = ref.watch(panelVisibleProvider) || !canvasVisible;
     final hasUi = ref.watch(
       workspaceProvider.select((s) => s.hasRenderedPage || s.pages.isNotEmpty),
     );
@@ -270,7 +273,8 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
       });
     }
 
-    final showCode = hasUi && (mode == OutputMode.dev || _showCode);
+    // Mode Kode (dev) membuka panel kode; mode Desain menyembunyikannya.
+    final showCode = canvasVisible && hasUi && mode == OutputMode.dev;
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -278,50 +282,65 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
         children: [
           _TopBar(
             workspaceActive: hasUi,
+            canvasVisible: canvasVisible,
+            onToggleCanvas: () {
+              final next = !canvasVisible;
+              ref.read(canvasVisibleProvider.notifier).set(next);
+              // Saat kanvas dibuka lagi, panel chat tetap terlihat.
+              if (!next) ref.read(panelVisibleProvider.notifier).show();
+            },
             onTogglePrompt: () =>
                 ref.read(panelVisibleProvider.notifier).toggle(),
-            onToggleCode: () => setState(() => _showCode = !_showCode),
             promptVisible: showChat,
-            codeVisible: showCode,
           ),
           const StorageBanner(),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _HistorySidebar(),
+                if (!canvasVisible)
+                  // Mode fokus chat: kanvas dan panel kode ditutup.
+                  const Expanded(child: _ChatOnlyPane())
+                else ...[
                   if (showChat) ...[
-                    const SizedBox(width: 320, child: ChatSidePanel()),
-                    const SizedBox(width: 12),
+                    const SizedBox(
+                      width: AppColors.sideBarWidth,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.bgSurface,
+                          border: Border(
+                            right: BorderSide(color: AppColors.borderSubtle),
+                          ),
+                        ),
+                        child: PromptChatPanel(),
+                      ),
+                    ),
                   ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (hasUi) ...[
-                          const PageSwitcherBar(),
-                          const SizedBox(height: 8),
-                        ],
+                        if (hasUi) const _PreviewToolbar(),
                         Expanded(
                           child: Stack(
                             children: [
                               if (hasUi)
-                                const PagePreview()
+                                const _CanvasSurface(child: _PreviewFrame())
                               else if (!showChat)
                                 const ChatLanding()
                               else
                                 const _EmptyPreviewHint(),
                               if (hasUi)
                                 const Positioned(
-                                  left: 16,
-                                  top: 16,
+                                  left: 24,
+                                  top: 24,
                                   child: _AiStatusPill(),
                                 ),
                               const Positioned(
-                                left: 16,
-                                right: 16,
-                                bottom: 16,
+                                left: 24,
+                                right: 24,
+                                bottom: 24,
                                 child: PromptBar(),
                               ),
                             ],
@@ -331,18 +350,21 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                     ),
                   ),
                   if (showCode) ...[
-                    const SizedBox(width: 12),
                     const SizedBox(
                       width: 420,
-                      child: SoftPanel(
-                        padding: EdgeInsets.zero,
-                        clip: true,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.bgSurface,
+                          border: Border(
+                            left: BorderSide(color: AppColors.borderSubtle),
+                          ),
+                        ),
                         child: CodePanel(),
                       ),
                     ),
                   ],
                 ],
-              ),
+              ],
             ),
           ),
         ],
@@ -351,123 +373,331 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
   }
 }
 
-class _TopBar extends ConsumerWidget {
-  const _TopBar({
-    required this.workspaceActive,
-    required this.onTogglePrompt,
-    required this.onToggleCode,
-    required this.promptVisible,
-    required this.codeVisible,
-  });
+/// Sidebar kiri: daftar percakapan tersimpan. Selalu tampil di desktop,
+/// terpisah dari panel chat.
+class _HistorySidebar extends ConsumerWidget {
+  const _HistorySidebar();
 
-  final bool workspaceActive;
-  final VoidCallback onTogglePrompt;
-  final VoidCallback onToggleCode;
-  final bool promptVisible;
-  final bool codeVisible;
+  static const double width = 260;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final active = ref.watch(providerConfigProvider).value?.activeProvider;
+    return SizedBox(
+      width: width,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppColors.bgSurface,
+          border: Border(right: BorderSide(color: AppColors.borderSubtle)),
+        ),
+        child: HistoryPanel(
+          // Buka proyek dari sidebar: pastikan percakapannya terlihat.
+          onOpenProject: () => ref.read(panelVisibleProvider.notifier).show(),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mode fokus chat: percakapan memenuhi jendela, tanpa kanvas pratinjau.
+class _ChatOnlyPane extends StatelessWidget {
+  const _ChatOnlyPane();
+
+  /// Lebar baca nyaman agar percakapan tidak membentang di layar ultrawide.
+  static const double maxContentWidth = 760;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.bgSurface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: maxContentWidth),
+                child: const PromptChatPanel(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: PromptBar(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bar atas: identitas proyek, status layanan, mode, riwayat aksi, ekspor.
+class _TopBar extends ConsumerWidget {
+  const _TopBar({
+    required this.workspaceActive,
+    required this.canvasVisible,
+    required this.onToggleCanvas,
+    required this.onTogglePrompt,
+    required this.promptVisible,
+  });
+
+  final bool workspaceActive;
+  final bool canvasVisible;
+  final VoidCallback onToggleCanvas;
+  final VoidCallback onTogglePrompt;
+  final bool promptVisible;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(workspaceProvider);
+    final history = ref.watch(historyProvider);
     final notifier = ref.read(workspaceProvider.notifier);
 
-    return SizedBox(
+    var projectTitle = 'Prototype baru';
+    for (final project in history.projects) {
+      if (project.id == history.activeProjectId) {
+        final title = project.title.trim();
+        if (title.isNotEmpty) projectTitle = title;
+        break;
+      }
+    }
+
+    return Container(
       height: AppColors.topBarHeight,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            SoftIconButton(
-              icon: Icons.menu,
-              tooltip: 'Panel Chat dan Riwayat',
-              active: promptVisible,
-              onPressed: onTogglePrompt,
-            ),
-            const SizedBox(width: 4),
-            SoftIconButton(
-              icon: Icons.settings_outlined,
-              tooltip: 'Konfigurasi provider',
-              onPressed: () => context.push(AppRoutes.providers),
-            ),
-            const SizedBox(width: 12),
-            if (workspaceActive) ...[
-              SoftIconButton(
-                icon: Icons.code_outlined,
-                tooltip: 'Kode',
-                active: codeVisible,
-                onPressed: onToggleCode,
-              ),
-              const SizedBox(width: 12),
-            ],
-            InkWell(
-              onTap: () => context.push(AppRoutes.providers),
-              borderRadius: AppRadius.pill,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.bgSurface,
+        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: Row(
+        children: [
+          // Kiri: panel, riwayat aksi, identitas proyek.
+          Expanded(
+            child: Row(
+              children: [
+                if (canvasVisible)
+                  SoftIconButton(
+                    icon: Icons.view_sidebar_outlined,
+                    tooltip: promptVisible
+                        ? 'Sembunyikan chat'
+                        : 'Tampilkan chat',
+                    active: promptVisible,
+                    onPressed: onTogglePrompt,
+                  ),
+                SoftIconButton(
+                  icon: canvasVisible
+                      ? Icons.close_fullscreen_outlined
+                      : Icons.open_in_full_outlined,
+                  tooltip: canvasVisible
+                      ? 'Sembunyikan pratinjau'
+                      : 'Tampilkan pratinjau',
+                  onPressed: onToggleCanvas,
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.bgSurface,
-                  borderRadius: AppRadius.pill,
-                  border: Border.all(color: AppColors.borderSubtle),
+                if (workspaceActive) ...[
+                  const SizedBox(width: 2),
+                  SoftIconButton(
+                    icon: Icons.undo,
+                    tooltip: 'Urungkan (Ctrl+Z)',
+                    onPressed: notifier.undo,
+                  ),
+                  const SizedBox(width: 2),
+                  SoftIconButton(
+                    icon: Icons.redo,
+                    tooltip: 'Ulangi (Ctrl+Y)',
+                    onPressed: notifier.redo,
+                  ),
+                ],
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    projectTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.ui.copyWith(fontSize: 14),
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: active == null
-                            ? AppColors.textDisabled
-                            : AppColors.statusSuccess,
-                        shape: BoxShape.circle,
-                      ),
+                if (workspaceActive) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    '${state.pages.length} layar',
+                    style: AppText.monoSmall.copyWith(
+                      color: AppColors.textSecondary,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      active?.name ?? 'Pilih provider',
-                      style: AppText.uiSmall,
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                ],
+              ],
             ),
-            const Spacer(),
-            if (workspaceActive) ...[
-              SoftIconButton(
-                icon: Icons.touch_app_outlined,
-                tooltip: state.selectionMode
-                    ? 'Seleksi elemen aktif'
-                    : 'Aktifkan seleksi',
-                active: state.selectionMode,
-                onPressed: notifier.toggleSelectionMode,
-              ),
-              const SizedBox(width: 8),
-              const PageExportButton(),
-              const SizedBox(width: 8),
-              SoftIconButton(
-                icon: Icons.undo,
-                tooltip: 'Undo (Ctrl+Z)',
-                onPressed: notifier.undo,
-              ),
-              const SizedBox(width: 4),
-              SoftIconButton(
-                icon: Icons.redo,
-                tooltip: 'Redo (Ctrl+Y)',
-                onPressed: notifier.redo,
-              ),
-              const SizedBox(width: 4),
-              SoftIconButton(
-                icon: Icons.delete_outline,
-                tooltip: 'Bersihkan semua',
-                onPressed: state.pages.isEmpty ? null : notifier.clearWorkspace,
-              ),
-            ],
-          ],
+          ),
+          // Tengah: mode Desain / Kode (hanya saat kanvas terbuka).
+          if (workspaceActive && canvasVisible)
+            SoftSegmented<OutputMode>(
+              selected: state.outputMode,
+              onChanged: notifier.setOutputMode,
+              segments: const [
+                SoftSegment(value: OutputMode.design, label: 'Desain'),
+                SoftSegment(value: OutputMode.dev, label: 'Kode'),
+              ],
+            ),
+          // Kanan: ekspor halaman (bila ada) dan pengaturan.
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (workspaceActive) ...[
+                  PageExportButton(primary: true),
+                  const SizedBox(width: 8),
+                ],
+                SoftIconButton(
+                  icon: Icons.settings_outlined,
+                  tooltip: 'Pengaturan layanan',
+                  onPressed: () => context.push(AppRoutes.providers),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Toolbar kanvas: tab halaman bergaris bawah + kontrol seleksi.
+class _PreviewToolbar extends ConsumerWidget {
+  const _PreviewToolbar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectionMode = ref.watch(
+      workspaceProvider.select((s) => s.selectionMode),
+    );
+    return Container(
+      height: AppColors.toolbarHeight,
+      padding: const EdgeInsets.only(left: 4, right: 8),
+      decoration: const BoxDecoration(
+        color: AppColors.bgSurface,
+        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: Row(
+        children: [
+          const Expanded(child: PageSwitcherBar()),
+          const SizedBox(width: 8),
+          Text(
+            '100%',
+            style: AppText.monoSmall.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(width: 8),
+          Container(width: 1, height: 16, color: AppColors.borderSubtle),
+          const SizedBox(width: 4),
+          SoftIconButton(
+            icon: Icons.touch_app_outlined,
+            tooltip: selectionMode
+                ? 'Matikan seleksi elemen'
+                : 'Pilih elemen di kanvas',
+            active: selectionMode,
+            size: 32,
+            iconSize: 16,
+            onPressed: () =>
+                ref.read(workspaceProvider.notifier).toggleSelectionMode(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kanvas: latar titik halus dan bingkai pratinjau di tengah.
+class _CanvasSurface extends StatelessWidget {
+  const _CanvasSurface({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.bgBase,
+      child: CustomPaint(
+        painter: const _DotGridPainter(),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: child,
+            ),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _DotGridPainter extends CustomPainter {
+  const _DotGridPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0xFFD5D8DC);
+    const gap = 16.0;
+    for (var x = 8.0; x < size.width; x += gap) {
+      for (var y = 8.0; y < size.height; y += gap) {
+        canvas.drawCircle(Offset(x, y), 1, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotGridPainter oldDelegate) => false;
+}
+
+/// Bingkai pratinjau: bilah browser + halaman.
+class _PreviewFrame extends ConsumerWidget {
+  const _PreviewFrame();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(workspaceProvider.select((s) => s.activePage));
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: AppRadius.xl,
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: AppColors.shadowSoft,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: const BoxDecoration(
+              color: AppColors.bgBase,
+              border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+            ),
+            child: Row(
+              children: [
+                for (var i = 0; i < 3; i++) ...[
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFD5D8DC),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                const SizedBox(width: 6),
+                Text(
+                  'centauri / ${page?.slug ?? 'kanvas'}',
+                  style: AppText.monoSmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Expanded(child: PagePreview()),
+        ],
       ),
     );
   }
@@ -485,12 +715,12 @@ class _AiStatusPill extends ConsumerWidget {
     if (!active) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+      padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
       decoration: BoxDecoration(
         color: AppColors.bgSurface,
         borderRadius: AppRadius.pill,
         border: Border.all(color: AppColors.borderSubtle),
-        boxShadow: AppColors.shadowRaised,
+        boxShadow: AppColors.shadowSoft,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -598,18 +828,48 @@ class _MobileShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.bgBase,
       appBar: AppBar(
-        toolbarHeight: 52,
-        title: Text(hasUi ? 'Prototype' : 'Centauri'),
+        titleSpacing: 12,
+        title: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(
+                color: AppColors.textPrimary,
+                borderRadius: AppRadius.sm,
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                'C',
+                style: TextStyle(
+                  fontFamily: AppFonts.uiFamily,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                hasUi ? 'Prototype' : 'Centauri',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.panelTitle.copyWith(fontSize: 15),
+              ),
+            ),
+          ],
+        ),
         actions: [
           SoftIconButton(
-            icon: Icons.menu,
-            tooltip: 'Panel Chat dan Riwayat',
+            icon: Icons.view_sidebar_outlined,
+            tooltip: 'Panel chat dan riwayat',
             onPressed: () =>
                 _openSheet(context, const ChatSidePanel(), heightFactor: 0.75),
           ),
           SoftIconButton(
             icon: Icons.settings_outlined,
-            tooltip: 'Konfigurasi provider',
+            tooltip: 'Pengaturan layanan',
             onPressed: () => context.push(AppRoutes.providers),
           ),
           if (hasUi) ...[
@@ -621,37 +881,49 @@ class _MobileShell extends ConsumerWidget {
             ),
             const PageExportButton(compact: true),
           ],
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
         ],
       ),
       body: Column(
         children: [
           const StorageBanner(),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (hasUi) ...[
-                    const PageSwitcherBar(),
-                    const SizedBox(height: 8),
-                  ],
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        if (hasUi) const PagePreview() else const ChatLanding(),
-                        const Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: PromptBar(),
-                        ),
-                      ],
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (hasUi)
+                  Container(
+                    color: AppColors.bgSurface,
+                    child: const PageSwitcherBar(),
                   ),
-                ],
-              ),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      if (hasUi)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 92),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.bgSurface,
+                              borderRadius: AppRadius.md,
+                              border: Border.all(color: AppColors.borderSubtle),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: const PagePreview(),
+                          ),
+                        )
+                      else
+                        const ChatLanding(),
+                      const Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                        child: PromptBar(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],

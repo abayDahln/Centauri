@@ -44,7 +44,8 @@ class PageExportService {
       root.attributes['xmlns'] = 'http://www.w3.org/1999/xhtml';
       xhtml = root.outerHtml;
     } else {
-      xhtml = '<div xmlns="http://www.w3.org/1999/xhtml">'
+      xhtml =
+          '<div xmlns="http://www.w3.org/1999/xhtml">'
           '${document.body?.innerHtml ?? html}'
           '</div>';
     }
@@ -63,8 +64,9 @@ class PageExportService {
 
   static void _removeComments(dom.Element? root) {
     if (root == null) return;
-    final toRemove =
-        root.nodes.whereType<dom.Comment>().toList(growable: false);
+    final toRemove = root.nodes.whereType<dom.Comment>().toList(
+      growable: false,
+    );
     for (final comment in toRemove) {
       root.nodes.remove(comment);
     }
@@ -74,18 +76,35 @@ class PageExportService {
   }
 
   static const _voidElements = {
-    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-    'link', 'meta', 'param', 'source', 'track', 'wbr',
-    'circle', 'ellipse', 'line', 'path', 'polygon', 'polyline', 'rect', 'stop',
+    'area',
+    'base',
+    'br',
+    'col',
+    'embed',
+    'hr',
+    'img',
+    'input',
+    'link',
+    'meta',
+    'param',
+    'source',
+    'track',
+    'wbr',
+    'circle',
+    'ellipse',
+    'line',
+    'path',
+    'polygon',
+    'polyline',
+    'rect',
+    'stop',
     'use',
   };
 
   static String _openTagBody({bool stopBeforeClose = false}) {
     const dq = '"';
     const sq = "'";
-    final slash = stopBeforeClose
-        ? '|/(?![>$dq$sq])'
-        : '|/';
+    final slash = stopBeforeClose ? '|/(?![>$dq$sq])' : '|/';
     return '(?:'
         '$dq[^$dq]*$dq'
         '|$sq[^$sq]*$sq'
@@ -143,10 +162,7 @@ class PageExportService {
       final event = await future;
       final w = event.contentWidth ?? 0;
       final h = event.contentHeight ?? 0;
-      return (
-        width: w > 0 ? w : 1440.0,
-        height: h > 0 ? h : 2000.0,
-      );
+      return (width: w > 0 ? w : 1440.0, height: h > 0 ? h : 2000.0);
     } catch (_) {
       return (width: 1440.0, height: 2000.0);
     }
@@ -166,9 +182,8 @@ class PageExportService {
         .firstWhere((e) => e.type == 'png' || e.type == 'pngError')
         .timeout(
           const Duration(seconds: 20),
-          onTimeout: () => throw PageExportException(
-            'Ekspor PNG timeout. Coba lagi.',
-          ),
+          onTimeout: () =>
+              throw PageExportException('Ekspor PNG timeout. Coba lagi.'),
         );
     await service.requestFramePng(pixelRatio: 2);
 

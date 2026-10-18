@@ -96,7 +96,9 @@ void main() {
     });
 
     test('handles empty body without crashing', () {
-      final payload = buildDomTreePayload('<!DOCTYPE html><html><body></body></html>');
+      final payload = buildDomTreePayload(
+        '<!DOCTYPE html><html><body></body></html>',
+      );
       final root = DomNode.fromJson(payload['root'] as Map<String, dynamic>);
       expect(root.children, isEmpty);
     });

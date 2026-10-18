@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/widgets/stitch_widgets.dart';
 import '../data/mcp_bridge.dart';
 import '../data/mcp_server.dart';
 
@@ -27,9 +28,7 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
   Future<void> _start() async {
     setState(() => _starting = true);
     try {
-      await ref
-          .read(mcpServerProvider)
-          .start(bridge: McpBridge(ref.container));
+      await ref.read(mcpServerProvider).start(bridge: McpBridge(ref.container));
       if (mounted) setState(() {});
     } finally {
       if (mounted) setState(() => _starting = false);
@@ -75,22 +74,14 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
                 'MCP Server (Desktop)',
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
             ),
-            _StatusDot(running: running),
-            const SizedBox(width: 8),
-            Text(
-              running ? 'Berjalan' : 'Berhenti',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: running
-                    ? AppColors.statusSuccess
-                    : AppColors.textDisabled,
-              ),
+            StatusPill(
+              label: running ? 'Berjalan' : 'Berhenti',
+              color: running ? AppColors.statusSuccess : AppColors.textDisabled,
             ),
           ],
         ),
@@ -160,30 +151,12 @@ class _McpCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.bgSurface,
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        border: Border.all(color: AppColors.borderSubtle),
         borderRadius: AppRadius.md,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: children,
-      ),
-    );
-  }
-}
-
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.running});
-
-  final bool running;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 9,
-      height: 9,
-      decoration: BoxDecoration(
-        color: running ? AppColors.statusSuccess : AppColors.textDisabled,
-        shape: BoxShape.circle,
       ),
     );
   }
@@ -199,10 +172,7 @@ class _EndpointRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        SizedBox(
-          width: 84,
-          child: Text(label, style: AppText.caption),
-        ),
+        SizedBox(width: 84, child: Text(label, style: AppText.caption)),
         Expanded(
           child: Text(
             value,

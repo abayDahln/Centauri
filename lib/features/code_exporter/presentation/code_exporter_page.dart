@@ -15,7 +15,7 @@ class CodeExporterPage extends ConsumerWidget {
     final htmlSource = ref.watch(workspaceProvider).activePage?.html;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ekspor Kode')),
+      appBar: AppBar(title: const Text('Ekspor kode')),
       body: SafeArea(
         child: htmlSource == null
             ? const Center(

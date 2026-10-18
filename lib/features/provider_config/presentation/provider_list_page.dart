@@ -4,13 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
 import '../../../app/config/theme.dart';
+import '../../../app/widgets/stitch_widgets.dart';
 import '../../canvas_preview/presentation/widgets/skeleton.dart';
 import '../../mcp/presentation/mcp_status_section.dart';
 import '../domain/entities/api_provider.dart';
 import 'providers/provider_config_provider.dart';
 import 'widgets/delete_provider_dialog.dart';
 
-/// Layar daftar provider: list kartu provider tersimpan + aksi tambah/hapus.
+/// Layar daftar provider: satu panel daftar + aksi tambah/hapus.
 ///
 /// Merupakan pintu masuk ke layar tambah provider dan detail/edit provider.
 class ProviderListPage extends ConsumerWidget {
@@ -29,9 +30,17 @@ class ProviderListPage extends ConsumerWidget {
         // pertama (mis. setelah simpan yang mengganti lokasi), dan pengguna
         // tidak boleh terjebak tanpa jalan keluar.
         leading: BackButton(onPressed: () => _leave(context)),
+        actions: [
+          FilledButton.icon(
+            onPressed: () => context.push(AppRoutes.providerNew),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Tambah'),
+          ),
+          const SizedBox(width: 16),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 920),
@@ -41,23 +50,19 @@ class ProviderListPage extends ConsumerWidget {
                 const Text(
                   'Bring Your Own Key (BYOK)',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 24,
+                    height: 30 / 24,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 const Text(
                   'Semua data tersimpan dan terenkripsi di perangkat Anda.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    height: 1.5,
-                  ),
+                  style: AppText.uiSmall,
                 ),
-                const SizedBox(height: 20),
-                _buildActions(context),
-                const SizedBox(height: 20),
+                const SizedBox(height: 28),
                 _buildList(
                   context,
                   ref,
@@ -87,22 +92,6 @@ class ProviderListPage extends ConsumerWidget {
     }
   }
 
-  Widget _buildActions(BuildContext context) {
-    return Row(
-      children: [
-        const Spacer(),
-        ElevatedButton.icon(
-          onPressed: () => context.push(AppRoutes.providerNew),
-          icon: const Icon(Icons.add, size: 16),
-          label: const Text(
-            'Tambah Provider',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildList(
     BuildContext context,
     WidgetRef ref,
@@ -123,7 +112,9 @@ class ProviderListPage extends ConsumerWidget {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.statusError),
+          border: Border.all(
+            color: AppColors.statusError.withValues(alpha: 0.32),
+          ),
           borderRadius: AppRadius.md,
         ),
         child: Row(
@@ -137,12 +128,12 @@ class ProviderListPage extends ConsumerWidget {
             const Expanded(
               child: Text(
                 'Gagal memuat daftar provider.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: AppText.uiSmall,
               ),
             ),
             TextButton(
               onPressed: () => ref.refresh(providerConfigProvider.future),
-              child: const Text('Coba lagi', style: TextStyle(fontSize: 12)),
+              child: const Text('Coba lagi'),
             ),
           ],
         ),
@@ -152,191 +143,62 @@ class ProviderListPage extends ConsumerWidget {
     if (providers.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 40),
+        padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.borderSubtle),
           borderRadius: AppRadius.md,
+          color: AppColors.bgSurface,
         ),
-        child: const Column(
+        child: Column(
           children: [
-            Text(
-              'Belum ada provider',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            const Icon(
+              Icons.key_outlined,
+              size: 24,
+              color: AppColors.textDisabled,
             ),
-            SizedBox(height: 4),
-            Text(
+            const SizedBox(height: 12),
+            Text('Belum ada provider', style: AppText.panelTitle),
+            const SizedBox(height: 4),
+            const Text(
               'Tambahkan provider untuk mulai menggunakan Centauri.',
-              style: TextStyle(color: AppColors.textDisabled, fontSize: 11),
+              style: AppText.caption,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () => context.push(AppRoutes.providerNew),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Tambah provider'),
             ),
           ],
         ),
       );
     }
 
-    // List kartu vertikal (bukan tabel) agar teks panjang seperti Base URL
-    // dan nama model tampil penuh tanpa terpotong.
-    return Column(
-      children: [
-        for (var i = 0; i < providers.length; i++) ...[
-          if (i > 0) const SizedBox(height: 12),
-          _providerCard(
-            context,
-            ref,
-            providers[i],
-            providers[i].id == activeProviderId,
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _providerCard(
-    BuildContext context,
-    WidgetRef ref,
-    ApiProvider provider,
-    bool isActive,
-  ) {
-    return InkWell(
-      onTap: () => context.push(AppRoutes.providerDetail(provider.id)),
-      borderRadius: AppRadius.md,
-      hoverColor: AppColors.hoverBg,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.bgSurface,
-          border: Border.all(
-            color: isActive ? AppColors.accentPrimary : AppColors.borderSubtle,
-            width: isActive ? 1.5 : 1,
-          ),
-          borderRadius: AppRadius.md,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        provider.name,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      if (provider.baseUrl.trim().isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          provider.baseUrl,
-                          style: const TextStyle(
-                            fontFamily: AppFonts.monoFamily,
-                            fontFamilyFallback: AppFonts.monoFallback,
-                            fontSize: 11,
-                            height: 1.5,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _actionsCell(context, ref, provider, isActive),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                // Nama provider (template/brand) & model sebagai info pendukung;
-                // judul kartu memakai Nama entri.
-                if (provider.providerName.trim().isNotEmpty)
-                  _chip(provider.providerName, AppColors.textSecondary),
-                if (provider.model.trim().isNotEmpty)
-                  _chip(provider.model, AppColors.textSecondary),
-              ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < providers.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: AppColors.borderSubtle),
+            _ProviderRow(
+              provider: providers[i],
+              isActive: providers[i].id == activeProviderId,
+              onOpen: () =>
+                  context.push(AppRoutes.providerDetail(providers[i].id)),
+              onActivate: () => ref
+                  .read(providerConfigProvider.notifier)
+                  .setActiveProvider(providers[i].id),
+              onDelete: () => _delete(context, ref, providers[i]),
             ),
           ],
-        ),
+        ],
       ),
-    );
-  }
-
-  Widget _chip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        border: Border.all(color: color),
-        borderRadius: AppRadius.sm,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: AppFonts.monoFamily,
-          fontFamilyFallback: AppFonts.monoFallback,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  Widget _actionsCell(
-    BuildContext context,
-    WidgetRef ref,
-    ApiProvider provider,
-    bool isActive,
-  ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        if (isActive)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6),
-            child: Text(
-              'AKTIF',
-              style: TextStyle(
-                fontFamily: AppFonts.monoFamily,
-                fontFamilyFallback: AppFonts.monoFallback,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.accentPrimary,
-              ),
-            ),
-          )
-        else
-          IconButton(
-            tooltip: 'Jadikan aktif',
-            icon: const Icon(Icons.check_circle_outline, size: 18),
-            color: AppColors.textSecondary,
-            splashRadius: 18,
-            onPressed: () => ref
-                .read(providerConfigProvider.notifier)
-                .setActiveProvider(provider.id),
-          ),
-        IconButton(
-          tooltip: 'Ubah',
-          icon: const Icon(Icons.edit_outlined, size: 18),
-          color: AppColors.textSecondary,
-          splashRadius: 18,
-          onPressed: () => context.push(AppRoutes.providerDetail(provider.id)),
-        ),
-        IconButton(
-          tooltip: 'Hapus',
-          icon: const Icon(Icons.delete_outline, size: 18),
-          color: AppColors.textSecondary,
-          splashRadius: 18,
-          onPressed: () => _delete(context, ref, provider),
-        ),
-      ],
     );
   }
 
@@ -351,15 +213,120 @@ class ProviderListPage extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Provider dihapus.',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+      ..showSnackBar(const SnackBar(content: Text('Provider dihapus.')));
+  }
+}
+
+/// Satu baris provider: identitas di kiri, status dan aksi di kanan.
+class _ProviderRow extends StatefulWidget {
+  const _ProviderRow({
+    required this.provider,
+    required this.isActive,
+    required this.onOpen,
+    required this.onActivate,
+    required this.onDelete,
+  });
+
+  final ApiProvider provider;
+  final bool isActive;
+  final VoidCallback onOpen;
+  final VoidCallback onActivate;
+  final VoidCallback onDelete;
+
+  @override
+  State<_ProviderRow> createState() => _ProviderRowState();
+}
+
+class _ProviderRowState extends State<_ProviderRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = widget.provider;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onOpen,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: _hovered ? AppColors.hoverBg : AppColors.bgSurface,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            provider.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.ui.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (provider.providerName.trim().isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            provider.providerName,
+                            style: AppText.monoSmall.copyWith(
+                              color: AppColors.textDisabled,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (provider.baseUrl.trim().isNotEmpty ||
+                        provider.model.trim().isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        [
+                          provider.baseUrl.trim(),
+                          provider.model.trim(),
+                        ].where((v) => v.isNotEmpty).join('  ·  '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.monoSmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (widget.isActive)
+                const StatusPill(label: 'Aktif')
+              else
+                TextButton(
+                  onPressed: widget.onActivate,
+                  child: const Text('Jadikan aktif'),
+                ),
+              const SizedBox(width: 4),
+              SoftIconButton(
+                icon: Icons.edit_outlined,
+                tooltip: 'Ubah',
+                size: 32,
+                iconSize: 16,
+                onPressed: widget.onOpen,
+              ),
+              SoftIconButton(
+                icon: Icons.delete_outline,
+                tooltip: 'Hapus',
+                size: 32,
+                iconSize: 16,
+                onPressed: widget.onDelete,
+              ),
+            ],
           ),
-          backgroundColor: AppColors.bgElevated,
-          behavior: SnackBarBehavior.floating,
         ),
-      );
+      ),
+    );
   }
 }

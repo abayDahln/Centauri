@@ -12,7 +12,11 @@ void main() {
       id: 'p1',
       title: 'Landing Page',
       messages: const [
-        ProjectMessage(role: 'user', text: 'buatkan landing page', kind: 'chat'),
+        ProjectMessage(
+          role: 'user',
+          text: 'buatkan landing page',
+          kind: 'chat',
+        ),
         ProjectMessage(role: 'assistant', text: '<!DOCTYPE html>', kind: 'ui'),
       ],
       pages: const [

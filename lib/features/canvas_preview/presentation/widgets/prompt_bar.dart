@@ -198,20 +198,21 @@ class _PromptBarState extends ConsumerState<PromptBar> {
               onDragExited: (_) => setState(() => _dragging = false),
               onDragDone: _onDrop,
               child: Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 decoration: BoxDecoration(
                   color: AppColors.bgSurface,
-                  borderRadius: AppRadius.xl,
+                  borderRadius: AppRadius.md,
                   border: Border.all(
                     color: _dragging
                         ? AppColors.accentPrimary
                         : AppColors.borderSubtle,
-                    width: _dragging ? 1.6 : 1,
+                    width: _dragging ? 1.4 : 1,
                   ),
-                  boxShadow: AppColors.shadowRaised,
+                  boxShadow: AppColors.shadowSoft,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (state.mentions.isNotEmpty) ...[
                       _MentionStrip(
@@ -251,7 +252,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                           // selalu di tengah vertikal (single-line). Saat
                           // multiline, kontainer ikut tumbuh ke atas.
                           child: Container(
-                            constraints: const BoxConstraints(minHeight: 40),
+                            constraints: const BoxConstraints(minHeight: 36),
                             alignment: Alignment.centerLeft,
                             child: Focus(
                               onKeyEvent: (node, event) {
@@ -284,7 +285,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                                 style: const TextStyle(
                                   fontFamily: AppFonts.uiFamily,
                                   fontFamilyFallback: AppFonts.uiFallback,
-                                  fontSize: 13.5,
+                                  fontSize: 14,
                                   color: AppColors.textPrimary,
                                 ),
                                 decoration: const InputDecoration(
@@ -292,11 +293,11 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                   filled: false,
-                                  hintText: 'Apa yang ingin dibuat?',
+                                  hintText: 'Tulis pesan…',
                                   hintStyle: TextStyle(
                                     fontFamily: AppFonts.uiFamily,
                                     fontFamilyFallback: AppFonts.uiFallback,
-                                    fontSize: 13.5,
+                                    fontSize: 14,
                                     color: AppColors.textDisabled,
                                   ),
                                   contentPadding: EdgeInsets.symmetric(
@@ -338,14 +339,14 @@ class _AttachButton extends StatelessWidget {
       message: 'Lampirkan berkas',
       child: InkWell(
         onTap: onPressed,
-        borderRadius: AppRadius.pill,
+        borderRadius: AppRadius.sm,
         child: Container(
-          width: 40,
-          height: 40,
+          width: 36,
+          height: 36,
           alignment: Alignment.center,
           child: const Icon(
             Icons.add_photo_alternate_outlined,
-            size: 20,
+            size: 18,
             color: AppColors.textSecondary,
           ),
         ),
@@ -373,29 +374,29 @@ class _SendButton extends StatelessWidget {
       return Tooltip(
         message: 'Hentikan proses',
         child: SizedBox(
-          width: 40,
-          height: 40,
+          width: 36,
+          height: 36,
           child: FilledButton(
             onPressed: onStop,
             style: FilledButton.styleFrom(
               padding: EdgeInsets.zero,
-              shape: const CircleBorder(),
+              shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
               backgroundColor: AppColors.statusError,
             ),
-            child: const Icon(Icons.stop_rounded, size: 20),
+            child: const Icon(Icons.stop_rounded, size: 18),
           ),
         ),
       );
     }
 
     return SizedBox(
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
           padding: EdgeInsets.zero,
-          shape: const CircleBorder(),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
           backgroundColor: AppColors.accentPrimary,
         ),
         child: const Icon(Icons.arrow_upward, size: 18),
@@ -541,12 +542,12 @@ class _MentionButton extends StatelessWidget {
           ],
         ],
         child: Container(
-          width: 40,
-          height: 40,
+          width: 36,
+          height: 36,
           alignment: Alignment.center,
           child: Icon(
             Icons.alternate_email,
-            size: 20,
+            size: 18,
             color: pages.isEmpty
                 ? AppColors.textDisabled
                 : AppColors.textSecondary,

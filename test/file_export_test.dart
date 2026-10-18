@@ -130,7 +130,8 @@ void main() {
 
     test('emits well-formed XML for messy HTML5 input', () {
       final svg = service.buildStandaloneSvg(
-        html: '<!DOCTYPE html>'
+        html:
+            '<!DOCTYPE html>'
             '<HTML><HEAD><meta charset=utf-8>'
             '<style>.a{content:">"}</style></HEAD><BODY>'
             '<!-- comment with <weird> & chars -->'
@@ -152,11 +153,7 @@ void main() {
     });
 
     test('falls back to default size for invalid dimensions', () {
-      final svg = service.buildStandaloneSvg(
-        html: 'x',
-        width: 0,
-        height: -5,
-      );
+      final svg = service.buildStandaloneSvg(html: 'x', width: 0, height: -5);
       expect(svg, contains('width="1440"'));
       expect(svg, contains('height="2000"'));
     });

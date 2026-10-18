@@ -11,11 +11,11 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
     showDialog(
       context: context,
       builder: (dialogContext) => Dialog(
-        backgroundColor: AppColors.bgBase,
+        backgroundColor: AppColors.bgSurface,
         insetPadding: const EdgeInsets.all(48),
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.md,
-          side: const BorderSide(color: AppColors.borderSubtle),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.xl,
+          side: BorderSide(color: AppColors.borderSubtle),
         ),
         child: SizedBox(
           width: 760,
@@ -30,10 +30,10 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.bgBase,
+    backgroundColor: AppColors.bgSurface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(3)),
-      side: BorderSide(color: AppColors.borderStrong),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+      side: BorderSide(color: AppColors.borderSubtle),
     ),
     builder: (_) =>
         SizedBox(height: 640, child: CodeExportView(htmlSource: htmlSource)),

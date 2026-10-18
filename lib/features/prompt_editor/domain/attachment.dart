@@ -78,8 +78,7 @@ class AttachmentFormats {
     ...textByExtension.keys,
   };
 
-  static String get acceptLabel =>
-      allExtensions.map((e) => '.$e').join(', ');
+  static String get acceptLabel => allExtensions.map((e) => '.$e').join(', ');
 
   /// Tentukan MIME + apakah teks dari ekstensi file. Null bila tidak didukung.
   static ({String mime, bool isText})? resolve(String fileName) {

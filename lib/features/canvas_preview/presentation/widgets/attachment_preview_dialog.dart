@@ -13,9 +13,8 @@ Future<void> showAttachmentPreview(
   return showDialog<void>(
     context: context,
     barrierColor: const Color(0xCC000000),
-    builder: (dialogContext) => _AttachmentPreviewDialog(
-      attachment: attachment,
-    ),
+    builder: (dialogContext) =>
+        _AttachmentPreviewDialog(attachment: attachment),
   );
 }
 
@@ -31,7 +30,10 @@ class _AttachmentPreviewDialog extends StatelessWidget {
       backgroundColor: AppColors.bgSurface,
       insetPadding: const EdgeInsets.all(40),
       clipBehavior: Clip.antiAlias,
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.lg),
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppRadius.xl,
+        side: BorderSide(color: AppColors.borderSubtle),
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
         child: Column(

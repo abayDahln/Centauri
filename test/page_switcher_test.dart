@@ -18,18 +18,8 @@ class _PresetWorkspaceNotifier extends WorkspaceNotifier {
 void main() {
   testWidgets('highlight tab mengikuti page aktif seketika', (tester) async {
     const pages = [
-      AppPage(
-        id: 'page_1',
-        name: 'Home',
-        slug: 'home.html',
-        html: 'h',
-      ),
-      AppPage(
-        id: 'page_2',
-        name: 'Login',
-        slug: 'login.html',
-        html: 'l',
-      ),
+      AppPage(id: 'page_1', name: 'Home', slug: 'home.html', html: 'h'),
+      AppPage(id: 'page_2', name: 'Login', slug: 'login.html', html: 'l'),
     ];
     _preset = const WorkspaceState(pages: pages, activePageId: 'page_1');
     final container = ProviderContainer(
@@ -40,37 +30,36 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(
-          home: Scaffold(body: PageSwitcherBar()),
-        ),
+        child: const MaterialApp(home: Scaffold(body: PageSwitcherBar())),
       ),
     );
     await tester.pump();
 
-    Color tabFill(String label) {
-      final fill = tester.widget<Container>(
-        find.ancestor(
-          of: find.text(label),
-          matching: find.byType(Container),
-        ).first,
+    Color tabUnderline(String label) {
+      final box = tester.widget<Container>(
+        find
+            .ancestor(of: find.text(label), matching: find.byType(Container))
+            .first,
       );
-      return (fill.decoration as BoxDecoration).color!;
+      final border = (box.decoration as BoxDecoration).border! as Border;
+      return border.bottom.color;
     }
 
-    expect(tabFill('Home'), AppColors.accentSoft);
-    expect(tabFill('Login'), isNot(AppColors.accentSoft));
+    expect(tabUnderline('Home'), AppColors.accentPrimary);
+    expect(tabUnderline('Login'), Colors.transparent);
 
     // Pindah halaman via state (mis. dari navigasi link HTML) — tab harus
     // ikut berganti highlight TANPA render ulang apapun di sisi tab.
     container.read(workspaceProvider.notifier).setActivePage('page_2');
     await tester.pump();
 
-    expect(tabFill('Login'), AppColors.accentSoft);
-    expect(tabFill('Home'), isNot(AppColors.accentSoft));
+    expect(tabUnderline('Login'), AppColors.accentPrimary);
+    expect(tabUnderline('Home'), Colors.transparent);
   });
 
-  testWidgets('tab aktif di luar layar men-scroll ke posisi terlihat',
-      (tester) async {
+  testWidgets('tab aktif di luar layar men-scroll ke posisi terlihat', (
+    tester,
+  ) async {
     final pages = [
       for (var i = 1; i <= 12; i++)
         AppPage(
@@ -90,12 +79,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: const MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 240,
-              child: PageSwitcherBar(),
-            ),
-          ),
+          home: Scaffold(body: SizedBox(width: 240, child: PageSwitcherBar())),
         ),
       ),
     );

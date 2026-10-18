@@ -23,14 +23,14 @@ class MarkdownMessage extends StatelessWidget {
       p: TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
-        fontSize: 13.5,
-        height: 1.6,
+        fontSize: 14,
+        height: 1.55,
         color: baseColor,
       ),
       strong: TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
-        fontSize: 13.5,
+        fontSize: 14,
         fontWeight: FontWeight.w700,
         color: baseColor,
       ),
@@ -67,8 +67,8 @@ class MarkdownMessage extends StatelessWidget {
       listBullet: TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
-        fontSize: 13.5,
-        height: 1.6,
+        fontSize: 14,
+        height: 1.55,
         color: baseColor,
       ),
       code: TextStyle(
@@ -94,7 +94,7 @@ class MarkdownMessage extends StatelessWidget {
       a: const TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
-        fontSize: 13.5,
+        fontSize: 14,
         color: AppColors.link,
         decoration: TextDecoration.underline,
         decorationColor: AppColors.link,

@@ -411,7 +411,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(editing ? 'Edit Provider' : 'Tambah Provider'),
+        title: Text(editing ? 'Ubah provider' : 'Tambah provider'),
         actions: [
           if (editing)
             IconButton(
@@ -419,10 +419,11 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
               icon: const Icon(Icons.delete_outline, size: 18),
               onPressed: _confirmDelete,
             ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
@@ -435,12 +436,11 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   Widget _buildCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColors.bgSurface,
         border: Border.all(color: AppColors.borderSubtle),
-        borderRadius: AppRadius.lg,
-        boxShadow: AppColors.shadowSoft,
+        borderRadius: AppRadius.md,
       ),
       child: Form(
         key: _formKey,
@@ -508,7 +508,6 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
               trailing: OutlinedButton(
                 key: const ValueKey('button-test'),
                 onPressed: _isTesting ? null : _testConnection,
-                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
                 child: _isTesting
                     ? const SizedBox(
                         height: 16,

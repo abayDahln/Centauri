@@ -83,8 +83,8 @@ class PickerField extends StatelessWidget {
       onTap: enabled ? onTap : null,
       borderRadius: AppRadius.md,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 44),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: const BoxConstraints(minHeight: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: enabled ? AppColors.inputBg : AppColors.bgSunken,
           border: Border.all(color: AppColors.borderStrong),

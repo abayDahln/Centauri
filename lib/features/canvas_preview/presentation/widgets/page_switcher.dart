@@ -65,30 +65,25 @@ class _PageSwitcherBarState extends ConsumerState<PageSwitcherBar> {
     _tabKeys.removeWhere((id, _) => pages.every((p) => p.id != id));
 
     return SizedBox(
-      height: 38,
+      height: AppColors.toolbarHeight,
       child: SingleChildScrollView(
         controller: _controller,
         scrollDirection: Axis.horizontal,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Row(
-            children: [
-              for (final page in pages) ...[
-                KeyedSubtree(
-                  key: _tabKeys.putIfAbsent(page.id, GlobalKey.new),
-                  child: _PageTab(
-                    page: page,
-                    active: page.id == activeId,
-                    onTap: () => ref
-                        .read(workspaceProvider.notifier)
-                        .setActivePage(page.id),
-                    onRename: () => _rename(context, ref, page),
-                  ),
+        child: Row(
+          children: [
+            for (final page in pages)
+              KeyedSubtree(
+                key: _tabKeys.putIfAbsent(page.id, GlobalKey.new),
+                child: _PageTab(
+                  page: page,
+                  active: page.id == activeId,
+                  onTap: () => ref
+                      .read(workspaceProvider.notifier)
+                      .setActivePage(page.id),
+                  onRename: () => _rename(context, ref, page),
                 ),
-                const SizedBox(width: 6),
-              ],
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -148,46 +143,29 @@ class _PageTab extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         onDoubleTap: onRename,
-        borderRadius: AppRadius.pill,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          height: AppColors.toolbarHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: active ? AppColors.accentSoft : AppColors.bgSurface,
-            borderRadius: AppRadius.pill,
-            border: Border.all(
-              color: active ? AppColors.accentPrimary : AppColors.borderSubtle,
+            border: Border(
+              bottom: BorderSide(
+                color: active ? AppColors.accentPrimary : Colors.transparent,
+                width: 2,
+              ),
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.description_outlined,
-                size: 13,
-                color: active
-                    ? AppColors.accentPrimary
-                    : AppColors.textSecondary,
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 180),
+            child: Text(
+              page.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.button.copyWith(
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                color: active ? AppColors.textPrimary : AppColors.textSecondary,
               ),
-              const SizedBox(width: 6),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 160),
-                child: Text(
-                  page.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppFonts.uiFamily,
-                    fontFamilyFallback: AppFonts.uiFallback,
-                    fontSize: 12.5,
-                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                    color: active
-                        ? AppColors.accentPrimary
-                        : AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-            ],
+            ),
           ),
         ),
       ),

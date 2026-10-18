@@ -16,20 +16,48 @@ class CodeExportView extends StatefulWidget {
   State<CodeExportView> createState() => _CodeExportViewState();
 }
 
+/// Hasil konversi satu format: berisi kode, atau pesan gagal.
+class _CodeResult {
+  const _CodeResult._(this.code, this.error);
+
+  factory _CodeResult.code(String code) => _CodeResult._(code, null);
+
+  factory _CodeResult.error(String error) => _CodeResult._(null, error);
+
+  final String? code;
+  final String? error;
+
+  bool get hasError => error != null;
+}
+
 class _CodeExportViewState extends State<CodeExportView> {
   final CodeExportService _exportService = CodeExportService();
-  final Map<CodeFormat, String> _cache = {};
+  final Map<CodeFormat, _CodeResult> _cache = {};
 
   CodeFormat _format = CodeFormat.html;
   bool _isSaving = false;
 
-  String get _code => _cache.putIfAbsent(
-    _format,
-    () => transformCode(htmlSource: widget.htmlSource, format: _format),
-  );
+  /// Konversi di-cache per format, termasuk kegagalannya. Output Alpha bisa
+  /// berupa HTML yang tidak bisa diparse, jadi kegagalan tidak boleh
+  /// menjatuhkan layar.
+  _CodeResult _resultFor(CodeFormat format) => _cache.putIfAbsent(format, () {
+    try {
+      return _CodeResult.code(
+        transformCode(htmlSource: widget.htmlSource, format: format),
+      );
+    } on CodeTransformException catch (e) {
+      return _CodeResult.error(e.message);
+    } catch (_) {
+      return _CodeResult.error(
+        'Kode dari Alpha tidak bisa diubah ke ${format.label}.',
+      );
+    }
+  });
 
   Future<void> _copy() async {
-    await _exportService.copyToClipboard(_code);
+    final code = _resultFor(_format).code;
+    if (code == null) return;
+    await _exportService.copyToClipboard(code);
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -43,11 +71,13 @@ class _CodeExportViewState extends State<CodeExportView> {
   }
 
   Future<void> _save() async {
+    final code = _resultFor(_format).code;
+    if (code == null) return;
     setState(() => _isSaving = true);
     try {
       final path = await _exportService.saveToFile(
         fileName: 'centauri-ui.${_format.fileExtension}',
-        code: _code,
+        code: code,
       );
       if (!mounted) return;
       if (path != null) {
@@ -80,6 +110,9 @@ class _CodeExportViewState extends State<CodeExportView> {
 
   @override
   Widget build(BuildContext context) {
+    final result = _resultFor(_format);
+    final code = result.code;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -87,24 +120,18 @@ class _CodeExportViewState extends State<CodeExportView> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(
             children: [
-              const Text(
-                'Ekspor Kode',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              Text('Ekspor kode', style: AppText.panelTitle),
               const Spacer(),
-              Text(
-                '${_code.length} karakter',
-                style: const TextStyle(
-                  fontFamily: AppFonts.monoFamily,
-                  fontFamilyFallback: AppFonts.monoFallback,
-                  fontSize: 10,
-                  color: AppColors.textDisabled,
+              if (code != null)
+                Text(
+                  '${code.length} karakter',
+                  style: const TextStyle(
+                    fontFamily: AppFonts.monoFamily,
+                    fontFamilyFallback: AppFonts.monoFallback,
+                    fontSize: 10,
+                    color: AppColors.textDisabled,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -164,23 +191,30 @@ class _CodeExportViewState extends State<CodeExportView> {
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: AppColors.bgBase,
+              color: const Color(0xFF16181D),
               border: Border.all(color: AppColors.borderSubtle),
               borderRadius: AppRadius.sm,
             ),
             clipBehavior: Clip.antiAlias,
-            child: HighlightView(
-              _code,
-              language: _format.highlightLanguage,
-              theme: atomOneDarkTheme,
-              padding: const EdgeInsets.all(12),
-              textStyle: const TextStyle(
-                fontFamily: AppFonts.monoFamily,
-                fontFamilyFallback: AppFonts.monoFallback,
-                fontSize: 12,
-                height: 1.6,
-              ),
-            ),
+            child: code == null
+                ? _TransformError(
+                    message: result.error ?? 'Kode tidak bisa diubah.',
+                    onUseHtml: _format == CodeFormat.html
+                        ? null
+                        : () => setState(() => _format = CodeFormat.html),
+                  )
+                : HighlightView(
+                    code,
+                    language: _format.highlightLanguage,
+                    theme: atomOneDarkTheme,
+                    padding: const EdgeInsets.all(14),
+                    textStyle: const TextStyle(
+                      fontFamily: AppFonts.monoFamily,
+                      fontFamilyFallback: AppFonts.monoFallback,
+                      fontSize: 12,
+                      height: 1.6,
+                    ),
+                  ),
           ),
         ),
         Padding(
@@ -189,7 +223,7 @@ class _CodeExportViewState extends State<CodeExportView> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _copy,
+                  onPressed: code == null ? null : _copy,
                   icon: const Icon(Icons.copy_all_outlined, size: 15),
                   label: const Text('Salin', style: TextStyle(fontSize: 12)),
                 ),
@@ -197,7 +231,7 @@ class _CodeExportViewState extends State<CodeExportView> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _save,
+                  onPressed: code == null || _isSaving ? null : _save,
                   icon: _isSaving
                       ? const SizedBox(
                           height: 14,
@@ -235,5 +269,51 @@ class _CodeExportViewState extends State<CodeExportView> {
         return 'Konversi perkiraan. Butuh Tailwind v3.2+; isi tag <style> '
             'pindahkan ke file CSS. Periksa sebelum dipakai.';
     }
+  }
+}
+
+/// Keadaan gagal: HTML dari Alpha tidak bisa dikonversi ke format ini.
+class _TransformError extends StatelessWidget {
+  const _TransformError({required this.message, this.onUseHtml});
+
+  final String message;
+  final VoidCallback? onUseHtml;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.report_gmailerrorred_outlined,
+              size: 22,
+              color: AppColors.statusError,
+            ),
+            const SizedBox(height: 10),
+            const Text('Kode tidak bisa diubah', style: AppText.panelTitle),
+            const SizedBox(height: 4),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            if (onUseHtml != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: onUseHtml,
+                child: const Text('Pakai HTML', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
