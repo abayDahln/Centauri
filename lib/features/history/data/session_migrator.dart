@@ -31,7 +31,7 @@ class SessionMigrator {
         );
         final dir = _sessions.folderFor(legacy.id);
         final manifest = File(
-          '${dir.path}${Platform.pathSeparator}${kSessionManifestName}',
+          '${dir.path}${Platform.pathSeparator}$kSessionManifestName',
         );
         if (manifest.existsSync()) continue; // folder sudah baru: copy-only.
         _sessions.save(legacy);
