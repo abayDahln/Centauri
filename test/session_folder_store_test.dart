@@ -166,4 +166,122 @@ void main() {
       expect(safe, contains(endsWith('.html')));
     });
   });
+
+  group('load', () {
+    /// Save proyek standar (2 halaman) lalu kembalikan hasil `loadAll`.
+    List<Project> savedAndLoaded() {
+      final saved = Project(
+        id: 'sess-1',
+        title: 'Toko Online',
+        messages: [
+          const ProjectMessage(
+            role: 'user',
+            text: 'Buat prototype toko',
+            kind: 'chat',
+          ),
+        ],
+        pages: const [
+          ProjectPage(
+            id: 'page_1',
+            name: 'Home',
+            slug: 'home.html',
+            html: '<html><body>beranda</body></html>',
+          ),
+          ProjectPage(
+            id: 'page_2',
+            name: 'Cart',
+            slug: 'cart.html',
+            html: '<html><body>keranjang</body></html>',
+          ),
+        ],
+        activePageId: 'page_2',
+        createdAt: DateTime(2026, 10, 18, 9),
+        updatedAt: DateTime(2026, 10, 18, 10),
+      );
+      store.save(saved);
+      return store.loadAll();
+    }
+
+    test('roundtrip: metadata, pesan, dan HTML per halaman sama', () {
+      final loaded = savedAndLoaded();
+      expect(loaded, hasLength(1));
+      final p = loaded.single;
+      expect(p.id, 'sess-1');
+      expect(p.title, 'Toko Online');
+      expect(p.activePageId, 'page_2');
+      expect(p.messages.single.text, 'Buat prototype toko');
+      expect(p.pages, hasLength(2));
+      expect(p.pages[0].slug, 'home.html');
+      expect(p.pages[0].html, contains('beranda'));
+      expect(p.pages[1].slug, 'cart.html');
+      expect(p.pages[1].html, contains('keranjang'));
+    });
+
+    test('load: proyek ada -> Project; tidak ada -> null', () {
+      savedAndLoaded();
+      expect(store.load('sess-1')?.id, 'sess-1');
+      expect(store.load('nope'), isNull);
+    });
+
+    test('folder tanpa manifest.json dilewati tanpa melempar', () {
+      savedAndLoaded();
+      // Folder sesi lain "rusak"/kosong: tanpa manifest.
+      Directory(
+        '${temp.path}${Platform.pathSeparator}broken'
+        '${Platform.pathSeparator}',
+      ).createSync(recursive: true);
+
+      final loaded = store.loadAll();
+      expect(loaded, hasLength(1));
+      expect(loaded.single.id, 'sess-1');
+    });
+
+    test(
+      'manifest menyebut file hilang -> halaman terbaca dengan html kosong',
+      () {
+        savedAndLoaded();
+        // User menghapus satu file HTML langsung di disk.
+        File(
+          '${store.folderFor('sess-1').path}'
+          '${Platform.pathSeparator}cart.html',
+        ).deleteSync();
+
+        final p = store.load('sess-1')!;
+        expect(p.pages[1].slug, 'cart.html');
+        expect(p.pages[1].html, isEmpty);
+      },
+    );
+
+    test('loadAll urut updatedAt terbaru dulu', () {
+      store.save(
+        Project(
+          id: 'old',
+          title: 'Lama',
+          messages: const [],
+          pages: const [
+            ProjectPage(id: 'page_1', name: 'A', slug: 'a.html', html: 'a'),
+          ],
+          activePageId: 'page_1',
+          createdAt: DateTime(2026, 10, 1),
+          updatedAt: DateTime(2026, 10, 1),
+        ),
+      );
+      store.save(
+        Project(
+          id: 'new',
+          title: 'Baru',
+          messages: const [],
+          pages: const [
+            ProjectPage(id: 'page_1', name: 'B', slug: 'b.html', html: 'b'),
+          ],
+          activePageId: 'page_1',
+          createdAt: DateTime(2026, 10, 1),
+          updatedAt: DateTime(2026, 10, 18),
+        ),
+      );
+
+      final ids = store.loadAll().map((p) => p.id).toList();
+      expect(ids, ['new', 'old']);
+    });
+  });
 }

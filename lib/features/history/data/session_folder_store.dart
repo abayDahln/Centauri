@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
+import '../../canvas_preview/domain/page_slug.dart';
 import '../domain/project.dart';
 
 /// Versi skema manifest sesi. v1: proyek tersimpan sebagai folder.
@@ -72,6 +75,86 @@ class SessionFolderStore {
       File(_join(dir.path, pageMeta[i]['file']!))
           .writeAsStringSync(project.pages[i].html, flush: true);
     }
+  }
+
+  /// Muat satu sesi; `null` bila folder tidak ada atau manifest rusak.
+  Project? load(String id) {
+    final dir = folderFor(id);
+    final manifestFile = File(_join(dir.path, kSessionManifestName));
+    if (!manifestFile.existsSync()) return null;
+    try {
+      final json = jsonDecode(manifestFile.readAsStringSync());
+      if (json is! Map<String, dynamic>) return null;
+      return _projectFromManifest(json, dir);
+    } catch (e) {
+      // Folder rusak bukan alasan untuk menggagalkan seluruh daftar riwayat.
+      debugPrint('[sessions] manifest rusak di ${dir.path}: $e');
+      return null;
+    }
+  }
+
+  /// Muat semua sesi dari root, urut `updatedAt` terbaru dulu. Folder tanpa
+  /// berkas `manifest.json` (.tmp, sampah manual) dilewati diam-diam.
+  List<Project> loadAll() {
+    if (!root.existsSync()) return const [];
+    final projects = <Project>[];
+    for (final entry in root.listSync()) {
+      if (entry is! Directory) continue;
+      final project = load(_nameOf(entry.path));
+      if (project != null) projects.add(project);
+    }
+    projects.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return projects;
+  }
+
+  /// Bangun [Project] dari manifest: HTML halaman DIBACA dari file (sumber
+  /// kebenaran), manifest hanya metadata. File yang hilang → html kosong;
+  /// halaman tetap muncul agar pengguna bisa memintanya dibuat ulang.
+  static Project _projectFromManifest(
+    Map<String, dynamic> json,
+    Directory dir,
+  ) {
+    final pagesJson = (json['pages'] as List<dynamic>? ?? const []);
+    final pages = <ProjectPage>[];
+    for (final raw in pagesJson) {
+      final meta = raw as Map<String, dynamic>;
+      final file = meta['file'] as String? ?? '';
+      final htmlFile = file.isEmpty ? null : File(_join(dir.path, file));
+      pages.add(
+        ProjectPage(
+          id: meta['id'] as String? ?? 'page',
+          name: meta['name'] as String? ?? 'Untitled',
+          slug:
+              meta['slug'] as String? ??
+              slugify(meta['name'] as String? ?? 'page'),
+          html: htmlFile != null && htmlFile.existsSync()
+              ? htmlFile.readAsStringSync()
+              : '',
+        ),
+      );
+    }
+    final messages = (json['messages'] as List<dynamic>? ?? const [])
+        .map((m) => ProjectMessage.fromJson(m as Map<String, dynamic>))
+        .toList();
+    return Project(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? 'Percakapan baru',
+      messages: messages,
+      pages: pages,
+      activePageId: json['activePageId'] as String?,
+      createdAt:
+          DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
+          DateTime.now(),
+    );
+  }
+
+  /// Segmen nama terakhir dari sebuah path.
+  static String _nameOf(String path) {
+    final parts = path.split(Platform.pathSeparator);
+    return parts.isEmpty ? path : parts.last;
   }
 
   /// Sanitasi nama file untuk Windows: buang karakter dilarang, beri awalan
