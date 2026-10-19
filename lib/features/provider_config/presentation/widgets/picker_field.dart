@@ -85,9 +85,12 @@ class PickerField extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(minHeight: 40),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        // Border dan isian mengikuti TextFormField: aktif putih, nonaktif
+        // tenggelam. Garisnya sama tipis supaya field pilihan dan field teks
+        // terbaca sebagai satu keluarga kontrol.
         decoration: BoxDecoration(
           color: enabled ? AppColors.inputBg : AppColors.bgSunken,
-          border: Border.all(color: AppColors.borderStrong),
+          border: Border.all(color: AppColors.borderSubtle),
           borderRadius: AppRadius.md,
         ),
         child: Row(

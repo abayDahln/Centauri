@@ -517,7 +517,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                           color: AppColors.accentPrimary,
                         ),
                       )
-                    : const Text('Test', style: TextStyle(fontSize: 13)),
+                    : const Text('Test'),
               ),
             ),
             const SizedBox(height: 24),
@@ -543,8 +543,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             fontFamilyFallback: AppFonts.monoFallback,
             fontSize: 13,
           ),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'https://api.openai.com/v1',
+            // Nonaktif = tenggelam, sama seperti field pilihan yang terkunci.
+            fillColor: _isCustom ? AppColors.inputBg : AppColors.bgSunken,
           ),
           validator: (value) {
             final text = value?.trim() ?? '';
@@ -610,6 +612,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                   ),
                   decoration: InputDecoration(
                     hintText: _apiKeyLocked ? '••••••••' : 'sk-...',
+                    // Terkunci = tenggelam, sejalan dengan field nonaktif lain.
+                    fillColor: _apiKeyLocked
+                        ? AppColors.bgSunken
+                        : AppColors.inputBg,
                   ),
                 ),
               ),
@@ -618,7 +624,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                 OutlinedButton(
                   key: const ValueKey('button-reset-apiKey'),
                   onPressed: _resetApiKey,
-                  child: const Text('Reset', style: TextStyle(fontSize: 13)),
+                  child: const Text('Reset'),
                 ),
               ],
             ],
@@ -633,26 +639,23 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     );
   }
 
+  /// Aksi kartu: Batal dan Simpan berukuran isi, rata kanan — pola yang sama
+  /// dengan dialog aplikasi. Tombol mewarisi gaya dari tema (13 px, w600), jadi
+  /// tidak ada teks yang ditimpa per tombol.
   Widget _buildFormActions() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Expanded(
-          child: OutlinedButton(
-            key: const ValueKey('button-cancel'),
-            onPressed: _backToList,
-            child: const Text('Batal', style: TextStyle(fontSize: 13)),
-          ),
+        OutlinedButton(
+          key: const ValueKey('button-cancel'),
+          onPressed: _backToList,
+          child: const Text('Batal'),
         ),
         const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton(
-            key: const ValueKey('button-save'),
-            onPressed: _save,
-            child: const Text(
-              'Simpan',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
+        FilledButton(
+          key: const ValueKey('button-save'),
+          onPressed: _save,
+          child: const Text('Simpan'),
         ),
       ],
     );
