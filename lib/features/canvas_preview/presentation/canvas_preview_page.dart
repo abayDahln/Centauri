@@ -260,6 +260,7 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
   Widget build(BuildContext context) {
     final mode = ref.watch(workspaceProvider.select((s) => s.outputMode));
     final canvasVisible = ref.watch(canvasVisibleProvider);
+    final historyVisible = ref.watch(historyVisibleProvider);
     // Mode fokus chat: tanpa kanvas, panel chat selalu tampil.
     final showChat = ref.watch(panelVisibleProvider) || !canvasVisible;
     final hasUi = ref.watch(
@@ -283,22 +284,22 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
           _TopBar(
             workspaceActive: hasUi,
             canvasVisible: canvasVisible,
+            historyVisible: historyVisible,
             onToggleCanvas: () {
               final next = !canvasVisible;
               ref.read(canvasVisibleProvider.notifier).set(next);
               // Saat kanvas dibuka lagi, panel chat tetap terlihat.
               if (!next) ref.read(panelVisibleProvider.notifier).show();
             },
-            onTogglePrompt: () =>
-                ref.read(panelVisibleProvider.notifier).toggle(),
-            promptVisible: showChat,
+            onToggleHistory: () =>
+                ref.read(historyVisibleProvider.notifier).toggle(),
           ),
           const StorageBanner(),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _HistorySidebar(),
+                if (historyVisible) const _HistorySidebar(),
                 if (!canvasVisible)
                   // Mode fokus chat: kanvas dan panel kode ditutup.
                   const Expanded(child: _ChatOnlyPane())
@@ -407,21 +408,16 @@ class _ChatOnlyPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
+    return const ColoredBox(
       color: AppColors.bgSurface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: maxContentWidth),
-                child: const PromptChatPanel(),
-              ),
-            ),
-          ),
+          // Daftar pesan tetap selebar jendela supaya scrollbar menempel di
+          // tepi kanan; isi percakapan sendiri yang dibatasi [maxContentWidth].
+          Expanded(child: PromptChatPanel(contentMaxWidth: maxContentWidth)),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            padding: EdgeInsets.fromLTRB(24, 8, 24, 24),
             child: PromptBar(),
           ),
         ],
@@ -435,16 +431,16 @@ class _TopBar extends ConsumerWidget {
   const _TopBar({
     required this.workspaceActive,
     required this.canvasVisible,
+    required this.historyVisible,
     required this.onToggleCanvas,
-    required this.onTogglePrompt,
-    required this.promptVisible,
+    required this.onToggleHistory,
   });
 
   final bool workspaceActive;
   final bool canvasVisible;
+  final bool historyVisible;
   final VoidCallback onToggleCanvas;
-  final VoidCallback onTogglePrompt;
-  final bool promptVisible;
+  final VoidCallback onToggleHistory;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -470,19 +466,18 @@ class _TopBar extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // Kiri: panel, riwayat aksi, identitas proyek.
+          // Kiri: riwayat percakapan, pratinjau, riwayat aksi, identitas proyek.
           Expanded(
             child: Row(
               children: [
-                if (canvasVisible)
-                  SoftIconButton(
-                    icon: Icons.view_sidebar_outlined,
-                    tooltip: promptVisible
-                        ? 'Sembunyikan chat'
-                        : 'Tampilkan chat',
-                    active: promptVisible,
-                    onPressed: onTogglePrompt,
-                  ),
+                SoftIconButton(
+                  icon: Icons.view_sidebar_outlined,
+                  tooltip: historyVisible
+                      ? 'Sembunyikan riwayat'
+                      : 'Tampilkan riwayat',
+                  active: historyVisible,
+                  onPressed: onToggleHistory,
+                ),
                 SoftIconButton(
                   icon: canvasVisible
                       ? Icons.close_fullscreen_outlined

@@ -13,7 +13,12 @@ import 'package:hive/hive.dart';
 void main() {
   setUpAll(() async {
     final dir = Directory.systemTemp.createTempSync('centauri_prompt_test');
-    await LocalStorageService().init(path: dir.path);
+    // Root sesi ikut diisolasi: tanpa ini daftar riwayat membaca folder sesi
+    // pengguna sungguhan dan tesnya tidak deterministik.
+    await LocalStorageService().init(
+      path: dir.path,
+      sessionsPath: '${dir.path}${Platform.pathSeparator}sessions',
+    );
   });
 
   tearDownAll(() async {

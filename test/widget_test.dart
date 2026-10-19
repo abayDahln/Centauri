@@ -32,7 +32,7 @@ void main() {
     addTearDown(tester.view.reset);
   });
 
-  testWidgets('Top bar keeps panel toggle on the left, settings right', (
+  testWidgets('Top bar keeps the history toggle on the left, settings right', (
     tester,
   ) async {
     tester.view
@@ -77,9 +77,10 @@ void main() {
     expect(find.byIcon(Icons.open_in_full_outlined), findsOneWidget);
     expect(find.text('Belum ada percakapan'), findsOneWidget);
     expect(find.text('Tulis pesan…'), findsOneWidget);
-    // Sidebar riwayat tetap ada, toggle panel chat disembunyikan.
+    // Sidebar riwayat tetap ada; tombol riwayat tetap di top bar walau kanvas
+    // sedang disembunyikan.
     expect(find.text('Chat baru'), findsOneWidget);
-    expect(find.byIcon(Icons.view_sidebar_outlined), findsNothing);
+    expect(find.byIcon(Icons.view_sidebar_outlined), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.open_in_full_outlined));
     await tester.pumpAndSettle();
@@ -108,7 +109,7 @@ void main() {
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });
 
-  testWidgets('History sits in the sidebar, chat panel has no tabs', (
+  testWidgets('Tombol sidebar menyembunyikan lalu menampilkan riwayat', (
     tester,
   ) async {
     tester.view
@@ -117,18 +118,18 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
     await tester.pump();
 
-    // Sidebar riwayat selalu tampil; panel chat masih tertutup.
+    // Riwayat tampil di sidebar kiri.
     expect(find.text('Chat baru'), findsOneWidget);
-    expect(find.text('Belum ada percakapan'), findsNothing);
     expect(find.text('Riwayat'), findsNothing);
 
-    // Klik tombol panel chat di bar atas.
+    // Sembunyikan riwayat.
     await tester.tap(find.byIcon(Icons.view_sidebar_outlined));
     await tester.pumpAndSettle();
+    expect(find.text('Chat baru'), findsNothing);
 
-    // Chat muncul tanpa tab; riwayat tetap di sidebar, bukan di panel.
-    expect(find.text('Belum ada percakapan'), findsOneWidget);
-    expect(find.text('Riwayat'), findsNothing);
+    // Tampilkan kembali.
+    await tester.tap(find.byIcon(Icons.view_sidebar_outlined));
+    await tester.pumpAndSettle();
     expect(find.text('Chat baru'), findsOneWidget);
 
     addTearDown(() async => tester.binding.setSurfaceSize(null));

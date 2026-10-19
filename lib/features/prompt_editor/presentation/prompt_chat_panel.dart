@@ -11,7 +11,13 @@ import '../../canvas_preview/presentation/widgets/markdown_message.dart';
 /// Panel riwayat percakapan (read-only). Hanya menampilkan pesan user dan AI.
 /// Input prompt ada di PromptBar (bawah tengah board).
 class PromptChatPanel extends ConsumerStatefulWidget {
-  const PromptChatPanel({super.key});
+  const PromptChatPanel({super.key, this.contentMaxWidth});
+
+  /// Batas lebar kolom percakapan, mis. di mode fokus chat.
+  ///
+  /// Bila diisi, daftar pesan tetap selebar panel (scrollbar di tepi kanan)
+  /// sementara isinya dipusatkan ke tengah dengan lebar maksimum ini.
+  final double? contentMaxWidth;
 
   @override
   ConsumerState<PromptChatPanel> createState() => _PromptChatPanelState();
@@ -125,26 +131,53 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   Widget _buildMessageList(WorkspaceState state) {
     final extra = state.isGenerating ? 1 : 0;
     final hasUserMessage = state.messages.any((m) => m.role == ChatRole.user);
+    // Saat lebar kolom dibatasi, padding pindah ke dalam tiap item agar daftar
+    // tetap selebar panel — scrollbar ada di tepi kanan, bukan di tengah.
+    final limited = widget.contentMaxWidth != null;
     return SelectionArea(
       child: ListView.separated(
         controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: EdgeInsets.fromLTRB(
+          limited ? 0 : 16,
+          16,
+          limited ? 0 : 16,
+          24,
+        ),
         itemCount: state.messages.length + extra,
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           if (index >= state.messages.length) {
-            return const Align(
-              alignment: Alignment.centerLeft,
-              child: AiStatusIndicator(),
+            return _centered(
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: AiStatusIndicator(),
+              ),
             );
           }
-          return _buildMessageBubble(
-            state.messages[index],
-            index,
-            busy: state.isGenerating,
-            canRetry: hasUserMessage,
+          return _centered(
+            _buildMessageBubble(
+              state.messages[index],
+              index,
+              busy: state.isGenerating,
+              canRetry: hasUserMessage,
+            ),
           );
         },
+      ),
+    );
+  }
+
+  /// Pusatkan item ke lebar kolom bila [PromptChatPanel.contentMaxWidth] diisi.
+  Widget _centered(Widget child) {
+    final maxWidth = widget.contentMaxWidth;
+    if (maxWidth == null) return child;
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: child,
+        ),
       ),
     );
   }
