@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/config/theme.dart';
+import '../../../app/l10n/l10n.dart';
 import '../../history/presentation/history_provider.dart';
 import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import '../../canvas_preview/presentation/widgets/ai_status_indicator.dart';
@@ -65,16 +66,16 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   /// Saat AI sedang memproses dan belum ada pesan: tampilkan indikator
   /// "thinking" agar jelas ada aktivitas, bukan layar kosong.
   Widget _buildThinkingState() {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AiStatusIndicator(),
-            SizedBox(height: 12),
+            const AiStatusIndicator(),
+            const SizedBox(height: 12),
             Text(
-              'Memproses…',
+              context.l10n.chatProcessing,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.uiFamily,
@@ -91,18 +92,23 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(
+    final l10n = context.l10n;
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.forum_outlined, size: 28, color: AppColors.textDisabled),
-            SizedBox(height: 12),
+            const Icon(
+              Icons.forum_outlined,
+              size: 28,
+              color: AppColors.textDisabled,
+            ),
+            const SizedBox(height: 12),
             Text(
-              'Belum ada percakapan',
+              l10n.chatNoMessagesTitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: AppFonts.uiFamily,
                 fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 12,
@@ -110,11 +116,11 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                 color: AppColors.textSecondary,
               ),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              'Ketik pesan untuk memulai.',
+              l10n.chatNoMessagesBody,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: AppFonts.uiFamily,
                 fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 11,
@@ -149,7 +155,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
           if (index >= state.messages.length) {
             return _centered(
               const Align(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: AiStatusIndicator(),
               ),
             );
@@ -191,7 +197,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     switch (message.role) {
       case ChatRole.user:
         return Align(
-          alignment: Alignment.centerRight,
+          alignment: AlignmentDirectional.centerEnd,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 300),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -274,7 +280,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
         return _buildUiBubble(message, index);
       case ChatRole.error:
         return Align(
-          alignment: Alignment.centerLeft,
+          alignment: AlignmentDirectional.centerStart,
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.statusError.withValues(alpha: 0.05),
@@ -324,7 +330,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                             ref.read(historyProvider.notifier).persistCurrent();
                           },
                     icon: const Icon(Icons.refresh, size: 14),
-                    label: const Text('Coba lagi'),
+                    label: Text(context.l10n.commonRetry),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.statusError,
                       side: const BorderSide(color: AppColors.statusError),
@@ -348,7 +354,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   /// Jawaban percakapan biasa (mode chat): teks langsung, tanpa bubble.
   Widget _buildChatBubble(String text) {
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 340),
         child: Column(
@@ -370,7 +376,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   Widget _buildUiBubble(CanvasMessage message, int index) {
     final expanded = _expandedAssistant.contains(index);
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.bgSurface,
@@ -409,7 +415,9 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                       }
                     }),
                     child: Text(
-                      expanded ? 'Sembunyikan' : 'Lihat kode',
+                      expanded
+                          ? context.l10n.chatHideCode
+                          : context.l10n.chatViewCode,
                       style: const TextStyle(
                         fontFamily: AppFonts.uiFamily,
                         fontFamilyFallback: AppFonts.uiFallback,

@@ -1,0 +1,331 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Centauri — AI UI/UX Canvas",
+
+  "languageTooltip": "Language",
+  "languageDialogTitle": "Language",
+
+  "commonAdd": "Add",
+  "commonRetry": "Try again",
+  "commonEdit": "Edit",
+  "commonDelete": "Delete",
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+  "commonClose": "Close",
+  "commonActive": "Active",
+  "commonSetActive": "Set active",
+  "commonProvider": "Provider",
+  "commonBaseUrl": "Base URL",
+  "commonApiKey": "API Key",
+  "commonModel": "Model",
+
+  "providerListHeading": "Bring Your Own Key (BYOK)",
+  "providerListSubtitle": "All data is stored and encrypted on your device.",
+  "providerListLoadFailed": "Couldn't load providers.",
+  "providerListEmptyTitle": "No providers yet",
+  "providerListEmptyBody": "Add a provider to start using Centauri.",
+  "providerListAddProvider": "Add provider",
+  "providerDeleted": "Provider deleted",
+
+  "providerDetailPickProvider": "Choose a provider first.",
+  "providerDetailPickModel": "Choose a model first.",
+  "providerDetailSaveFailed": "Couldn't save: {error}",
+  "@providerDetailSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "providerDetailClearKeyFailed": "Couldn't remove the API key: {error}",
+  "@providerDetailClearKeyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "providerDetailUpdated": "Provider updated",
+  "providerDetailAdded": "Provider added",
+  "providerDetailTestOk": "Connection works.",
+  "providerDetailTitleEdit": "Edit provider",
+  "providerDetailTitleNew": "Add provider",
+  "providerDetailDeleteTooltip": "Delete provider",
+  "providerDetailFieldName": "Name",
+  "providerDetailNameHint": "e.g. \"OpenAI Pro\"",
+  "providerDetailNameRequired": "Name is required.",
+  "providerDetailPickProviderLabel": "Choose a provider",
+  "providerDetailFieldProviderName": "Provider name",
+  "providerDetailProviderNameHint": "e.g. \"OpenAI\"",
+  "providerDetailProviderNameRequired": "Provider name is required.",
+  "providerDetailPickModelLabel": "Choose a model",
+  "providerDetailPickProviderFirst": "Choose a provider first",
+  "providerDetailTestAction": "Test",
+  "providerDetailBaseUrlRequired": "Base URL is required.",
+  "providerDetailBaseUrlInvalid": "Enter a valid URL (example: https://...).",
+  "providerDetailApiKeyFromProvider": "From the provider",
+  "providerDetailApiKeyStored": "API key saved. Reset to replace it.",
+  "providerDetailApiKeyCleared": "API key will be removed when you save.",
+  "providerDetailApiKeyOptional": "Leave empty for a local service without authentication.",
+  "providerDetailReset": "Reset",
+
+  "providerDeleteTargetFallback": "this provider",
+  "providerDeleteTitle": "Delete this provider?",
+  "providerDeleteBody": "{target} and its saved data will be deleted permanently.",
+  "@providerDeleteBody": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+
+  "modelCardDeleteTooltip": "Delete model",
+  "modelCardCopyIdTooltip": "Copy model id",
+  "modelCardCopied": "Copied: {model}",
+  "@modelCardCopied": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+
+  "modelPickerTitle": "Choose a model",
+  "modelPickerCustom": "Custom model",
+  "modelPickerAddModel": "Add model",
+  "modelPickerIdHint": "e.g. \"gpt-4o\"",
+
+  "providerPickerTitle": "Choose a provider",
+
+  "commonAllPages": "All pages",
+
+  "canvasUntitledProject": "New prototype",
+  "canvasHideHistory": "Hide history",
+  "canvasShowHistory": "Show history",
+  "canvasHidePreview": "Hide preview",
+  "canvasShowPreview": "Show preview",
+  "canvasUndoTooltip": "Undo (Ctrl+Z)",
+  "canvasRedoTooltip": "Redo (Ctrl+Y)",
+  "canvasPageCount": "{count, plural, =1{1 screen} other{{count} screens}}",
+  "@canvasPageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "canvasModeDesign": "Design",
+  "canvasModeCode": "Code",
+  "canvasServiceSettings": "Service settings",
+  "canvasSelectionOff": "Stop selecting elements",
+  "canvasSelectionOn": "Select an element on the canvas",
+  "canvasBreadcrumbFallback": "canvas",
+  "canvasStopGenerating": "Stop generating",
+  "canvasStopAction": "Stop",
+  "canvasEmptyTitle": "No UI yet",
+  "canvasEmptyBody": "Type a message to start.",
+  "canvasPrototypeTitle": "Prototype",
+  "canvasChatPanelTooltip": "Chat and history panel",
+
+  "storageFailedTitle": "Local storage couldn't be opened. ",
+  "storageFailedBody": "Close the other Centauri window and try again.",
+
+  "previewGenericError": "Something went wrong in the preview.",
+  "previewLinkInvalid": "Invalid link: {href}",
+  "@previewLinkInvalid": {
+    "placeholders": {
+      "href": {
+        "type": "String"
+      }
+    }
+  },
+  "previewLinkOpenFailed": "Couldn't open: {href}",
+  "@previewLinkOpenFailed": {
+    "placeholders": {
+      "href": {
+        "type": "String"
+      }
+    }
+  },
+  "previewPageNotFound": "Page not found: {href}",
+  "@previewPageNotFound": {
+    "placeholders": {
+      "href": {
+        "type": "String"
+      }
+    }
+  },
+  "previewDeleteFailed": "Couldn't delete the component. Try again.",
+  "previewLoading": "Loading.",
+  "previewNoPagesTitle": "No pages yet",
+  "previewNoPagesBody": "Type a message to create a page.",
+  "previewLoadFailedTitle": "Preview failed to load",
+  "previewWebView2Hint": "If it keeps failing, install the Microsoft Edge WebView2 Runtime.",
+
+  "exportNoPages": "No pages to export yet.",
+  "exportSaved": "Saved: {path}",
+  "@exportSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFigmaCopied": "Figma data ({count} elements) copied.",
+  "@exportFigmaCopied": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exportFigmaSaved": "Figma data ({count} elements) saved: {path}",
+  "@exportFigmaSaved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFailed": "Export failed. Try again.",
+  "exportPageTooltip": "Export page",
+  "exportPageTooltipCompact": "Export page (PNG/SVG/PDF/Figma)",
+  "exportPng": "PNG (image)",
+  "exportSvg": "SVG (vector)",
+  "exportPdf": "PDF (document)",
+  "exportAction": "Export",
+
+  "codePanelCopied": "HTML copied.",
+  "codePanelCopyTooltip": "Copy HTML",
+  "codePanelSaveTooltip": "Save as .html",
+  "codePanelEmpty": "No code yet.\nCreate a UI first.",
+
+  "promptAnalyzeImage": "Analyze this image.",
+  "promptUnsupportedFormat": "Unsupported format: \"{name}\".",
+  "@promptUnsupportedFormat": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "promptReadFailed": "Couldn't read \"{name}\".",
+  "@promptReadFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "promptPlaceholder": "Type a message.",
+  "promptAttachTooltip": "Attach a file",
+  "promptStopTooltip": "Stop generating",
+  "promptMentionPagesTooltip": "Mention a page",
+
+  "attachmentImageFailed": "Couldn't display the image.",
+  "attachmentRemoveTooltip": "Remove attachment",
+
+  "chatWelcomeTitle": "Start with a message",
+  "chatWelcomeBody": "Ask anything for design advice, or ask for it to be built.",
+  "chatTabChat": "Chat",
+  "chatTabHistory": "History",
+
+  "pageRenameTitle": "Rename page",
+  "pageRenameHint": "Page name",
+  "pageSlugTooltip": "{slug}\n(double-click to rename)",
+  "@pageSlugTooltip": {
+    "placeholders": {
+      "slug": {
+        "type": "String"
+      }
+    }
+  },
+
+  "markdownEmpty": "(empty)",
+
+  "windowMinimize": "Minimize",
+  "windowMaximize": "Maximize",
+  "windowRestore": "Restore",
+  "windowClose": "Close",
+
+  "historyRenameTitle": "Rename",
+  "historyRenameHint": "Chat name",
+  "historyNewChat": "New chat",
+  "historySearchHint": "Search chats",
+  "historyRecent": "Recent",
+  "historyRenameTooltip": "Rename",
+  "historyEmptySearch": "No matching chats.",
+  "historyEmptyList": "No saved chats yet.",
+
+  "codeExportTitle": "Export code",
+  "codeExportCopied": "{format} code copied.",
+  "@codeExportCopied": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "codeExportCharCount": "{count, plural, =1{1 character} other{{count} characters}}",
+  "@codeExportCharCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "codeExportCopy": "Copy",
+  "codeExportDownload": "Download",
+  "codeExportNoticeHtml": "Single self-contained HTML file: bundled CSS and JS, works offline.",
+  "codeExportNoticeReact": "Approximate conversion. Move <style> contents to a CSS file and inspect before use.",
+  "codeExportNoticeFlutter": "Approximate conversion. Translates inline styles only; <style> CSS is excluded. Inspect before use.",
+  "codeExportNoticeTailwind": "Approximate conversion. Requires Tailwind v3.2+; move <style> contents to a CSS file. Inspect before use.",
+  "codeExportTransformErrorTitle": "Code conversion failed",
+  "codeExportTransformErrorFallback": "Alpha code could not be transformed into {format}.",
+  "@codeExportTransformErrorFallback": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "codeExportUseHtml": "Use HTML",
+  "codeExportEmptyTitle": "No UI to export yet",
+  "codeExportEmptyBody": "Create a UI first.",
+
+  "mcpDesktopTitle": "MCP Server (Desktop)",
+  "mcpDesktopOnlyDesc": "MCP only runs on Desktop.",
+  "mcpRunning": "Running",
+  "mcpStopped": "Stopped",
+  "mcpDescription": "Bridge for AI agents (Claude Code, Cursor) to inspect and edit designs live.",
+  "mcpStarting": "Starting…",
+  "mcpStart": "Start",
+  "mcpAutoStartNote": "Server starts automatically when opening the app.",
+  "mcpCopyAddress": "Copy",
+  "mcpAddressCopied": "Address copied.",
+
+  "chatProcessing": "Processing…",
+  "chatUiReady": "UI ready",
+  "chatViewCode": "View code",
+  "chatHideCode": "Hide",
+  "chatNoMessagesTitle": "No conversations yet",
+  "chatNoMessagesBody": "Type a message to get started.",
+
+  "commonGenericError": "Something went wrong. Try again.",
+  "canvasMentionElementFallback": "Selected element",
+  "canvasNoProvider": "No active provider. Add one to start.",
+  "canvasUntitledPage": "Untitled",
+  "canvasGenerationStopped": "Generation stopped.",
+  "promptAttachmentLimit": "Up to 6 attachments per message.",
+  "providerNotFound": "Provider not found.",
+
+  "exportFigma": "Figma",
+  "catalogSectionFreeTier": "Free Tier",
+  "catalogSectionApiKey": "API Key"
+}
+

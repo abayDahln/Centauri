@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../data/mcp_bridge.dart';
 import '../data/mcp_server.dart';
@@ -37,21 +38,22 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (!_supported) {
-      return const _McpCard(
+      return _McpCard(
         children: [
           Text(
-            'MCP Server (Desktop)',
-            style: TextStyle(
+            l10n.mcpDesktopTitle,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
-            'MCP hanya berjalan di versi Desktop.',
-            style: TextStyle(
+            l10n.mcpDesktopOnlyDesc,
+            style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 13,
               height: 1.5,
@@ -69,10 +71,10 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'MCP Server (Desktop)',
-                style: TextStyle(
+                l10n.mcpDesktopTitle,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
@@ -80,16 +82,15 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
               ),
             ),
             StatusPill(
-              label: running ? 'Berjalan' : 'Berhenti',
+              label: running ? l10n.mcpRunning : l10n.mcpStopped,
               color: running ? AppColors.statusSuccess : AppColors.textDisabled,
             ),
           ],
         ),
         const SizedBox(height: 6),
-        const Text(
-          'Jembatan agar AI agent (Claude Code, Cursor) bisa membaca dan '
-          'mengubah desain. Perubahan tampil langsung.',
-          style: TextStyle(
+        Text(
+          l10n.mcpDescription,
+          style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,
             height: 1.5,
@@ -126,13 +127,13 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
             width: double.infinity,
             child: FilledButton(
               onPressed: _starting ? null : _start,
-              child: Text(_starting ? 'Menyalakan…' : 'Nyalakan'),
+              child: Text(_starting ? l10n.mcpStarting : l10n.mcpStart),
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Server menyala otomatis saat aplikasi dibuka.',
-            style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          Text(
+            l10n.mcpAutoStartNote,
+            style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
           ),
         ],
       ],
@@ -188,15 +189,15 @@ class _EndpointRow extends StatelessWidget {
         ),
         IconButton(
           icon: const Icon(Icons.copy_outlined, size: 15),
-          tooltip: 'Salin',
+          tooltip: context.l10n.mcpCopyAddress,
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: value));
             if (context.mounted) {
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
                 ..showSnackBar(
-                  const SnackBar(
-                    content: Text('Alamat disalin.'),
+                  SnackBar(
+                    content: Text(context.l10n.mcpAddressCopied),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );

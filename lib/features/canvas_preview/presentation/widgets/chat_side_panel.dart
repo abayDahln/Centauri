@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../../../history/presentation/history_panel.dart';
 import '../../../prompt_editor/presentation/prompt_chat_panel.dart';
@@ -48,6 +49,7 @@ class ChatSidePanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(panelTabProvider);
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -60,13 +62,13 @@ class ChatSidePanel extends ConsumerWidget {
           child: Row(
             children: [
               AppTab(
-                label: 'Chat',
+                label: l10n.chatTabChat,
                 active: tab == PanelTab.chat,
                 onTap: () =>
                     ref.read(panelTabProvider.notifier).select(PanelTab.chat),
               ),
               AppTab(
-                label: 'Riwayat',
+                label: l10n.chatTabHistory,
                 active: tab == PanelTab.history,
                 onTap: () => ref
                     .read(panelTabProvider.notifier)

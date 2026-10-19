@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 import '../provider/workspace_provider.dart';
 import 'ai_status_indicator.dart';
@@ -40,7 +41,7 @@ class ChatLanding extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   if (index >= messages.length) {
                     return const Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: AlignmentDirectional.centerStart,
                       child: AiStatusIndicator(),
                     );
                   }
@@ -77,13 +78,12 @@ class _Welcome extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Mulai dengan pesan', style: AppText.panelTitle),
+            Text(context.l10n.chatWelcomeTitle, style: AppText.panelTitle),
             const SizedBox(height: 8),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 380),
               child: Text(
-                'Tanya apa saja untuk saran desain, atau minta langsung '
-                'dibuat.',
+                context.l10n.chatWelcomeBody,
                 textAlign: TextAlign.center,
                 style: AppText.uiSmall,
               ),
@@ -106,7 +106,9 @@ class _Bubble extends StatelessWidget {
     final isError = message.role == ChatRole.error;
 
     return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isUser
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 620),
         child: Container(

@@ -2,10 +2,13 @@ import 'package:centauri/features/provider_config/domain/entities/api_provider.d
 import 'package:centauri/features/provider_config/domain/repositories/api_provider_repository.dart';
 import 'package:centauri/features/provider_config/presentation/provider_detail_page.dart';
 import 'package:centauri/features/provider_config/presentation/providers/provider_config_provider.dart';
+import 'package:centauri/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import 'helpers/pump_app.dart';
 
 /// Perilaku kartu setelan provider: alur pilih provider lewat dialog, kunci
 /// Base URL untuk template, dan syarat field Nama Provider untuk Custom.
@@ -15,9 +18,7 @@ void main() {
       ..physicalSize = const Size(1000, 2400)
       ..devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: ProviderDetailPage())),
-    );
+    await tester.pumpWidget(testApp(home: const ProviderDetailPage()));
     await tester.pumpAndSettle();
   }
 
@@ -124,7 +125,12 @@ void main() {
           overrides: [
             apiProviderRepositoryProvider.overrideWithValue(repository),
           ],
-          child: MaterialApp.router(routerConfig: router),
+          child: MaterialApp.router(
+            locale: testLocaleId,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: router,
+          ),
         ),
       );
       await tester.pumpAndSettle();

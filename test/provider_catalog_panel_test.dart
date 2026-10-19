@@ -4,13 +4,15 @@ import 'package:centauri/features/provider_config/presentation/widgets/provider_
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'helpers/pump_app.dart';
+
 void main() {
   Future<void> pumpPanel(
     WidgetTester tester, {
     required void Function(ProviderCatalogEntry) onSelected,
   }) async {
     await tester.pumpWidget(
-      MaterialApp(
+      testApp(
         home: Scaffold(
           body: SingleChildScrollView(
             child: ProviderCatalogPanel(onSelected: onSelected),

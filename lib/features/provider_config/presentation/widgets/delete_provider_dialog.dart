@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 
 /// Menampilkan dialog konfirmasi hapus provider.
 ///
 /// Mengembalikan `true` hanya bila pengguna menekan "Hapus".
 Future<bool> showDeleteProviderDialog(BuildContext context, String name) async {
-  final label = name.trim().isEmpty ? 'provider ini' : '"${name.trim()}"';
+  final l10n = context.l10n;
+  final label = name.trim().isEmpty
+      ? l10n.providerDeleteTargetFallback
+      : '"${name.trim()}"';
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Hapus provider ini?'),
-      content: Text('$label beserta data tersimpan akan dihapus permanen.'),
+      title: Text(l10n.providerDeleteTitle),
+      content: Text(l10n.providerDeleteBody(label)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Batal'),
+          child: Text(l10n.commonCancel),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
           style: TextButton.styleFrom(foregroundColor: AppColors.statusError),
-          child: const Text('Hapus'),
+          child: Text(l10n.commonDelete),
         ),
       ],
     ),

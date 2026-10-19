@@ -41,6 +41,12 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 - Export to Figma: hasilkan *payload* JSON yang dibaca plugin companion (`figma-plugin/`) untuk merekonstruksi frame/layer yang bisa diedit di Figma.
 - MCP Server: server MCP embedded (HTTP JSON-RPC di `127.0.0.1:8765`) agar agent eksternal bisa membaca struktur halaman dan memutasi node.
 
+**Bahasa**
+
+- 12 bahasa antarmuka: Inggris (default), Indonesia, Mandarin Sederhana, Jepang, Korea, Rusia, Jerman, Arab, Prancis, Portugis, Thai, dan Filipina. Ganti lewat tombol globe di top bar; pilihan disimpan di perangkat.
+- Chat dengan AI tidak terikat bahasa UI: Alpha menjawab dalam bahasa pesan yang dikirim pengguna.
+- Arab didukung penuh termasuk tata letak kanan-ke-kiri (RTL).
+
 ## Tech Stack
 
 | Kategori | Teknologi |
@@ -52,6 +58,7 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 | Web Rendering | `webview_flutter` (Android), `webview_windows` (Desktop) |
 | MCP | Embedded HTTP JSON-RPC server + SSE |
 | UI Theme | VS Code Dark Modern (Segoe UI / Consolas) |
+| Bahasa (i18n) | `flutter_localizations` + ARB per bahasa (`lib/l10n/`) |
 | Architecture | Feature-First Clean Architecture |
 
 ## Arsitektur & Alur Kerja
@@ -89,6 +96,18 @@ Langkah menjalankan:
    ```bash
    flutter run
    ```
+
+Teks antarmuka tidak ditulis di widget. Semua string ada di `lib/l10n/app_<kode>.arb`
+dengan `app_en.arb` sebagai template; `flutter gen-l10n` berjalan otomatis saat
+build. Setelah mengubah ARB, jalankan manual bila perlu:
+
+```bash
+flutter gen-l10n
+```
+
+Menambah bahasa: buat `lib/l10n/app_<kode>.arb` dengan kunci yang sama seperti
+`app_en.arb`, daftarkan di `AppLanguage.all`, lalu `flutter gen-l10n`. Tombol
+globe hanya menampilkan bahasa yang file ARB-nya ada.
 
 ## Konfigurasi BYOK
 

@@ -3,6 +3,7 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../data/code_export_service.dart';
 import '../domain/code_transformer.dart';
 import '../domain/export_format.dart';
@@ -49,7 +50,9 @@ class _CodeExportViewState extends State<CodeExportView> {
       return _CodeResult.error(e.message);
     } catch (_) {
       return _CodeResult.error(
-        'Kode dari Alpha tidak bisa diubah ke ${format.label}.',
+        context.mounted
+            ? context.l10n.codeExportTransformErrorFallback(format.label)
+            : 'Alpha code could not be transformed into ${format.label}.',
       );
     }
   });
@@ -63,7 +66,7 @@ class _CodeExportViewState extends State<CodeExportView> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('Kode ${_format.label} disalin.'),
+          content: Text(context.l10n.codeExportCopied(_format.label)),
           backgroundColor: AppColors.bgElevated,
           behavior: SnackBarBehavior.floating,
         ),
@@ -85,7 +88,7 @@ class _CodeExportViewState extends State<CodeExportView> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text('Disimpan: $path'),
+              content: Text(context.l10n.exportSaved(path)),
               backgroundColor: AppColors.bgElevated,
               behavior: SnackBarBehavior.floating,
             ),
@@ -112,6 +115,7 @@ class _CodeExportViewState extends State<CodeExportView> {
   Widget build(BuildContext context) {
     final result = _resultFor(_format);
     final code = result.code;
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -120,11 +124,11 @@ class _CodeExportViewState extends State<CodeExportView> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(
             children: [
-              Text('Ekspor kode', style: AppText.panelTitle),
+              Text(l10n.codeExportTitle, style: AppText.panelTitle),
               const Spacer(),
               if (code != null)
                 Text(
-                  '${code.length} karakter',
+                  l10n.codeExportCharCount(code.length),
                   style: const TextStyle(
                     fontFamily: AppFonts.monoFamily,
                     fontFamilyFallback: AppFonts.monoFallback,
@@ -179,7 +183,7 @@ class _CodeExportViewState extends State<CodeExportView> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Text(
-            _formatNotice,
+            _formatNotice(l10n),
             style: const TextStyle(
               fontSize: 10,
               height: 1.6,
@@ -198,7 +202,7 @@ class _CodeExportViewState extends State<CodeExportView> {
             clipBehavior: Clip.antiAlias,
             child: code == null
                 ? _TransformError(
-                    message: result.error ?? 'Kode tidak bisa diubah.',
+                    message: result.error ?? l10n.codeExportTransformErrorTitle,
                     onUseHtml: _format == CodeFormat.html
                         ? null
                         : () => setState(() => _format = CodeFormat.html),
@@ -225,7 +229,7 @@ class _CodeExportViewState extends State<CodeExportView> {
                 child: OutlinedButton.icon(
                   onPressed: code == null ? null : _copy,
                   icon: const Icon(Icons.copy_all_outlined, size: 15),
-                  label: const Text('Salin', style: TextStyle(fontSize: 12)),
+                  label: Text(l10n.codeExportCopy, style: const TextStyle(fontSize: 12)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -242,9 +246,9 @@ class _CodeExportViewState extends State<CodeExportView> {
                           ),
                         )
                       : const Icon(Icons.download_outlined, size: 15),
-                  label: const Text(
-                    'Unduh',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  label: Text(
+                    l10n.codeExportDownload,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -255,19 +259,16 @@ class _CodeExportViewState extends State<CodeExportView> {
     );
   }
 
-  String get _formatNotice {
+  String _formatNotice(AppLocalizations l10n) {
     switch (_format) {
       case CodeFormat.html:
-        return 'Satu file HTML utuh: CSS dan JS digabung, langsung jalan offline.';
+        return l10n.codeExportNoticeHtml;
       case CodeFormat.reactJsx:
-        return 'Konversi perkiraan. Pindahkan isi tag <style> ke file CSS '
-            'sendiri, lalu periksa sebelum dipakai.';
+        return l10n.codeExportNoticeReact;
       case CodeFormat.flutterDart:
-        return 'Konversi perkiraan. Hanya inline style yang diterjemahkan; CSS '
-            'di tag <style> tidak ikut. Periksa sebelum dipakai.';
+        return l10n.codeExportNoticeFlutter;
       case CodeFormat.tailwind:
-        return 'Konversi perkiraan. Butuh Tailwind v3.2+; isi tag <style> '
-            'pindahkan ke file CSS. Periksa sebelum dipakai.';
+        return l10n.codeExportNoticeTailwind;
     }
   }
 }
@@ -281,6 +282,7 @@ class _TransformError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -293,7 +295,7 @@ class _TransformError extends StatelessWidget {
               color: AppColors.statusError,
             ),
             const SizedBox(height: 10),
-            const Text('Kode tidak bisa diubah', style: AppText.panelTitle),
+            Text(l10n.codeExportTransformErrorTitle, style: AppText.panelTitle),
             const SizedBox(height: 4),
             Text(
               message,
@@ -308,7 +310,7 @@ class _TransformError extends StatelessWidget {
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: onUseHtml,
-                child: const Text('Pakai HTML', style: TextStyle(fontSize: 12)),
+                child: Text(l10n.codeExportUseHtml, style: const TextStyle(fontSize: 12)),
               ),
             ],
           ],

@@ -1,0 +1,331 @@
+{
+  "@@locale": "id",
+
+  "appTitle": "Centauri — Kanvas UI/UX AI",
+
+  "languageTooltip": "Bahasa",
+  "languageDialogTitle": "Bahasa",
+
+  "commonAdd": "Tambah",
+  "commonRetry": "Coba lagi",
+  "commonEdit": "Ubah",
+  "commonDelete": "Hapus",
+  "commonCancel": "Batal",
+  "commonSave": "Simpan",
+  "commonClose": "Tutup",
+  "commonActive": "Aktif",
+  "commonSetActive": "Jadikan aktif",
+  "commonProvider": "Provider",
+  "commonBaseUrl": "Base URL",
+  "commonApiKey": "API Key",
+  "commonModel": "Model",
+
+  "providerListHeading": "Bring Your Own Key (BYOK)",
+  "providerListSubtitle": "Semua data tersimpan dan terenkripsi di perangkat Anda.",
+  "providerListLoadFailed": "Gagal memuat daftar provider.",
+  "providerListEmptyTitle": "Belum ada provider",
+  "providerListEmptyBody": "Tambahkan provider untuk mulai menggunakan Centauri.",
+  "providerListAddProvider": "Tambah provider",
+  "providerDeleted": "Provider dihapus",
+
+  "providerDetailPickProvider": "Pilih provider dulu.",
+  "providerDetailPickModel": "Pilih model dulu.",
+  "providerDetailSaveFailed": "Gagal menyimpan: {error}",
+  "@providerDetailSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "providerDetailClearKeyFailed": "Gagal menghapus API Key: {error}",
+  "@providerDetailClearKeyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "providerDetailUpdated": "Provider diperbarui.",
+  "providerDetailAdded": "Provider ditambahkan.",
+  "providerDetailTestOk": "Koneksi berhasil.",
+  "providerDetailTitleEdit": "Ubah provider",
+  "providerDetailTitleNew": "Tambah provider",
+  "providerDetailDeleteTooltip": "Hapus provider",
+  "providerDetailFieldName": "Nama",
+  "providerDetailNameHint": "e.g. \"OpenAI Pro\"",
+  "providerDetailNameRequired": "Nama wajib diisi.",
+  "providerDetailPickProviderLabel": "Pilih provider",
+  "providerDetailFieldProviderName": "Nama Provider",
+  "providerDetailProviderNameHint": "e.g. \"OpenAI\"",
+  "providerDetailProviderNameRequired": "Nama provider wajib diisi.",
+  "providerDetailPickModelLabel": "Pilih model",
+  "providerDetailPickProviderFirst": "Pilih provider dulu",
+  "providerDetailTestAction": "Test",
+  "providerDetailBaseUrlRequired": "Base URL wajib diisi.",
+  "providerDetailBaseUrlInvalid": "Masukkan URL yang valid (contoh: https://...).",
+  "providerDetailApiKeyFromProvider": "Dari provider",
+  "providerDetailApiKeyStored": "API Key tersimpan. Reset untuk mengganti.",
+  "providerDetailApiKeyCleared": "API Key dihapus saat disimpan.",
+  "providerDetailApiKeyOptional": "Kosongkan untuk layanan lokal tanpa autentikasi.",
+  "providerDetailReset": "Reset",
+
+  "providerDeleteTargetFallback": "provider ini",
+  "providerDeleteTitle": "Hapus provider ini?",
+  "providerDeleteBody": "{target} beserta data tersimpan akan dihapus permanen.",
+  "@providerDeleteBody": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+
+  "modelCardDeleteTooltip": "Hapus model",
+  "modelCardCopyIdTooltip": "Salin id model",
+  "modelCardCopied": "Disalin: {model}",
+  "@modelCardCopied": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+
+  "modelPickerTitle": "Pilih Model",
+  "modelPickerCustom": "Model kustom",
+  "modelPickerAddModel": "Tambah Model",
+  "modelPickerIdHint": "e.g. \"gpt-4o\"",
+
+  "providerPickerTitle": "Pilih Provider",
+
+  "commonAllPages": "Semua halaman",
+
+  "canvasUntitledProject": "Prototype baru",
+  "canvasHideHistory": "Sembunyikan riwayat",
+  "canvasShowHistory": "Tampilkan riwayat",
+  "canvasHidePreview": "Sembunyikan pratinjau",
+  "canvasShowPreview": "Tampilkan pratinjau",
+  "canvasUndoTooltip": "Urungkan (Ctrl+Z)",
+  "canvasRedoTooltip": "Ulangi (Ctrl+Y)",
+  "canvasPageCount": "{count, plural, other{{count} layar}}",
+  "@canvasPageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "canvasModeDesign": "Desain",
+  "canvasModeCode": "Kode",
+  "canvasServiceSettings": "Pengaturan layanan",
+  "canvasSelectionOff": "Matikan seleksi elemen",
+  "canvasSelectionOn": "Pilih elemen di kanvas",
+  "canvasBreadcrumbFallback": "kanvas",
+  "canvasStopGenerating": "Hentikan generate",
+  "canvasStopAction": "Hentikan",
+  "canvasEmptyTitle": "Belum ada UI",
+  "canvasEmptyBody": "Ketik pesan untuk mulai.",
+  "canvasPrototypeTitle": "Prototype",
+  "canvasChatPanelTooltip": "Panel chat dan riwayat",
+
+  "storageFailedTitle": "Penyimpanan lokal gagal dibuka. ",
+  "storageFailedBody": "Tutup Centauri lain lalu coba lagi.",
+
+  "previewGenericError": "Terjadi kesalahan pada pratinjau.",
+  "previewLinkInvalid": "Link tidak valid: {href}",
+  "@previewLinkInvalid": {
+    "placeholders": {
+      "href": {
+        "type": "String"
+      }
+    }
+  },
+  "previewLinkOpenFailed": "Tidak bisa membuka: {href}",
+  "@previewLinkOpenFailed": {
+    "placeholders": {
+      "href": {
+        "type": "String"
+      }
+    }
+  },
+  "previewPageNotFound": "Halaman tidak ditemukan: {href}",
+  "@previewPageNotFound": {
+    "placeholders": {
+      "href": {
+        "type": "String"
+      }
+    }
+  },
+  "previewDeleteFailed": "Gagal menghapus komponen. Coba lagi.",
+  "previewLoading": "Memuat…",
+  "previewNoPagesTitle": "Belum ada halaman",
+  "previewNoPagesBody": "Ketik pesan untuk membuat halaman.",
+  "previewLoadFailedTitle": "Pratinjau gagal dimuat",
+  "previewWebView2Hint": "Jika tetap gagal, instal Microsoft Edge WebView2 Runtime.",
+
+  "exportNoPages": "Belum ada halaman untuk diekspor.",
+  "exportSaved": "Disimpan: {path}",
+  "@exportSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFigmaCopied": "Data Figma ({count} elemen) disalin.",
+  "@exportFigmaCopied": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exportFigmaSaved": "Data Figma ({count} elemen) tersimpan: {path}",
+  "@exportFigmaSaved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFailed": "Ekspor gagal. Coba lagi.",
+  "exportPageTooltip": "Ekspor halaman",
+  "exportPageTooltipCompact": "Ekspor halaman (PNG/SVG/PDF/Figma)",
+  "exportPng": "PNG (gambar)",
+  "exportSvg": "SVG (vektor)",
+  "exportPdf": "PDF (dokumen)",
+  "exportAction": "Ekspor",
+
+  "codePanelCopied": "HTML disalin.",
+  "codePanelCopyTooltip": "Salin HTML",
+  "codePanelSaveTooltip": "Simpan sebagai .html",
+  "codePanelEmpty": "Belum ada kode.\nBuat UI terlebih dahulu.",
+
+  "promptAnalyzeImage": "Analisa gambar ini.",
+  "promptUnsupportedFormat": "Format \"{name}\" tidak didukung.",
+  "@promptUnsupportedFormat": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "promptReadFailed": "Gagal membaca \"{name}\".",
+  "@promptReadFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "promptPlaceholder": "Tulis pesan…",
+  "promptAttachTooltip": "Lampirkan berkas",
+  "promptStopTooltip": "Hentikan proses",
+  "promptMentionPagesTooltip": "Sebut halaman",
+
+  "attachmentImageFailed": "Gambar tidak bisa ditampilkan.",
+  "attachmentRemoveTooltip": "Hapus lampiran",
+
+  "chatWelcomeTitle": "Mulai dengan pesan",
+  "chatWelcomeBody": "Tanya apa saja untuk saran desain, atau minta langsung dibuat.",
+  "chatTabChat": "Chat",
+  "chatTabHistory": "Riwayat",
+
+  "pageRenameTitle": "Ubah nama halaman",
+  "pageRenameHint": "Nama halaman",
+  "pageSlugTooltip": "{slug}\n(klik dua kali untuk ubah nama)",
+  "@pageSlugTooltip": {
+    "placeholders": {
+      "slug": {
+        "type": "String"
+      }
+    }
+  },
+
+  "markdownEmpty": "(kosong)",
+
+  "windowMinimize": "Perkecil",
+  "windowMaximize": "Perbesar",
+  "windowRestore": "Kembalikan",
+  "windowClose": "Tutup",
+
+  "historyRenameTitle": "Ganti nama",
+  "historyRenameHint": "Nama percakapan",
+  "historyNewChat": "Chat baru",
+  "historySearchHint": "Cari percakapan",
+  "historyRecent": "Terbaru",
+  "historyRenameTooltip": "Ganti nama",
+  "historyEmptySearch": "Tidak ada percakapan yang cocok.",
+  "historyEmptyList": "Belum ada percakapan tersimpan.",
+
+  "codeExportTitle": "Ekspor kode",
+  "codeExportCopied": "Kode {format} disalin.",
+  "@codeExportCopied": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "codeExportCharCount": "{count, plural, other{{count} karakter}}",
+  "@codeExportCharCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "codeExportCopy": "Salin",
+  "codeExportDownload": "Unduh",
+  "codeExportNoticeHtml": "Satu file HTML utuh: CSS dan JS digabung, langsung jalan offline.",
+  "codeExportNoticeReact": "Konversi perkiraan. Pindahkan isi tag <style> ke file CSS sendiri, lalu periksa sebelum dipakai.",
+  "codeExportNoticeFlutter": "Konversi perkiraan. Hanya inline style yang diterjemahkan; CSS di tag <style> tidak ikut. Periksa sebelum dipakai.",
+  "codeExportNoticeTailwind": "Konversi perkiraan. Butuh Tailwind v3.2+; isi tag <style> pindahkan ke file CSS. Periksa sebelum dipakai.",
+  "codeExportTransformErrorTitle": "Kode tidak bisa diubah",
+  "codeExportTransformErrorFallback": "Kode dari Alpha tidak bisa diubah ke {format}.",
+  "@codeExportTransformErrorFallback": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "codeExportUseHtml": "Pakai HTML",
+  "codeExportEmptyTitle": "Belum ada UI untuk diekspor",
+  "codeExportEmptyBody": "Buat UI terlebih dahulu.",
+
+  "mcpDesktopTitle": "MCP Server (Desktop)",
+  "mcpDesktopOnlyDesc": "MCP hanya berjalan di versi Desktop.",
+  "mcpRunning": "Berjalan",
+  "mcpStopped": "Berhenti",
+  "mcpDescription": "Jembatan agar AI agent (Claude Code, Cursor) bisa membaca dan mengubah desain. Perubahan tampil langsung.",
+  "mcpStarting": "Menyalakan…",
+  "mcpStart": "Nyalakan",
+  "mcpAutoStartNote": "Server menyala otomatis saat aplikasi dibuka.",
+  "mcpCopyAddress": "Salin",
+  "mcpAddressCopied": "Alamat disalin.",
+
+  "chatProcessing": "Memproses…",
+  "chatUiReady": "UI siap",
+  "chatViewCode": "Lihat kode",
+  "chatHideCode": "Sembunyikan",
+  "chatNoMessagesTitle": "Belum ada percakapan",
+  "chatNoMessagesBody": "Ketik pesan untuk memulai.",
+
+  "commonGenericError": "Terjadi kesalahan. Coba lagi.",
+  "canvasMentionElementFallback": "Elemen terpilih",
+  "canvasNoProvider": "Belum ada provider aktif. Tambahkan provider untuk mulai.",
+  "canvasUntitledPage": "Tanpa judul",
+  "canvasGenerationStopped": "Generasi dihentikan.",
+  "promptAttachmentLimit": "Maksimal 6 lampiran per pesan.",
+  "providerNotFound": "Provider tidak ditemukan.",
+
+  "exportFigma": "Figma",
+  "catalogSectionFreeTier": "Free Tier",
+  "catalogSectionApiKey": "API Key"
+}
+

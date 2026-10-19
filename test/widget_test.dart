@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:centauri/app/app.dart';
+import 'package:centauri/app/l10n/app_language.dart';
 import 'package:centauri/core/storage/local_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+
+import 'helpers/pump_app.dart';
 
 void main() {
   setUpAll(() async {
@@ -22,7 +25,12 @@ void main() {
     tester.view
       ..physicalSize = const Size(1200, 2400)
       ..devicePixelRatio = 3.0;
-    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: languageOverride(AppLanguage.byCode('id')),
+        child: const CentauriApp(),
+      ),
+    );
     await tester.pump();
 
     expect(find.text('Mulai dengan pesan'), findsOneWidget);
@@ -38,7 +46,12 @@ void main() {
     tester.view
       ..physicalSize = const Size(4320, 2700)
       ..devicePixelRatio = 3.0;
-    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: languageOverride(AppLanguage.byCode('id')),
+        child: const CentauriApp(),
+      ),
+    );
     await tester.pump();
 
     final panel = find.byIcon(Icons.view_sidebar_outlined);
@@ -63,7 +76,12 @@ void main() {
     tester.view
       ..physicalSize = const Size(4320, 2700)
       ..devicePixelRatio = 3.0;
-    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: languageOverride(AppLanguage.byCode('id')),
+        child: const CentauriApp(),
+      ),
+    );
     await tester.pump();
 
     // Kanvas terbuka: tombol tutup pratinjau ada, panel chat masih tertutup.
@@ -96,7 +114,12 @@ void main() {
     tester.view
       ..physicalSize = const Size(4320, 2700)
       ..devicePixelRatio = 3.0;
-    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: languageOverride(AppLanguage.byCode('id')),
+        child: const CentauriApp(),
+      ),
+    );
     await tester.pump();
 
     // Prompt bar (input + kirim) tetap ada; kontrol workspace lain
@@ -115,7 +138,12 @@ void main() {
     tester.view
       ..physicalSize = const Size(4320, 2700)
       ..devicePixelRatio = 3.0;
-    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: languageOverride(AppLanguage.byCode('id')),
+        child: const CentauriApp(),
+      ),
+    );
     await tester.pump();
 
     // Riwayat tampil di sidebar kiri.

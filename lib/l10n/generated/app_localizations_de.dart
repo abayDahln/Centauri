@@ -1,0 +1,614 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for German (`de`).
+class AppLocalizationsDe extends AppLocalizations {
+  AppLocalizationsDe([String locale = 'de']) : super(locale);
+
+  @override
+  String get appTitle => 'Centauri — KI-Canvas für UI/UX';
+
+  @override
+  String get languageTooltip => 'Sprache';
+
+  @override
+  String get languageDialogTitle => 'Sprache';
+
+  @override
+  String get commonAdd => 'Hinzufügen';
+
+  @override
+  String get commonRetry => 'Erneut versuchen';
+
+  @override
+  String get commonEdit => 'Bearbeiten';
+
+  @override
+  String get commonDelete => 'Löschen';
+
+  @override
+  String get commonCancel => 'Abbrechen';
+
+  @override
+  String get commonSave => 'Speichern';
+
+  @override
+  String get commonClose => 'Schließen';
+
+  @override
+  String get commonActive => 'Aktiv';
+
+  @override
+  String get commonSetActive => 'Aktivieren';
+
+  @override
+  String get commonProvider => 'Provider';
+
+  @override
+  String get commonBaseUrl => 'Base URL';
+
+  @override
+  String get commonApiKey => 'API Key';
+
+  @override
+  String get commonModel => 'Model';
+
+  @override
+  String get providerListHeading => 'Bring Your Own Key (BYOK)';
+
+  @override
+  String get providerListSubtitle =>
+      'Alle Daten werden verschlüsselt auf Ihrem Gerät gespeichert.';
+
+  @override
+  String get providerListLoadFailed => 'Provider konnten nicht geladen werden.';
+
+  @override
+  String get providerListEmptyTitle => 'Noch keine Provider';
+
+  @override
+  String get providerListEmptyBody =>
+      'Fügen Sie einen Provider hinzu, um Centauri zu nutzen.';
+
+  @override
+  String get providerListAddProvider => 'Provider hinzufügen';
+
+  @override
+  String get providerDeleted => 'Provider gelöscht';
+
+  @override
+  String get providerDetailPickProvider => 'Wählen Sie zuerst einen Provider.';
+
+  @override
+  String get providerDetailPickModel => 'Wählen Sie zuerst ein Model.';
+
+  @override
+  String providerDetailSaveFailed(String error) {
+    return 'Speichern fehlgeschlagen: $error';
+  }
+
+  @override
+  String providerDetailClearKeyFailed(String error) {
+    return 'API Key konnte nicht entfernt werden: $error';
+  }
+
+  @override
+  String get providerDetailUpdated => 'Provider aktualisiert';
+
+  @override
+  String get providerDetailAdded => 'Provider hinzugefügt';
+
+  @override
+  String get providerDetailTestOk => 'Verbindung funktioniert.';
+
+  @override
+  String get providerDetailTitleEdit => 'Provider bearbeiten';
+
+  @override
+  String get providerDetailTitleNew => 'Provider hinzufügen';
+
+  @override
+  String get providerDetailDeleteTooltip => 'Provider löschen';
+
+  @override
+  String get providerDetailFieldName => 'Name';
+
+  @override
+  String get providerDetailNameHint => 'z. B. „OpenAI Pro“';
+
+  @override
+  String get providerDetailNameRequired => 'Name ist erforderlich.';
+
+  @override
+  String get providerDetailPickProviderLabel => 'Provider wählen';
+
+  @override
+  String get providerDetailFieldProviderName => 'Provider-Name';
+
+  @override
+  String get providerDetailProviderNameHint => 'z. B. „OpenAI“';
+
+  @override
+  String get providerDetailProviderNameRequired =>
+      'Provider-Name ist erforderlich.';
+
+  @override
+  String get providerDetailPickModelLabel => 'Model wählen';
+
+  @override
+  String get providerDetailPickProviderFirst => 'Zuerst Provider wählen';
+
+  @override
+  String get providerDetailTestAction => 'Testen';
+
+  @override
+  String get providerDetailBaseUrlRequired => 'Base URL ist erforderlich.';
+
+  @override
+  String get providerDetailBaseUrlInvalid =>
+      'Gültige URL eingeben (Beispiel: https://...).';
+
+  @override
+  String get providerDetailApiKeyFromProvider => 'Vom Provider';
+
+  @override
+  String get providerDetailApiKeyStored =>
+      'API Key gespeichert. Zum Ersetzen zurücksetzen.';
+
+  @override
+  String get providerDetailApiKeyCleared =>
+      'API Key wird beim Speichern entfernt.';
+
+  @override
+  String get providerDetailApiKeyOptional =>
+      'Für einen lokalen Dienst ohne Anmeldung leer lassen.';
+
+  @override
+  String get providerDetailReset => 'Zurücksetzen';
+
+  @override
+  String get providerDeleteTargetFallback => 'diesen Provider';
+
+  @override
+  String get providerDeleteTitle => 'Diesen Provider löschen?';
+
+  @override
+  String providerDeleteBody(String target) {
+    return '$target und die gespeicherten Daten werden endgültig gelöscht.';
+  }
+
+  @override
+  String get modelCardDeleteTooltip => 'Model löschen';
+
+  @override
+  String get modelCardCopyIdTooltip => 'Model-ID kopieren';
+
+  @override
+  String modelCardCopied(String model) {
+    return 'Kopiert: $model';
+  }
+
+  @override
+  String get modelPickerTitle => 'Model wählen';
+
+  @override
+  String get modelPickerCustom => 'Eigenes Model';
+
+  @override
+  String get modelPickerAddModel => 'Model hinzufügen';
+
+  @override
+  String get modelPickerIdHint => 'z. B. „gpt-4o“';
+
+  @override
+  String get providerPickerTitle => 'Provider wählen';
+
+  @override
+  String get commonAllPages => 'Alle Seiten';
+
+  @override
+  String get canvasUntitledProject => 'Neuer Prototyp';
+
+  @override
+  String get canvasHideHistory => 'Verlauf ausblenden';
+
+  @override
+  String get canvasShowHistory => 'Verlauf anzeigen';
+
+  @override
+  String get canvasHidePreview => 'Vorschau ausblenden';
+
+  @override
+  String get canvasShowPreview => 'Vorschau anzeigen';
+
+  @override
+  String get canvasUndoTooltip => 'Rückgängig (Ctrl+Z)';
+
+  @override
+  String get canvasRedoTooltip => 'Wiederholen (Ctrl+Y)';
+
+  @override
+  String canvasPageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Screens',
+      one: '1 Screen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get canvasModeDesign => 'Design';
+
+  @override
+  String get canvasModeCode => 'Code';
+
+  @override
+  String get canvasServiceSettings => 'Diensteinstellungen';
+
+  @override
+  String get canvasSelectionOff => 'Elementauswahl beenden';
+
+  @override
+  String get canvasSelectionOn => 'Element auf der Canvas wählen';
+
+  @override
+  String get canvasBreadcrumbFallback => 'Canvas';
+
+  @override
+  String get canvasStopGenerating => 'Generierung stoppen';
+
+  @override
+  String get canvasStopAction => 'Stoppen';
+
+  @override
+  String get canvasEmptyTitle => 'Noch keine UI';
+
+  @override
+  String get canvasEmptyBody => 'Nachricht eingeben, um zu starten.';
+
+  @override
+  String get canvasPrototypeTitle => 'Prototyp';
+
+  @override
+  String get canvasChatPanelTooltip => 'Chat- und Verlaufsbereich';
+
+  @override
+  String get storageFailedTitle =>
+      'Lokaler Speicher konnte nicht geöffnet werden. ';
+
+  @override
+  String get storageFailedBody =>
+      'Schließen Sie das andere Centauri-Fenster und versuchen Sie es erneut.';
+
+  @override
+  String get previewGenericError =>
+      'In der Vorschau ist ein Fehler aufgetreten.';
+
+  @override
+  String previewLinkInvalid(String href) {
+    return 'Ungültiger Link: $href';
+  }
+
+  @override
+  String previewLinkOpenFailed(String href) {
+    return 'Konnte nicht geöffnet werden: $href';
+  }
+
+  @override
+  String previewPageNotFound(String href) {
+    return 'Seite nicht gefunden: $href';
+  }
+
+  @override
+  String get previewDeleteFailed =>
+      'Komponente konnte nicht gelöscht werden. Erneut versuchen.';
+
+  @override
+  String get previewLoading => 'Wird geladen…';
+
+  @override
+  String get previewNoPagesTitle => 'Noch keine Seiten';
+
+  @override
+  String get previewNoPagesBody =>
+      'Nachricht eingeben, um eine Seite zu erstellen.';
+
+  @override
+  String get previewLoadFailedTitle => 'Vorschau konnte nicht geladen werden';
+
+  @override
+  String get previewWebView2Hint =>
+      'Wenn es weiter fehlschlägt, installieren Sie die Microsoft Edge WebView2 Runtime.';
+
+  @override
+  String get exportNoPages => 'Noch keine Seiten zum Exportieren.';
+
+  @override
+  String exportSaved(String path) {
+    return 'Gespeichert: $path';
+  }
+
+  @override
+  String exportFigmaCopied(int count) {
+    return 'Figma-Daten ($count Elemente) kopiert.';
+  }
+
+  @override
+  String exportFigmaSaved(int count, String path) {
+    return 'Figma-Daten ($count Elemente) gespeichert: $path';
+  }
+
+  @override
+  String get exportFailed => 'Export fehlgeschlagen. Erneut versuchen.';
+
+  @override
+  String get exportPageTooltip => 'Seite exportieren';
+
+  @override
+  String get exportPageTooltipCompact =>
+      'Seite exportieren (PNG/SVG/PDF/Figma)';
+
+  @override
+  String get exportPng => 'PNG (Bild)';
+
+  @override
+  String get exportSvg => 'SVG (Vektor)';
+
+  @override
+  String get exportPdf => 'PDF (Dokument)';
+
+  @override
+  String get exportAction => 'Exportieren';
+
+  @override
+  String get codePanelCopied => 'HTML kopiert.';
+
+  @override
+  String get codePanelCopyTooltip => 'HTML kopieren';
+
+  @override
+  String get codePanelSaveTooltip => 'Als .html speichern';
+
+  @override
+  String get codePanelEmpty => 'Noch kein Code.\nErstellen Sie zuerst eine UI.';
+
+  @override
+  String get promptAnalyzeImage => 'Dieses Bild analysieren.';
+
+  @override
+  String promptUnsupportedFormat(String name) {
+    return 'Format „$name“ wird nicht unterstützt.';
+  }
+
+  @override
+  String promptReadFailed(String name) {
+    return '„$name“ konnte nicht gelesen werden.';
+  }
+
+  @override
+  String get promptPlaceholder => 'Nachricht eingeben…';
+
+  @override
+  String get promptAttachTooltip => 'Datei anhängen';
+
+  @override
+  String get promptStopTooltip => 'Generierung stoppen';
+
+  @override
+  String get promptMentionPagesTooltip => 'Seite erwähnen';
+
+  @override
+  String get attachmentImageFailed => 'Bild konnte nicht angezeigt werden.';
+
+  @override
+  String get attachmentRemoveTooltip => 'Anhang entfernen';
+
+  @override
+  String get chatWelcomeTitle => 'Mit einer Nachricht starten';
+
+  @override
+  String get chatWelcomeBody =>
+      'Fragen Sie nach Design-Tipps oder lassen Sie direkt etwas bauen.';
+
+  @override
+  String get chatTabChat => 'Chat';
+
+  @override
+  String get chatTabHistory => 'Verlauf';
+
+  @override
+  String get pageRenameTitle => 'Seite umbenennen';
+
+  @override
+  String get pageRenameHint => 'Seitenname';
+
+  @override
+  String pageSlugTooltip(String slug) {
+    return '$slug\n(Doppelklick zum Umbenennen)';
+  }
+
+  @override
+  String get markdownEmpty => '(leer)';
+
+  @override
+  String get windowMinimize => 'Minimieren';
+
+  @override
+  String get windowMaximize => 'Maximieren';
+
+  @override
+  String get windowRestore => 'Wiederherstellen';
+
+  @override
+  String get windowClose => 'Schließen';
+
+  @override
+  String get historyRenameTitle => 'Umbenennen';
+
+  @override
+  String get historyRenameHint => 'Chat-Name';
+
+  @override
+  String get historyNewChat => 'Neuer Chat';
+
+  @override
+  String get historySearchHint => 'Chats durchsuchen';
+
+  @override
+  String get historyRecent => 'Zuletzt';
+
+  @override
+  String get historyRenameTooltip => 'Umbenennen';
+
+  @override
+  String get historyEmptySearch => 'Keine passenden Chats.';
+
+  @override
+  String get historyEmptyList => 'Noch keine gespeicherten Chats.';
+
+  @override
+  String get codeExportTitle => 'Code exportieren';
+
+  @override
+  String codeExportCopied(String format) {
+    return '$format-Code kopiert.';
+  }
+
+  @override
+  String codeExportCharCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Zeichen',
+      one: '1 Zeichen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get codeExportCopy => 'Kopieren';
+
+  @override
+  String get codeExportDownload => 'Herunterladen';
+
+  @override
+  String get codeExportNoticeHtml =>
+      'Eine eigenständige HTML-Datei: CSS und JS enthalten, funktioniert offline.';
+
+  @override
+  String get codeExportNoticeReact =>
+      'Ungefähre Umwandlung. <style>-Inhalt in eine CSS-Datei verschieben und vor der Nutzung prüfen.';
+
+  @override
+  String get codeExportNoticeFlutter =>
+      'Ungefähre Umwandlung. Nur Inline-Styles werden übernommen; CSS aus <style> fehlt. Vor der Nutzung prüfen.';
+
+  @override
+  String get codeExportNoticeTailwind =>
+      'Ungefähre Umwandlung. Tailwind v3.2+ nötig; <style>-Inhalt in eine CSS-Datei verschieben. Vor der Nutzung prüfen.';
+
+  @override
+  String get codeExportTransformErrorTitle => 'Code-Umwandlung fehlgeschlagen';
+
+  @override
+  String codeExportTransformErrorFallback(String format) {
+    return 'Alpha-Code konnte nicht in $format umgewandelt werden.';
+  }
+
+  @override
+  String get codeExportUseHtml => 'HTML verwenden';
+
+  @override
+  String get codeExportEmptyTitle => 'Noch keine UI zum Exportieren';
+
+  @override
+  String get codeExportEmptyBody => 'Erstellen Sie zuerst eine UI.';
+
+  @override
+  String get mcpDesktopTitle => 'MCP Server (Desktop)';
+
+  @override
+  String get mcpDesktopOnlyDesc => 'MCP läuft nur auf dem Desktop.';
+
+  @override
+  String get mcpRunning => 'Läuft';
+
+  @override
+  String get mcpStopped => 'Gestoppt';
+
+  @override
+  String get mcpDescription =>
+      'Schnittstelle für KI-Agenten (Claude Code, Cursor) zum Live-Ansehen und Bearbeiten von Designs.';
+
+  @override
+  String get mcpStarting => 'Startet…';
+
+  @override
+  String get mcpStart => 'Starten';
+
+  @override
+  String get mcpAutoStartNote =>
+      'Der Server startet automatisch beim Öffnen der App.';
+
+  @override
+  String get mcpCopyAddress => 'Kopieren';
+
+  @override
+  String get mcpAddressCopied => 'Adresse kopiert.';
+
+  @override
+  String get chatProcessing => 'Wird verarbeitet…';
+
+  @override
+  String get chatUiReady => 'UI bereit';
+
+  @override
+  String get chatViewCode => 'Code ansehen';
+
+  @override
+  String get chatHideCode => 'Ausblenden';
+
+  @override
+  String get chatNoMessagesTitle => 'Noch keine Unterhaltungen';
+
+  @override
+  String get chatNoMessagesBody => 'Nachricht eingeben, um zu starten.';
+
+  @override
+  String get commonGenericError =>
+      'Etwas ist schiefgelaufen. Erneut versuchen.';
+
+  @override
+  String get canvasMentionElementFallback => 'Ausgewähltes Element';
+
+  @override
+  String get canvasNoProvider =>
+      'Kein aktiver Provider. Fügen Sie einen hinzu, um zu starten.';
+
+  @override
+  String get canvasUntitledPage => 'Ohne Titel';
+
+  @override
+  String get canvasGenerationStopped => 'Generierung gestoppt.';
+
+  @override
+  String get promptAttachmentLimit => 'Bis zu 6 Anhänge pro Nachricht.';
+
+  @override
+  String get providerNotFound => 'Provider nicht gefunden.';
+
+  @override
+  String get exportFigma => 'Figma';
+
+  @override
+  String get catalogSectionFreeTier => 'Kostenlos';
+
+  @override
+  String get catalogSectionApiKey => 'API Key';
+}

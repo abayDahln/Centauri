@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 
 /// Kartu satu model pada section "Available Models" (ala 9router).
 ///
@@ -47,6 +48,7 @@ class _ModelCardState extends State<ModelCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final selected = widget.selected;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -119,7 +121,7 @@ class _ModelCardState extends State<ModelCard> {
               const SizedBox(width: 4),
               if (widget.onDelete != null)
                 IconButton(
-                  tooltip: 'Hapus model',
+                  tooltip: l10n.modelCardDeleteTooltip,
                   icon: const Icon(Icons.delete_outline, size: 15),
                   color: AppColors.textDisabled,
                   splashRadius: 16,
@@ -127,7 +129,7 @@ class _ModelCardState extends State<ModelCard> {
                   onPressed: widget.onDelete,
                 ),
               IconButton(
-                tooltip: 'Salin id model',
+                tooltip: l10n.modelCardCopyIdTooltip,
                 icon: const Icon(Icons.copy_outlined, size: 15),
                 color: AppColors.textDisabled,
                 splashRadius: 16,
@@ -139,7 +141,7 @@ class _ModelCardState extends State<ModelCard> {
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       SnackBar(
-                        content: Text('Disalin: ${widget.modelId}'),
+                        content: Text(l10n.modelCardCopied(widget.modelId)),
                         duration: const Duration(seconds: 2),
                       ),
                     );

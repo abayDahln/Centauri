@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
 import '../../../app/config/theme.dart';
+import '../../../app/l10n/l10n.dart';
+import '../../../app/widgets/language_menu.dart';
 import '../../../app/widgets/stitch_widgets.dart';
 import '../../../core/storage/local_storage_service.dart';
 import '../../history/data/project_repository.dart';
@@ -447,8 +449,9 @@ class _TopBar extends ConsumerWidget {
     final state = ref.watch(workspaceProvider);
     final history = ref.watch(historyProvider);
     final notifier = ref.read(workspaceProvider.notifier);
+    final l10n = context.l10n;
 
-    var projectTitle = 'Prototype baru';
+    var projectTitle = l10n.canvasUntitledProject;
     for (final project in history.projects) {
       if (project.id == history.activeProjectId) {
         final title = project.title.trim();
@@ -473,8 +476,8 @@ class _TopBar extends ConsumerWidget {
                 SoftIconButton(
                   icon: Icons.view_sidebar_outlined,
                   tooltip: historyVisible
-                      ? 'Sembunyikan riwayat'
-                      : 'Tampilkan riwayat',
+                      ? l10n.canvasHideHistory
+                      : l10n.canvasShowHistory,
                   active: historyVisible,
                   onPressed: onToggleHistory,
                 ),
@@ -483,21 +486,21 @@ class _TopBar extends ConsumerWidget {
                       ? Icons.close_fullscreen_outlined
                       : Icons.open_in_full_outlined,
                   tooltip: canvasVisible
-                      ? 'Sembunyikan pratinjau'
-                      : 'Tampilkan pratinjau',
+                      ? l10n.canvasHidePreview
+                      : l10n.canvasShowPreview,
                   onPressed: onToggleCanvas,
                 ),
                 if (workspaceActive) ...[
                   const SizedBox(width: 2),
                   SoftIconButton(
                     icon: Icons.undo,
-                    tooltip: 'Urungkan (Ctrl+Z)',
+                    tooltip: l10n.canvasUndoTooltip,
                     onPressed: notifier.undo,
                   ),
                   const SizedBox(width: 2),
                   SoftIconButton(
                     icon: Icons.redo,
-                    tooltip: 'Ulangi (Ctrl+Y)',
+                    tooltip: l10n.canvasRedoTooltip,
                     onPressed: notifier.redo,
                   ),
                 ],
@@ -513,7 +516,7 @@ class _TopBar extends ConsumerWidget {
                 if (workspaceActive) ...[
                   const SizedBox(width: 10),
                   Text(
-                    '${state.pages.length} layar',
+                    l10n.canvasPageCount(state.pages.length),
                     style: AppText.monoSmall.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -527,9 +530,12 @@ class _TopBar extends ConsumerWidget {
             SoftSegmented<OutputMode>(
               selected: state.outputMode,
               onChanged: notifier.setOutputMode,
-              segments: const [
-                SoftSegment(value: OutputMode.design, label: 'Desain'),
-                SoftSegment(value: OutputMode.dev, label: 'Kode'),
+              segments: [
+                SoftSegment(
+                  value: OutputMode.design,
+                  label: l10n.canvasModeDesign,
+                ),
+                SoftSegment(value: OutputMode.dev, label: l10n.canvasModeCode),
               ],
             ),
           // Kanan: ekspor halaman (bila ada) dan pengaturan.
@@ -541,9 +547,11 @@ class _TopBar extends ConsumerWidget {
                   PageExportButton(primary: true),
                   const SizedBox(width: 8),
                 ],
+                const LanguageMenuButton(),
+                const SizedBox(width: 2),
                 SoftIconButton(
                   icon: Icons.settings_outlined,
-                  tooltip: 'Pengaturan layanan',
+                  tooltip: l10n.canvasServiceSettings,
                   onPressed: () => context.push(AppRoutes.providers),
                 ),
               ],
@@ -564,9 +572,10 @@ class _PreviewToolbar extends ConsumerWidget {
     final selectionMode = ref.watch(
       workspaceProvider.select((s) => s.selectionMode),
     );
+    final l10n = context.l10n;
     return Container(
       height: AppColors.toolbarHeight,
-      padding: const EdgeInsets.only(left: 4, right: 8),
+      padding: const EdgeInsetsDirectional.only(start: 4, end: 8),
       decoration: const BoxDecoration(
         color: AppColors.bgSurface,
         border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
@@ -585,8 +594,8 @@ class _PreviewToolbar extends ConsumerWidget {
           SoftIconButton(
             icon: Icons.touch_app_outlined,
             tooltip: selectionMode
-                ? 'Matikan seleksi elemen'
-                : 'Pilih elemen di kanvas',
+                ? l10n.canvasSelectionOff
+                : l10n.canvasSelectionOn,
             active: selectionMode,
             size: 32,
             iconSize: 16,
@@ -683,7 +692,7 @@ class _PreviewFrame extends ConsumerWidget {
                 ],
                 const SizedBox(width: 6),
                 Text(
-                  'centauri / ${page?.slug ?? 'kanvas'}',
+                  'centauri / ${page?.slug ?? context.l10n.canvasBreadcrumbFallback}',
                   style: AppText.monoSmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -708,6 +717,7 @@ class _AiStatusPill extends ConsumerWidget {
       workspaceProvider.select((s) => s.status != AiStatus.idle),
     );
     if (!active) return const SizedBox.shrink();
+    final l10n = context.l10n;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
@@ -723,7 +733,7 @@ class _AiStatusPill extends ConsumerWidget {
           const AiStatusIndicator(compact: true),
           const SizedBox(width: 10),
           Tooltip(
-            message: 'Hentikan generate',
+            message: l10n.canvasStopGenerating,
             child: InkWell(
               onTap: () =>
                   ref.read(workspaceProvider.notifier).cancelGeneration(),
@@ -747,7 +757,7 @@ class _AiStatusPill extends ConsumerWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Hentikan',
+                      l10n.canvasStopAction,
                       style: TextStyle(
                         fontFamily: AppFonts.uiFamily,
                         fontFamilyFallback: AppFonts.uiFallback,
@@ -790,7 +800,7 @@ class _EmptyPreviewHint extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Belum ada UI',
+                context.l10n.canvasEmptyTitle,
                 style: TextStyle(
                   fontFamily: AppFonts.uiFamily,
                   fontFamilyFallback: AppFonts.uiFallback,
@@ -800,7 +810,7 @@ class _EmptyPreviewHint extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              Text('Ketik pesan untuk mulai.', style: AppText.caption),
+              Text(context.l10n.canvasEmptyBody, style: AppText.caption),
             ],
           ),
         ),
@@ -819,6 +829,7 @@ class _MobileShell extends ConsumerWidget {
     final hasUi = ref.watch(
       workspaceProvider.select((s) => s.hasRenderedPage || s.pages.isNotEmpty),
     );
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -847,7 +858,7 @@ class _MobileShell extends ConsumerWidget {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                hasUi ? 'Prototype' : 'Centauri',
+                hasUi ? l10n.canvasPrototypeTitle : 'Centauri',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppText.panelTitle.copyWith(fontSize: 15),
@@ -858,19 +869,20 @@ class _MobileShell extends ConsumerWidget {
         actions: [
           SoftIconButton(
             icon: Icons.view_sidebar_outlined,
-            tooltip: 'Panel chat dan riwayat',
+            tooltip: l10n.canvasChatPanelTooltip,
             onPressed: () =>
                 _openSheet(context, const ChatSidePanel(), heightFactor: 0.75),
           ),
           SoftIconButton(
             icon: Icons.settings_outlined,
-            tooltip: 'Pengaturan layanan',
+            tooltip: l10n.canvasServiceSettings,
             onPressed: () => context.push(AppRoutes.providers),
           ),
+          const LanguageMenuButton(),
           if (hasUi) ...[
             SoftIconButton(
               icon: Icons.code_outlined,
-              tooltip: 'Kode',
+              tooltip: l10n.canvasModeCode,
               onPressed: () =>
                   _openSheet(context, const CodePanel(), heightFactor: 0.8),
             ),
@@ -963,6 +975,7 @@ class _StorageBannerState extends ConsumerState<StorageBanner> {
   Widget build(BuildContext context) {
     final status = ref.watch(storageStatusProvider);
     if (_dismissed || status.isHealthy) return const SizedBox.shrink();
+    final l10n = context.l10n;
 
     return Material(
       color: AppColors.statusWarning.withValues(alpha: 0.12),
@@ -977,9 +990,13 @@ class _StorageBannerState extends ConsumerState<StorageBanner> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                'Penyimpanan lokal gagal dibuka. '
-                'Tutup Centauri lain lalu coba lagi.',
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: l10n.storageFailedTitle),
+                    TextSpan(text: l10n.storageFailedBody),
+                  ],
+                ),
                 style: const TextStyle(fontSize: 12, height: 1.4),
               ),
             ),
@@ -993,7 +1010,7 @@ class _StorageBannerState extends ConsumerState<StorageBanner> {
                 ),
               )
             else
-              TextButton(onPressed: _retry, child: const Text('Coba lagi')),
+              TextButton(onPressed: _retry, child: Text(l10n.commonRetry)),
             IconButton(
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.close_rounded, size: 16),

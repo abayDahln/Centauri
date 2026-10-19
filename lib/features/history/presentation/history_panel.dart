@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../presentation/history_provider.dart';
 
 /// Panel riwayat ala Gemini: tombol "Chat baru", pencarian, dan daftar
@@ -60,7 +61,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Terbaru',
+            context.l10n.historyRecent,
             style: AppText.caption.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
@@ -93,24 +94,25 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
 
   Future<void> _promptRename(String id, String current) async {
     final controller = TextEditingController(text: current);
+    final l10n = context.l10n;
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Ganti nama'),
+        title: Text(l10n.historyRenameTitle),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Nama percakapan'),
+          decoration: InputDecoration(hintText: l10n.historyRenameHint),
           onSubmitted: (value) => Navigator.pop(dialogContext, value),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Batal'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const Text('Simpan'),
+            child: Text(l10n.commonSave),
           ),
         ],
       ),
@@ -140,12 +142,12 @@ class _NewChatButton extends StatelessWidget {
         child: Container(
           height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
+          alignment: AlignmentDirectional.centerStart,
           child: Row(
             children: [
               const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
               const SizedBox(width: 8),
-              Text('Chat baru', style: AppText.button),
+              Text(context.l10n.historyNewChat, style: AppText.button),
             ],
           ),
         ),
@@ -178,24 +180,24 @@ class _SearchField extends StatelessWidget {
           fontSize: 13,
           color: AppColors.textPrimary,
         ),
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           filled: false,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          prefixIcon: Icon(
+          prefixIcon: const Icon(
             Icons.search,
             size: 16,
             color: AppColors.textSecondary,
           ),
-          hintText: 'Cari percakapan',
-          hintStyle: TextStyle(
+          hintText: context.l10n.historySearchHint,
+          hintStyle: const TextStyle(
             fontFamily: AppFonts.uiFamily,
             fontFamilyFallback: AppFonts.uiFallback,
             fontSize: 13,
             color: AppColors.textDisabled,
           ),
-          contentPadding: EdgeInsets.symmetric(vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
       ),
     );
@@ -272,12 +274,12 @@ class _ProjectTileState extends State<_ProjectTile> {
               if (_hovered) ...[
                 _TileAction(
                   icon: Icons.edit_outlined,
-                  tooltip: 'Ganti nama',
+                  tooltip: context.l10n.historyRenameTooltip,
                   onTap: widget.onRename,
                 ),
                 _TileAction(
                   icon: Icons.delete_outline,
-                  tooltip: 'Hapus',
+                  tooltip: context.l10n.commonDelete,
                   onTap: widget.onDelete,
                 ),
               ],
@@ -333,8 +335,8 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               searching
-                  ? 'Tidak ada percakapan yang cocok.'
-                  : 'Belum ada percakapan tersimpan.',
+                  ? context.l10n.historyEmptySearch
+                  : context.l10n.historyEmptyList,
               textAlign: TextAlign.center,
               style: AppText.caption,
             ),

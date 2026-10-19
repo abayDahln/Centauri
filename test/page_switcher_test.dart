@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'helpers/pump_app.dart';
+
 /// State awal yang bisa dipreset tiap test (workspaceProvider juga singleton
 /// state di antara test dalam satu isolate).
 WorkspaceState _preset = const WorkspaceState();
@@ -30,7 +32,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: Scaffold(body: PageSwitcherBar())),
+        child: testApp(home: const Scaffold(body: PageSwitcherBar())),
       ),
     );
     await tester.pump();
@@ -78,8 +80,10 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(
-          home: Scaffold(body: SizedBox(width: 240, child: PageSwitcherBar())),
+        child: testApp(
+          home: const Scaffold(
+            body: SizedBox(width: 240, child: PageSwitcherBar()),
+          ),
         ),
       ),
     );

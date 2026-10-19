@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'helpers/pump_app.dart';
+
 Widget _host({
   String label = 'cbai/glm-5.2',
   String name = 'GLM-5.2',
   String modelId = 'glm-5.2',
   bool selected = false,
   VoidCallback? onTap,
-}) => MaterialApp(
+}) => testApp(
   home: Scaffold(
     body: Center(
       child: SizedBox(

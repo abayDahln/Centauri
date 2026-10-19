@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../domain/page.dart';
 import '../provider/workspace_provider.dart';
 
@@ -95,24 +96,25 @@ class _PageSwitcherBarState extends ConsumerState<PageSwitcherBar> {
     AppPage page,
   ) async {
     final controller = TextEditingController(text: page.name);
+    final l10n = context.l10n;
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ubah nama halaman'),
+        title: Text(l10n.pageRenameTitle),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Nama halaman'),
+          decoration: InputDecoration(hintText: l10n.pageRenameHint),
           onSubmitted: (v) => Navigator.of(context).pop(v),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Batal'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Simpan'),
+            child: Text(l10n.commonSave),
           ),
         ],
       ),
@@ -139,7 +141,7 @@ class _PageTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: '${page.slug}\n(klik dua kali untuk ubah nama)',
+      message: context.l10n.pageSlugTooltip(page.slug),
       child: InkWell(
         onTap: onTap,
         onDoubleTap: onRename,

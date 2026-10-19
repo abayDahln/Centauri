@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../config/theme.dart';
+import '../l10n/l10n.dart';
 
 /// Title bar kustom untuk shell desktop (Windows).
 ///
@@ -109,19 +110,21 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
             const Spacer(),
             _WindowButton(
               icon: Icons.remove,
-              tooltip: 'Perkecil',
+              tooltip: context.l10n.windowMinimize,
               onTap: () => _safe(windowManager.minimize),
             ),
             _WindowButton(
               icon: _isMaximized
                   ? Icons.filter_none
                   : Icons.crop_square_outlined,
-              tooltip: _isMaximized ? 'Kembalikan' : 'Perbesar',
+              tooltip: _isMaximized
+                  ? context.l10n.windowRestore
+                  : context.l10n.windowMaximize,
               onTap: _toggleMaximize,
             ),
             _WindowButton(
               icon: Icons.close,
-              tooltip: 'Tutup',
+              tooltip: context.l10n.windowClose,
               isClose: true,
               onTap: () => _safe(windowManager.close),
             ),

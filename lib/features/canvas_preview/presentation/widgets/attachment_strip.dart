@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 import 'attachment_preview_dialog.dart';
 
@@ -89,7 +90,7 @@ class _AttachmentChip extends StatelessWidget {
             top: 2,
             right: 2,
             child: Tooltip(
-              message: 'Hapus lampiran',
+              message: context.l10n.attachmentRemoveTooltip,
               child: GestureDetector(
                 onTap: onRemove,
                 behavior: HitTestBehavior.opaque,

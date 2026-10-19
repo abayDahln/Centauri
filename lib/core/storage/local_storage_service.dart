@@ -242,6 +242,15 @@ class LocalStorageService {
   Future<void> setSessionsMigrated() =>
       _metaBox?.put(AppConstants.sessionsMigratedKey, '1') ?? Future.value();
 
+  // --------------------------------------------------------------- bahasa --
+
+  /// Kode bahasa UI pilihan pengguna. `null` = belum pernah memilih; aplikasi
+  /// memakai default Inggris.
+  String? get appLocale => _metaBox?.get(AppConstants.appLocaleKey);
+
+  Future<void> setAppLocale(String code) async =>
+      _metaBox?.put(AppConstants.appLocaleKey, code);
+
   /// Kotak proyek siap dibaca (terbuka dan belum ditutup). Dipakai migrator
   /// agar flag sekali-jalan tidak tertulis padahal daftar proyek tak terbaca.
   bool get projectsBoxHealthy => _projectsBox != null && _projectsBox!.isOpen;

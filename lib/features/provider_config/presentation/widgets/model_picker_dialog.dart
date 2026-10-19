@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../data/catalog/provider_models.dart';
 import 'model_card.dart';
 
@@ -132,13 +133,14 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final set = _set;
     final suggestions = (set?.models ?? const <ProviderModel>[])
         .where((model) => !_removed.contains(model.id))
         .toList();
 
     return AlertDialog(
-      title: const Text('Pilih Model'),
+      title: Text(l10n.modelPickerTitle),
       contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       content: SizedBox(
         width: 420,
@@ -169,7 +171,7 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
                 for (final id in _custom) ...[
                   ModelCard(
                     label: id,
-                    name: 'Model kustom',
+                    name: l10n.modelPickerCustom,
                     modelId: id,
                     selected: id == widget.selectedModel,
                     onTap: () => _select(id),
@@ -185,7 +187,7 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
           ),
         ),
       ),
-      actions: [TextButton(onPressed: _close, child: const Text('Batal'))],
+      actions: [TextButton(onPressed: _close, child: Text(l10n.commonCancel))],
     );
   }
 
@@ -200,13 +202,13 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
           borderRadius: AppRadius.lg,
           border: Border.all(color: AppColors.borderStrong),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.add, size: 18, color: AppColors.accentPrimary),
-            SizedBox(width: 8),
+            const Icon(Icons.add, size: 18, color: AppColors.accentPrimary),
+            const SizedBox(width: 8),
             Text(
-              'Tambah Model',
-              style: TextStyle(
+              context.l10n.modelPickerAddModel,
+              style: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.accentPrimary,
@@ -230,8 +232,8 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
               fontFamilyFallback: AppFonts.monoFallback,
               fontSize: 13,
             ),
-            decoration: const InputDecoration(
-              hintText: 'e.g. "gpt-4o"',
+            decoration: InputDecoration(
+              hintText: context.l10n.modelPickerIdHint,
               isDense: true,
             ),
             onSubmitted: (_) => _addCustom(),
@@ -240,7 +242,10 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
         const SizedBox(width: 8),
         ElevatedButton(
           onPressed: _addCustom,
-          child: const Text('Tambah', style: TextStyle(fontSize: 12.5)),
+          child: Text(
+            context.l10n.commonAdd,
+            style: const TextStyle(fontSize: 12.5),
+          ),
         ),
       ],
     );

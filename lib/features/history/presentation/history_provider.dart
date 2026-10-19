@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../app/l10n/l10n.dart';
 import '../../canvas_preview/domain/page.dart';
 import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import '../data/project_repository.dart';
@@ -129,7 +130,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
       return cleaned.length > 48 ? '${cleaned.substring(0, 48)}...' : cleaned;
     }
     if (canvas.pages.isNotEmpty) return canvas.pages.first.name;
-    return 'Percakapan baru';
+    return l10nOf(ref).historyNewChat;
   }
 
   /// Buka proyek tersimpan: muat pesan + halaman ke workspace.

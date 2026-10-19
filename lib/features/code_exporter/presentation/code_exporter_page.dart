@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import 'code_export_view.dart';
 
@@ -13,32 +14,33 @@ class CodeExporterPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final htmlSource = ref.watch(workspaceProvider).activePage?.html;
+    final l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ekspor kode')),
+      appBar: AppBar(title: Text(l10n.codeExportTitle)),
       body: SafeArea(
         child: htmlSource == null
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.code_off_outlined,
                       size: 32,
                       color: AppColors.textDisabled,
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     Text(
-                      'Belum ada UI untuk diekspor',
-                      style: TextStyle(
+                      l10n.codeExportEmptyTitle,
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Buat UI terlebih dahulu.',
-                      style: TextStyle(
+                      l10n.codeExportEmptyBody,
+                      style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textDisabled,
                       ),

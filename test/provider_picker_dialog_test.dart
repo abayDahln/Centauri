@@ -3,6 +3,8 @@ import 'package:centauri/features/provider_config/presentation/widgets/provider_
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'helpers/pump_app.dart';
+
 void main() {
   Future<void> open(
     WidgetTester tester, {
@@ -10,7 +12,7 @@ void main() {
     String? selectedId,
   }) async {
     await tester.pumpWidget(
-      MaterialApp(
+      testApp(
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(

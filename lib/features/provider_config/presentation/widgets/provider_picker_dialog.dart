@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/l10n/l10n.dart';
 import '../../domain/catalog/provider_catalog_entry.dart';
 import 'provider_catalog_panel.dart';
 
@@ -25,7 +26,7 @@ class _ProviderPickerDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Pilih Provider'),
+      title: Text(context.l10n.providerPickerTitle),
       contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       content: SizedBox(
         width: 420,
@@ -42,7 +43,7 @@ class _ProviderPickerDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Batal'),
+          child: Text(context.l10n.commonCancel),
         ),
       ],
     );

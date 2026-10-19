@@ -9,7 +9,7 @@ class CentauriTableColumn<T> {
     required this.cell,
     this.flex = 1,
     this.width,
-    this.alignment = Alignment.centerLeft,
+    this.alignment = AlignmentDirectional.centerStart,
   });
 
   /// Judul kolom pada baris header.
@@ -24,7 +24,8 @@ class CentauriTableColumn<T> {
   /// Lebar tetap (mis. kolom aksi). Menang atas [flex].
   final double? width;
 
-  final Alignment alignment;
+  /// Arah perataan: pakai varian Directional agar ikut terbalik di RTL (Arab).
+  final AlignmentGeometry alignment;
 }
 
 /// Tabel ringan: baris header + baris data dengan hover dan highlight.

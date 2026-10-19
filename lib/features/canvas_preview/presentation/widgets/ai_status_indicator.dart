@@ -73,7 +73,7 @@ class _Dots extends StatelessWidget {
       builder: (context, _) {
         final phase = (animation.value * 3).floor() % 3;
         return Padding(
-          padding: const EdgeInsets.only(left: 2),
+          padding: const EdgeInsetsDirectional.only(start: 2),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: List.generate(3, (i) {

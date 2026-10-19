@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:centauri/app/app.dart';
+import 'package:centauri/app/l10n/app_language.dart';
 import 'package:centauri/core/storage/local_storage_service.dart';
 import 'package:centauri/features/canvas_preview/presentation/provider/layout_provider.dart';
 import 'package:centauri/features/canvas_preview/presentation/provider/workspace_provider.dart';
@@ -9,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+
+import 'helpers/pump_app.dart';
 
 /// Workspace berisi percakapan, agar daftar pesan benar-benar dirender.
 class _ChatWorkspace extends WorkspaceNotifier {
@@ -59,6 +62,7 @@ void main() {
         overrides: [
           workspaceProvider.overrideWith(_ChatWorkspace.new),
           canvasVisibleProvider.overrideWith(_HiddenCanvas.new),
+          ...languageOverride(AppLanguage.byCode('id')),
         ],
         child: const CentauriApp(),
       ),

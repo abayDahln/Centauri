@@ -1,8 +1,9 @@
 import 'package:centauri/features/canvas_preview/presentation/provider/workspace_provider.dart';
 import 'package:centauri/features/prompt_editor/presentation/prompt_chat_panel.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'helpers/pump_app.dart';
 
 /// Workspace berisi percakapan, agar daftar pesan benar-benar dirender.
 class _ChatWorkspace extends WorkspaceNotifier {
@@ -29,15 +30,13 @@ Future<void> _pumpPanel(WidgetTester tester, {double? contentMaxWidth}) async {
   addTearDown(() async => tester.binding.setSurfaceSize(null));
 
   await tester.pumpWidget(
-    ProviderScope(
+    testApp(
       overrides: [workspaceProvider.overrideWith(_ChatWorkspace.new)],
-      child: MaterialApp(
-        home: Center(
-          child: SizedBox(
-            width: _paneWidth,
-            height: 800,
-            child: PromptChatPanel(contentMaxWidth: contentMaxWidth),
-          ),
+      home: Center(
+        child: SizedBox(
+          width: _paneWidth,
+          height: 800,
+          child: PromptChatPanel(contentMaxWidth: contentMaxWidth),
         ),
       ),
     ),

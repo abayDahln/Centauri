@@ -1,12 +1,15 @@
 import 'dart:io';
 
 import 'package:centauri/app/app.dart';
+import 'package:centauri/app/l10n/app_language.dart';
 import 'package:centauri/core/storage/local_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+
+import 'helpers/pump_app.dart';
 
 /// Regression: hotkey board TIDAK boleh menelan input keyboard saat pengguna
 /// mengetik di prompt bar (paste, backspace, spasi).
@@ -30,7 +33,12 @@ void main() {
       ..physicalSize = const Size(4320, 2700)
       ..devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: languageOverride(AppLanguage.byCode('id')),
+        child: const CentauriApp(),
+      ),
+    );
     await tester.pump();
   }
 

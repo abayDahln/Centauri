@@ -18,6 +18,9 @@ class AppConstants {
   static const String activeProviderIdKey = 'active_provider_id';
   static const String activeProjectIdKey = 'active_project_id';
 
+  /// Kode bahasa UI yang dipilih pengguna (`id`, `ja`, …). Tidak ada = Inggris.
+  static const String appLocaleKey = 'app_locale';
+
   // Penanda sekali-jalan: migrasi proyek Hive -> folder sesi.
   static const String sessionsMigratedKey = 'sessions_migrated_v1';
 

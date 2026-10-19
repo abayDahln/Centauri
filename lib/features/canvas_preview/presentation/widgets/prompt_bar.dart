@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../../history/presentation/history_provider.dart';
 import '../../../prompt_editor/data/attachment_service.dart';
 import '../../../prompt_editor/domain/attachment.dart';
@@ -57,7 +58,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
     ref.read(panelVisibleProvider.notifier).show();
     await ref
         .read(workspaceProvider.notifier)
-        .submitPrompt(text.isEmpty ? 'Analisa gambar ini.' : text);
+        .submitPrompt(text.isEmpty ? context.l10n.promptAnalyzeImage : text);
     // Auto-save percakapan + board ke riwayat.
     ref.read(historyProvider.notifier).persistCurrent();
   }
@@ -99,16 +100,18 @@ class _PromptBarState extends ConsumerState<PromptBar> {
 
   Future<void> _onDrop(DropDoneDetails details) async {
     setState(() => _dragging = false);
+    // Teks diambil sebelum `await` di dalam loop (celah async).
+    final l10n = context.l10n;
     for (final file in details.files) {
       if (!AttachmentFormats.isSupported(file.name)) {
-        _toast('Format "${file.name}" tidak didukung.');
+        _toast(l10n.promptUnsupportedFormat(file.name));
         continue;
       }
       try {
         final bytes = await file.readAsBytes();
         _addFromBytes(file.name, bytes);
       } catch (_) {
-        _toast('Gagal membaca "${file.name}".');
+        _toast(l10n.promptReadFailed(file.name));
       }
     }
   }
@@ -253,7 +256,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                           // multiline, kontainer ikut tumbuh ke atas.
                           child: Container(
                             constraints: const BoxConstraints(minHeight: 36),
-                            alignment: Alignment.centerLeft,
+                            alignment: AlignmentDirectional.centerStart,
                             child: Focus(
                               onKeyEvent: (node, event) {
                                 // Enter = kirim, Shift+Enter = baris baru.
@@ -288,19 +291,19 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                                   fontSize: 14,
                                   color: AppColors.textPrimary,
                                 ),
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   border: InputBorder.none,
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                   filled: false,
-                                  hintText: 'Tulis pesan…',
-                                  hintStyle: TextStyle(
+                                  hintText: context.l10n.promptPlaceholder,
+                                  hintStyle: const TextStyle(
                                     fontFamily: AppFonts.uiFamily,
                                     fontFamilyFallback: AppFonts.uiFallback,
                                     fontSize: 14,
                                     color: AppColors.textDisabled,
                                   ),
-                                  contentPadding: EdgeInsets.symmetric(
+                                  contentPadding: const EdgeInsets.symmetric(
                                     vertical: 10,
                                   ),
                                 ),
@@ -336,7 +339,7 @@ class _AttachButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Lampirkan berkas',
+      message: context.l10n.promptAttachTooltip,
       child: InkWell(
         onTap: onPressed,
         borderRadius: AppRadius.sm,
@@ -372,7 +375,7 @@ class _SendButton extends StatelessWidget {
     // dibatalkan — bukan spinner mati yang membingungkan.
     if (busy) {
       return Tooltip(
-        message: 'Hentikan proses',
+        message: context.l10n.promptStopTooltip,
         child: SizedBox(
           width: 36,
           height: 36,
@@ -415,7 +418,7 @@ class _MentionStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Wrap(
         spacing: 6,
         runSpacing: 6,
@@ -443,7 +446,7 @@ class _MentionChip extends StatelessWidget {
     };
     return Container(
       constraints: const BoxConstraints(maxWidth: 220),
-      padding: const EdgeInsets.only(left: 9, right: 2),
+      padding: const EdgeInsetsDirectional.only(start: 9, end: 2),
       decoration: BoxDecoration(
         color: AppColors.accentSoft,
         borderRadius: AppRadius.pill,
@@ -503,7 +506,7 @@ class _MentionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Sebut halaman',
+      message: context.l10n.promptMentionPagesTooltip,
       child: PopupMenuButton<String>(
         tooltip: '',
         enabled: pages.isNotEmpty,
@@ -534,10 +537,10 @@ class _MentionButton extends StatelessWidget {
             ),
           if (pages.length > 1) ...[
             const PopupMenuDivider(),
-            const PopupMenuItem<String>(
+            PopupMenuItem<String>(
               value: _allPagesValue,
               height: 36,
-              child: Text('Semua halaman', style: AppText.uiSmall),
+              child: Text(context.l10n.commonAllPages, style: AppText.uiSmall),
             ),
           ],
         ],

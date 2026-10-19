@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
 import '../../../app/config/theme.dart';
+import '../../../app/l10n/l10n.dart';
 import '../../../app/widgets/stitch_widgets.dart';
 import '../../canvas_preview/presentation/widgets/skeleton.dart';
 import '../../mcp/presentation/mcp_status_section.dart';
@@ -19,13 +20,14 @@ class ProviderListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final asyncState = ref.watch(providerConfigProvider);
     final providers = asyncState.value?.providers ?? const <ApiProvider>[];
     final activeProviderId = asyncState.value?.activeProvider?.id;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Provider'),
+        title: Text(l10n.commonProvider),
         // Tombol kembali eksplisit: halaman ini juga bisa menjadi halaman
         // pertama (mis. setelah simpan yang mengganti lokasi), dan pengguna
         // tidak boleh terjebak tanpa jalan keluar.
@@ -34,7 +36,7 @@ class ProviderListPage extends ConsumerWidget {
           FilledButton.icon(
             onPressed: () => context.push(AppRoutes.providerNew),
             icon: const Icon(Icons.add, size: 16),
-            label: const Text('Tambah'),
+            label: Text(l10n.commonAdd),
           ),
           const SizedBox(width: 16),
         ],
@@ -47,9 +49,9 @@ class ProviderListPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Bring Your Own Key (BYOK)',
-                  style: TextStyle(
+                Text(
+                  l10n.providerListHeading,
+                  style: const TextStyle(
                     fontSize: 24,
                     height: 30 / 24,
                     fontWeight: FontWeight.w700,
@@ -58,10 +60,7 @@ class ProviderListPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Semua data tersimpan dan terenkripsi di perangkat Anda.',
-                  style: AppText.uiSmall,
-                ),
+                Text(l10n.providerListSubtitle, style: AppText.uiSmall),
                 const SizedBox(height: 28),
                 _buildList(
                   context,
@@ -99,6 +98,8 @@ class ProviderListPage extends ConsumerWidget {
     String? activeProviderId,
     AsyncValue<ProviderConfigState> asyncState,
   ) {
+    final l10n = context.l10n;
+
     if (asyncState.isLoading && providers.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
@@ -125,15 +126,12 @@ class ProviderListPage extends ConsumerWidget {
               color: AppColors.statusError,
             ),
             const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Gagal memuat daftar provider.',
-                style: AppText.uiSmall,
-              ),
+            Expanded(
+              child: Text(l10n.providerListLoadFailed, style: AppText.uiSmall),
             ),
             TextButton(
               onPressed: () => ref.refresh(providerConfigProvider.future),
-              child: const Text('Coba lagi'),
+              child: Text(l10n.commonRetry),
             ),
           ],
         ),
@@ -157,10 +155,10 @@ class ProviderListPage extends ConsumerWidget {
               color: AppColors.textDisabled,
             ),
             const SizedBox(height: 12),
-            Text('Belum ada provider', style: AppText.panelTitle),
+            Text(l10n.providerListEmptyTitle, style: AppText.panelTitle),
             const SizedBox(height: 4),
-            const Text(
-              'Tambahkan provider untuk mulai menggunakan Centauri.',
+            Text(
+              l10n.providerListEmptyBody,
               style: AppText.caption,
               textAlign: TextAlign.center,
             ),
@@ -168,7 +166,7 @@ class ProviderListPage extends ConsumerWidget {
             FilledButton.icon(
               onPressed: () => context.push(AppRoutes.providerNew),
               icon: const Icon(Icons.add, size: 16),
-              label: const Text('Tambah provider'),
+              label: Text(l10n.providerListAddProvider),
             ),
           ],
         ),
@@ -207,13 +205,14 @@ class ProviderListPage extends ConsumerWidget {
     WidgetRef ref,
     ApiProvider provider,
   ) async {
+    final l10n = context.l10n;
     final confirmed = await showDeleteProviderDialog(context, provider.name);
     if (!confirmed) return;
     await ref.read(providerConfigProvider.notifier).deleteProvider(provider.id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Provider dihapus.')));
+      ..showSnackBar(SnackBar(content: Text(l10n.providerDeleted)));
   }
 }
 
@@ -242,6 +241,7 @@ class _ProviderRowState extends State<_ProviderRow> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final provider = widget.provider;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -302,23 +302,23 @@ class _ProviderRowState extends State<_ProviderRow> {
               ),
               const SizedBox(width: 12),
               if (widget.isActive)
-                const StatusPill(label: 'Aktif')
+                StatusPill(label: l10n.commonActive)
               else
                 TextButton(
                   onPressed: widget.onActivate,
-                  child: const Text('Jadikan aktif'),
+                  child: Text(l10n.commonSetActive),
                 ),
               const SizedBox(width: 4),
               SoftIconButton(
                 icon: Icons.edit_outlined,
-                tooltip: 'Ubah',
+                tooltip: l10n.commonEdit,
                 size: 32,
                 iconSize: 16,
                 onPressed: widget.onOpen,
               ),
               SoftIconButton(
                 icon: Icons.delete_outline,
-                tooltip: 'Hapus',
+                tooltip: l10n.commonDelete,
                 size: 32,
                 iconSize: 16,
                 onPressed: widget.onDelete,

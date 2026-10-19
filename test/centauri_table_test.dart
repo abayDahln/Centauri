@@ -3,7 +3,9 @@ import 'package:centauri/features/provider_config/presentation/widgets/centauri_
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
+import 'helpers/pump_app.dart';
+
+Widget _host(Widget child) => testApp(home: Scaffold(body: child));
 
 void main() {
   group('CentauriTable', () {

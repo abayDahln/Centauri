@@ -30,6 +30,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   dio: ^5.4.3
   flutter_secure_storage: ^9.0.0
 
@@ -72,6 +75,10 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  # Text UI memakai ARB di `lib/l10n` (lihat `l10n.yaml`); `gen-l10n` dijalankan
+  # otomatis saat build sehingga `AppLocalizations` selalu sinkron.
+  generate: true
+
   fonts:
     - family: InstrumentSans
       fonts:

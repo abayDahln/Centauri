@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
 import '../../../app/config/theme.dart';
+import '../../../app/l10n/l10n.dart';
 import '../../../core/utils/app_constants.dart';
 import '../data/catalog/provider_catalog.dart';
 import '../data/catalog/provider_models.dart';
@@ -248,13 +249,14 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   /// Validasi yang tidak tercakup [Form]: provider & model wajib dipilih.
   bool _validateSelection() {
+    final l10n = context.l10n;
     if (!_hasProvider) {
-      _showSnackBar('Pilih provider dulu.', isError: true);
+      _showSnackBar(l10n.providerDetailPickProvider, isError: true);
       return false;
     }
     if (!_formKey.currentState!.validate()) return false;
     if (_model.trim().isEmpty) {
-      _showSnackBar('Pilih model dulu.', isError: true);
+      _showSnackBar(l10n.providerDetailPickModel, isError: true);
       return false;
     }
     return true;
@@ -280,7 +282,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     if (!mounted) return null;
     final result = ref.read(providerConfigProvider);
     if (result.hasError) {
-      _showSnackBar('Gagal menyimpan: ${result.error}', isError: true);
+      _showSnackBar(
+        context.l10n.providerDetailSaveFailed('${result.error}'),
+        isError: true,
+      );
       return null;
     }
 
@@ -292,7 +297,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       final cleared = ref.read(providerConfigProvider);
       if (cleared.hasError) {
         _showSnackBar(
-          'Gagal menghapus API Key: ${cleared.error}',
+          context.l10n.providerDetailClearKeyFailed('${cleared.error}'),
           isError: true,
         );
         return null;
@@ -309,8 +314,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     final id = await _persistProvider();
     if (id == null || !mounted) return;
 
+    final l10n = context.l10n;
     _showSnackBar(
-      wasEditing ? 'Provider diperbarui.' : 'Provider ditambahkan.',
+      wasEditing ? l10n.providerDetailUpdated : l10n.providerDetailAdded,
       isError: false,
     );
 
@@ -326,7 +332,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     try {
       final provider = await _providerWithStoredCredentials();
       await ref.read(providerConfigProvider.notifier).testConnection(provider);
-      if (mounted) _showSnackBar('Koneksi berhasil.', isError: false);
+      if (mounted) {
+        _showSnackBar(context.l10n.providerDetailTestOk, isError: false);
+      }
     } on ApiConnectionException catch (e) {
       if (mounted) _showSnackBar(e.message, isError: true);
     } finally {
@@ -356,7 +364,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
     await ref.read(providerConfigProvider.notifier).deleteProvider(id);
     if (!mounted) return;
-    _showSnackBar('Provider dihapus.', isError: false);
+    _showSnackBar(context.l10n.providerDeleted, isError: false);
     _backToList();
   }
 
@@ -407,15 +415,18 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final editing = _editingProviderId != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(editing ? 'Ubah provider' : 'Tambah provider'),
+        title: Text(
+          editing ? l10n.providerDetailTitleEdit : l10n.providerDetailTitleNew,
+        ),
         actions: [
           if (editing)
             IconButton(
-              tooltip: 'Hapus provider',
+              tooltip: l10n.providerDetailDeleteTooltip,
               icon: const Icon(Icons.delete_outline, size: 18),
               onPressed: _confirmDelete,
             ),
@@ -435,6 +446,8 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   }
 
   Widget _buildCard() {
+    final l10n = context.l10n;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -447,55 +460,61 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FieldLabel('Nama'),
+            FieldLabel(l10n.providerDetailFieldName),
             const SizedBox(height: 8),
             TextFormField(
               key: const ValueKey('field-nama'),
               controller: _nameController,
-              decoration: const InputDecoration(hintText: 'e.g. "OpenAI Pro"'),
+              decoration: InputDecoration(
+                hintText: l10n.providerDetailNameHint,
+              ),
               validator: (value) => (value == null || value.trim().isEmpty)
-                  ? 'Nama wajib diisi.'
+                  ? l10n.providerDetailNameRequired
                   : null,
             ),
             const SizedBox(height: 20),
             PickerField(
               key: const ValueKey('picker-provider'),
-              label: 'Provider',
+              label: l10n.commonProvider,
               value: _providerLabel,
-              hint: 'Pilih provider',
+              hint: l10n.providerDetailPickProviderLabel,
               onTap: _pickProvider,
             ),
             // Custom: pengguna mengetik nama providernya sendiri.
             if (_isCustom) ...[
               const SizedBox(height: 20),
-              const FieldLabel('Nama Provider'),
+              FieldLabel(l10n.providerDetailFieldProviderName),
               const SizedBox(height: 8),
               TextFormField(
                 key: const ValueKey('field-providerName'),
                 controller: _providerNameController,
-                decoration: const InputDecoration(hintText: 'e.g. "OpenAI"'),
+                decoration: InputDecoration(
+                  hintText: l10n.providerDetailProviderNameHint,
+                ),
                 validator: (value) => (value == null || value.trim().isEmpty)
-                    ? 'Nama provider wajib diisi.'
+                    ? l10n.providerDetailProviderNameRequired
                     : null,
               ),
             ],
             const SizedBox(height: 20),
             FieldLabel(
-              'Base URL',
+              l10n.commonBaseUrl,
               trailing: _baseUrlLocked ? _lockBadge() : null,
             ),
             const SizedBox(height: 8),
             _buildBaseUrlField(),
             const SizedBox(height: 20),
-            const FieldLabel('API Key'),
+            FieldLabel(l10n.commonApiKey),
             const SizedBox(height: 8),
             _buildApiKeyField(),
             const SizedBox(height: 20),
             PickerField(
               key: const ValueKey('picker-model'),
-              label: 'Model',
+              label: l10n.commonModel,
               value: _model,
-              hint: _hasProvider ? 'Pilih model' : 'Pilih provider dulu',
+              hint: _hasProvider
+                  ? l10n.providerDetailPickModelLabel
+                  : l10n.providerDetailPickProviderFirst,
               enabled: _hasProvider,
               onTap: _pickModel,
               valueStyle: const TextStyle(
@@ -517,7 +536,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                           color: AppColors.accentPrimary,
                         ),
                       )
-                    : const Text('Test'),
+                    : Text(l10n.providerDetailTestAction),
               ),
             ),
             const SizedBox(height: 24),
@@ -550,10 +569,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           ),
           validator: (value) {
             final text = value?.trim() ?? '';
-            if (text.isEmpty) return 'Base URL wajib diisi.';
+            if (text.isEmpty) return context.l10n.providerDetailBaseUrlRequired;
             final uri = Uri.tryParse(text);
             if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
-              return 'Masukkan URL yang valid (contoh: https://...).';
+              return context.l10n.providerDetailBaseUrlInvalid;
             }
             return null;
           },
@@ -565,14 +584,14 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   }
 
   Widget _lockBadge() {
-    return const Row(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.lock_outline, size: 12, color: AppColors.textDisabled),
-        SizedBox(width: 4),
+        const Icon(Icons.lock_outline, size: 12, color: AppColors.textDisabled),
+        const SizedBox(width: 4),
         Text(
-          'Dari provider',
-          style: TextStyle(color: AppColors.textDisabled, fontSize: 11),
+          context.l10n.providerDetailApiKeyFromProvider,
+          style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
         ),
       ],
     );
@@ -580,11 +599,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   /// Keterangan di bawah field API Key, mengikuti keadaan field.
   String get _apiKeyHelper {
-    if (_apiKeyLocked) return 'API Key tersimpan. Reset untuk mengganti.';
+    final l10n = context.l10n;
+    if (_apiKeyLocked) return l10n.providerDetailApiKeyStored;
     if (_apiKeyCleared && _apiKeyController.text.trim().isEmpty) {
-      return 'API Key dihapus saat disimpan.';
+      return l10n.providerDetailApiKeyCleared;
     }
-    return 'Kosongkan untuk layanan lokal tanpa autentikasi.';
+    return l10n.providerDetailApiKeyOptional;
   }
 
   /// Field API Key: terkunci bila provider sudah punya key tersimpan. Tombol
@@ -624,7 +644,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                 OutlinedButton(
                   key: const ValueKey('button-reset-apiKey'),
                   onPressed: _resetApiKey,
-                  child: const Text('Reset'),
+                  child: Text(context.l10n.providerDetailReset),
                 ),
               ],
             ],
@@ -649,13 +669,13 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         OutlinedButton(
           key: const ValueKey('button-cancel'),
           onPressed: _backToList,
-          child: const Text('Batal'),
+          child: Text(context.l10n.commonCancel),
         ),
         const SizedBox(width: 12),
         FilledButton(
           key: const ValueKey('button-save'),
           onPressed: _save,
-          child: const Text('Simpan'),
+          child: Text(context.l10n.commonSave),
         ),
       ],
     );

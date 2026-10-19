@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 
 /// Menampilkan dialog pratinjau lampiran (gambar besar / isi teks).
@@ -77,7 +78,7 @@ class _Header extends StatelessWidget {
           Text(_humanSize(attachment.sizeBytes), style: AppText.caption),
           const SizedBox(width: 8),
           IconButton(
-            tooltip: 'Tutup',
+            tooltip: context.l10n.commonClose,
             icon: const Icon(Icons.close, size: 18),
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -107,10 +108,10 @@ class _ImageBody extends StatelessWidget {
         child: Image.memory(
           Uint8List.fromList(bytes),
           fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => const Padding(
-            padding: EdgeInsets.all(32),
+          errorBuilder: (_, _, _) => Padding(
+            padding: const EdgeInsets.all(32),
             child: Text(
-              'Gambar tidak bisa ditampilkan.',
+              context.l10n.attachmentImageFailed,
               style: AppText.caption,
             ),
           ),

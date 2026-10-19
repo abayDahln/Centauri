@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/ai_response.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 import '../../../prompt_editor/domain/prompt_templates.dart';
@@ -51,18 +52,10 @@ class CanvasMessage {
 enum ChatMessageKind { chat, ui }
 
 /// Status proses AI yang ditampilkan live ke pengguna.
-enum AiStatus {
-  idle('', ''),
-  thinking('Berpikir', 'Menghubungi model…'),
-  responding('Menulis', 'Menerima balasan'),
-  rendering('Merender', 'Menyiapkan halaman'),
-  done('Selesai', '');
-
-  const AiStatus(this.label, this.detail);
-
-  final String label;
-  final String detail;
-}
+///
+/// Label yang terlihat pengguna tidak disimpan di sini — widget status yang
+/// menerjemahkannya lewat l10n, supaya enum ini murni state.
+enum AiStatus { idle, thinking, responding, rendering, done }
 
 /// State workspace: daftar halaman hasil generate + seleksi/percakapan.
 /// Tidak ada lagi board/pan/zoom — preview menampilkan satu halaman penuh.
@@ -307,7 +300,9 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     final page = state.activePage;
     final mention = PromptMention(
       kind: PromptMentionKind.element,
-      label: label.trim().isEmpty ? 'Elemen terpilih' : label.trim(),
+      label: label.trim().isEmpty
+          ? l10nOf(ref).canvasMentionElementFallback
+          : label.trim(),
       nodeId: nodeId,
       pageId: page?.id,
       pageName: page?.name,
@@ -346,9 +341,9 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     state = state.copyWith(
       mentions: [
         ...state.mentions,
-        const PromptMention(
+        PromptMention(
           kind: PromptMentionKind.allPages,
-          label: 'Semua halaman',
+          label: l10nOf(ref).commonAllPages,
         ),
       ],
     );
@@ -487,7 +482,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     );
     if (duplicate) return null;
     if (state.attachments.length >= 6) {
-      return 'Maksimal 6 lampiran per pesan.';
+      return l10nOf(ref).promptAttachmentLimit;
     }
     state = state.copyWith(attachments: [...state.attachments, attachment]);
     return null;
@@ -571,9 +566,9 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
     if (activeProvider == null) {
       _appendMessage(
-        const CanvasMessage(
+        CanvasMessage(
           role: ChatRole.error,
-          text: 'Belum ada provider aktif. Tambahkan provider untuk mulai.',
+          text: l10nOf(ref).canvasNoProvider,
         ),
       );
       return;
@@ -691,7 +686,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       _failGeneration(e.message);
     } catch (e) {
       if (!state.isGenerating) return;
-      _failGeneration('Terjadi kesalahan. Coba lagi.');
+      _failGeneration(l10nOf(ref).commonGenericError);
     }
   }
 
@@ -775,10 +770,10 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     );
     if (promptWasDiscarded) {
       _appendMessage(
-        const CanvasMessage(
+        CanvasMessage(
           role: ChatRole.assistant,
           kind: ChatMessageKind.chat,
-          text: 'Generasi dihentikan.',
+          text: l10nOf(ref).canvasGenerationStopped,
         ),
       );
     }
@@ -817,14 +812,14 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
   String _titleFromPrompt(String prompt) {
     final cleaned = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (cleaned.isEmpty) return 'Tanpa judul';
+    if (cleaned.isEmpty) return l10nOf(ref).canvasUntitledPage;
     final words = cleaned
         .split(' ')
         .where((w) => w.isNotEmpty)
         .take(4)
         .join(' ')
         .replaceAll(RegExp(r'[,.:;!?]+$'), '');
-    if (words.isEmpty) return 'Tanpa judul';
+    if (words.isEmpty) return l10nOf(ref).canvasUntitledPage;
     final titled = words.length > 32
         ? '${words.substring(0, 32).trim()}...'
         : words;

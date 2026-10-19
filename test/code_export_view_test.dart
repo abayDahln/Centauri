@@ -3,8 +3,10 @@ import 'package:centauri/features/code_exporter/presentation/code_export_view.da
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'helpers/pump_app.dart';
+
 Widget _wrap(String html) {
-  return MaterialApp(
+  return testApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
       body: SizedBox(

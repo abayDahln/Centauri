@@ -4,6 +4,7 @@ import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../../code_exporter/data/code_export_service.dart';
 import '../provider/workspace_provider.dart';
 
@@ -33,7 +34,7 @@ class _CodePanelState extends ConsumerState<CodePanel> {
   Future<void> _copy(String code) async {
     await _exportService.copyToClipboard(code);
     if (!mounted) return;
-    _toast('HTML disalin.');
+    _toast(context.l10n.codePanelCopied);
   }
 
   Future<void> _save(String code) async {
@@ -43,7 +44,7 @@ class _CodePanelState extends ConsumerState<CodePanel> {
         code: code,
       );
       if (!mounted || path == null) return;
-      _toast('Disimpan: $path');
+      _toast(context.l10n.exportSaved(path));
     } on CodeExportException catch (e) {
       if (mounted) _toast(e.message);
     }
@@ -95,6 +96,7 @@ class _CodeBreadcrumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       height: AppColors.toolbarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -120,13 +122,13 @@ class _CodeBreadcrumb extends StatelessWidget {
           const Spacer(),
           _BarIcon(
             icon: Icons.copy_all_outlined,
-            tooltip: 'Salin HTML',
+            tooltip: l10n.codePanelCopyTooltip,
             onPressed: onCopy,
           ),
           const SizedBox(width: 2),
           _BarIcon(
             icon: Icons.download_outlined,
-            tooltip: 'Simpan sebagai .html',
+            tooltip: l10n.codePanelSaveTooltip,
             onPressed: onSave,
           ),
         ],
@@ -275,11 +277,11 @@ class _CodeEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Text(
-          'Belum ada kode.\nBuat UI terlebih dahulu.',
+          context.l10n.codePanelEmpty,
           textAlign: TextAlign.center,
           style: AppText.caption,
         ),

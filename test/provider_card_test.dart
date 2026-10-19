@@ -4,6 +4,8 @@ import 'package:centauri/features/provider_config/presentation/widgets/provider_
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'helpers/pump_app.dart';
+
 const _entry = ProviderCatalogEntry(
   id: 'groq-test',
   name: 'Groq Test',
@@ -23,7 +25,7 @@ ProviderCardData _card({String name = 'Groq Test'}) => ProviderCardData(
   entry: _entry,
 );
 
-Widget _host(ProviderCardData data, {VoidCallback? onTap}) => MaterialApp(
+Widget _host(ProviderCardData data, {VoidCallback? onTap}) => testApp(
   home: Scaffold(
     body: ProviderCard(data: data, onTap: onTap ?? () {}),
   ),

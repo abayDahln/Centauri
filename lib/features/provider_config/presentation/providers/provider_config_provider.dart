@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../app/l10n/l10n.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../data/datasources/ai_api_service.dart';
@@ -97,7 +98,7 @@ class ProviderConfigNotifier extends AsyncNotifier<ProviderConfigState> {
             .where((p) => p.id == id)
             .firstOrNull;
         if (existing == null) {
-          throw StateError('Provider tidak ditemukan.');
+          throw StateError(l10nOf(ref).providerNotFound);
         }
         final updated = existing.copyWith(
           name: name.trim(),

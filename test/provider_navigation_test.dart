@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:centauri/app/app.dart';
+import 'package:centauri/app/l10n/app_language.dart';
 import 'package:centauri/core/storage/local_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+
+import 'helpers/pump_app.dart';
 
 /// Regresi: halaman konfigurasi provider tidak boleh menjadi jalan buntu —
 /// harus selalu ada tombol kembali yang mengembalikan ke canvas.
@@ -25,7 +28,12 @@ void main() {
       ..devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const ProviderScope(child: CentauriApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: languageOverride(AppLanguage.byCode('id')),
+        child: const CentauriApp(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.settings_outlined));

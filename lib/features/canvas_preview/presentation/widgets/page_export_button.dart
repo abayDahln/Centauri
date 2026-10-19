@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../../../code_exporter/data/figma_export_service.dart';
 import '../../../code_exporter/data/page_export_service.dart';
@@ -38,6 +39,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
     final hasPage = ref.watch(
       workspaceProvider.select((s) => s.activePage != null),
     );
+    final l10n = context.l10n;
 
     void snack(String message) {
       if (!mounted) return;
@@ -55,7 +57,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
     Future<void> run(_PageExportKind kind) async {
       final page = ref.read(workspaceProvider).activePage;
       if (page == null) {
-        snack('Belum ada halaman untuk diekspor.');
+        snack(l10n.exportNoPages);
         return;
       }
       setState(() => _busy = true);
@@ -67,14 +69,14 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
               pageId: page.id,
               html: page.html,
             );
-            if (path != null) snack('Disimpan: $path');
+            if (path != null) snack(l10n.exportSaved(path));
           case _PageExportKind.png:
             final bytes = await _service.capturePngBytes(page.id);
             final path = await _service.savePng(
               pageName: page.name,
               pngBytes: bytes,
             );
-            if (path != null) snack('Disimpan: $path');
+            if (path != null) snack(l10n.exportSaved(path));
           case _PageExportKind.pdf:
             final bytes = await _service.capturePngBytes(page.id);
             final pdf = await _service.buildPdfFromPng(bytes);
@@ -82,7 +84,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
               pageName: page.name,
               pdfBytes: pdf,
             );
-            if (path != null) snack('Disimpan: $path');
+            if (path != null) snack(l10n.exportSaved(path));
           case _PageExportKind.figma:
             final payload = await _figma.collectPayload(page.id);
             final json = _figma.buildFigmaJson(payload);
@@ -94,8 +96,8 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
             final count = _figma.countNodes(payload);
             snack(
               path == null
-                  ? 'Data Figma ($count elemen) disalin.'
-                  : 'Data Figma ($count elemen) tersimpan: $path',
+                  ? l10n.exportFigmaCopied(count)
+                  : l10n.exportFigmaSaved(count, path),
             );
         }
       } on PageExportException catch (e) {
@@ -103,7 +105,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
       } on FigmaExportException catch (e) {
         snack(e.message);
       } catch (_) {
-        snack('Ekspor gagal. Coba lagi.');
+        snack(l10n.exportFailed);
       } finally {
         if (mounted) setState(() => _busy = false);
       }
@@ -119,41 +121,44 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.download_outlined),
-        tooltip: 'Ekspor halaman',
+        tooltip: l10n.exportPageTooltip,
         onSelected: run,
-        itemBuilder: (_) => const [
+        itemBuilder: (_) => [
           PopupMenuItem(
             value: _PageExportKind.png,
-            child: Text('PNG (gambar)'),
+            child: Text(l10n.exportPng),
           ),
           PopupMenuItem(
             value: _PageExportKind.svg,
-            child: Text('SVG (vektor)'),
+            child: Text(l10n.exportSvg),
           ),
           PopupMenuItem(
             value: _PageExportKind.pdf,
-            child: Text('PDF (dokumen)'),
+            child: Text(l10n.exportPdf),
           ),
-          PopupMenuItem(value: _PageExportKind.figma, child: Text('Figma')),
+          PopupMenuItem(
+            value: _PageExportKind.figma,
+            child: const Text('Figma'),
+          ),
         ],
       );
     }
 
     return PopupMenuButton<_PageExportKind>(
       enabled: hasPage && !_busy,
-      tooltip: 'Ekspor halaman (PNG/SVG/PDF/Figma)',
+      tooltip: l10n.exportPageTooltipCompact,
       onSelected: run,
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: _PageExportKind.png, child: Text('PNG (gambar)')),
-        PopupMenuItem(value: _PageExportKind.svg, child: Text('SVG (vektor)')),
-        PopupMenuItem(value: _PageExportKind.pdf, child: Text('PDF (dokumen)')),
-        PopupMenuItem(value: _PageExportKind.figma, child: Text('Figma')),
+      itemBuilder: (_) => [
+        PopupMenuItem(value: _PageExportKind.png, child: Text(l10n.exportPng)),
+        PopupMenuItem(value: _PageExportKind.svg, child: Text(l10n.exportSvg)),
+        PopupMenuItem(value: _PageExportKind.pdf, child: Text(l10n.exportPdf)),
+        PopupMenuItem(value: _PageExportKind.figma, child: const Text('Figma')),
       ],
       child: widget.primary
           ? _PrimaryExportButton(busy: _busy, enabled: hasPage)
           : SoftIconButton(
               icon: _busy ? Icons.hourglass_empty : Icons.download_outlined,
-              tooltip: 'Ekspor halaman',
+              tooltip: l10n.exportPageTooltip,
               onPressed: () {},
             ),
     );
@@ -197,7 +202,7 @@ class _PrimaryExportButton extends StatelessWidget {
             ),
           const SizedBox(width: 8),
           Text(
-            'Ekspor',
+            context.l10n.exportAction,
             style: AppText.button.copyWith(
               color: active ? Colors.white : AppColors.textDisabled,
             ),

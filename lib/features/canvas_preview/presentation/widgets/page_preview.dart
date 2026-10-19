@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../data/services/canvas_service_registry.dart';
 import '../../data/services/canvas_webview_service.dart';
 import '../../data/services/canvas_webview_service_factory.dart';
@@ -125,8 +126,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       case 'outerHtmlError':
         return; // dikonsumsi peminta via stream yang sama.
       case 'error':
-        final message =
-            event.errorMessage ?? 'Terjadi kesalahan pada pratinjau.';
+        final message = event.errorMessage ?? context.l10n.previewGenericError;
         debugPrint('[workspace] bridge error: $message');
         if (mounted) setState(() => _error = message);
         return;
@@ -160,6 +160,8 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   Future<void> _onNavigate(String href) async {
     final pages = ref.read(workspaceProvider).pages;
     final resolved = resolveLink(href, pages);
+    // Teks diambil sebelum ada `await` agar context tidak dipakai di celah async.
+    final l10n = context.l10n;
     switch (resolved.kind) {
       case LinkKind.internal:
         final id = resolved.pageId;
@@ -167,17 +169,17 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       case LinkKind.external:
         final uri = Uri.tryParse(href.startsWith('//') ? 'https:$href' : href);
         if (uri == null) {
-          _toast('Link tidak valid: $href');
+          _toast(l10n.previewLinkInvalid(href));
           return;
         }
         try {
           final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-          if (!ok) _toast('Tidak bisa membuka: $href');
+          if (!ok) _toast(l10n.previewLinkOpenFailed(href));
         } catch (_) {
-          _toast('Tidak bisa membuka: $href');
+          _toast(l10n.previewLinkOpenFailed(href));
         }
       case LinkKind.unknown:
-        _toast('Halaman tidak ditemukan: $href');
+        _toast(l10n.previewPageNotFound(href));
       case LinkKind.anchor:
         break;
     }
@@ -196,8 +198,9 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   /// "Hapus komponen" dari menu elemen: hapus node lalu sinkronkan HTML.
   Future<void> _deleteNodeFromCanvas(String? nodeId) async {
     if (nodeId == null) return;
+    final l10n = context.l10n;
     final ok = await ref.read(workspaceProvider.notifier).deleteNode(nodeId);
-    if (!ok) _toast('Gagal menghapus komponen. Coba lagi.');
+    if (!ok) _toast(l10n.previewDeleteFailed);
   }
 
   void _toast(String message) {
@@ -292,7 +295,7 @@ class _PageSwitchLoading extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Memuat…',
+                context.l10n.previewLoading,
                 style: TextStyle(
                   fontFamily: AppFonts.uiFamily,
                   fontFamilyFallback: AppFonts.uiFallback,
@@ -329,7 +332,7 @@ class _PreviewEmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Belum ada halaman',
+                context.l10n.previewNoPagesTitle,
                 style: TextStyle(
                   fontFamily: AppFonts.uiFamily,
                   fontFamilyFallback: AppFonts.uiFallback,
@@ -339,10 +342,7 @@ class _PreviewEmptyState extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
-                'Ketik pesan untuk membuat halaman.',
-                style: AppText.caption,
-              ),
+              Text(context.l10n.previewNoPagesBody, style: AppText.caption),
             ],
           ),
         ),
@@ -373,8 +373,8 @@ class _WebviewError extends StatelessWidget {
                 color: AppColors.statusError,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Pratinjau gagal dimuat',
+              Text(
+                context.l10n.previewLoadFailedTitle,
                 style: TextStyle(
                   fontFamily: AppFonts.uiFamily,
                   fontFamilyFallback: AppFonts.uiFallback,
@@ -400,13 +400,16 @@ class _WebviewError extends StatelessWidget {
               const SizedBox(height: 10),
               FilledButton.tonal(
                 onPressed: onRetry,
-                child: const Text('Coba lagi'),
+                child: Text(context.l10n.commonRetry),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Jika tetap gagal, instal Microsoft Edge WebView2 Runtime.',
+              Text(
+                context.l10n.previewWebView2Hint,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 10, color: AppColors.textDisabled),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textDisabled,
+                ),
               ),
             ],
           ),

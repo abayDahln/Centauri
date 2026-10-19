@@ -106,9 +106,40 @@ class AppRadius {
 class AppFonts {
   AppFonts._();
 
+  /// Keluarga font untuk aksara yang tidak dimiliki Instrument Sans/Inter:
+  /// CJK, Thai, Arab, Ibrani. Mencakup Windows (Microsoft YaHei / Yu Gothic /
+  /// Malgun Gothic / Leelawadee UI) dan Android (Noto Sans per aksara).
+  ///
+  /// Urutan penting: keluarga Latin dulu, aksara khusus menyusul, sehingga
+  /// glyph Latin selalu diambil dari Instrument Sans.
+  static const List<String> scriptFallback = [
+    'Segoe UI',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'Noto Sans SC',
+    'Noto Sans CJK SC',
+    'Yu Gothic UI',
+    'Yu Gothic',
+    'Noto Sans JP',
+    'Noto Sans CJK JP',
+    'Malgun Gothic',
+    'Noto Sans KR',
+    'Noto Sans CJK KR',
+    'Leelawadee UI',
+    'Noto Sans Thai',
+    'Tahoma',
+    'Noto Naskh Arabic',
+    'Noto Sans Arabic',
+  ];
+
   /// Font UI utama aplikasi: Instrument Sans.
   static const String uiFamily = 'InstrumentSans';
-  static const List<String> uiFallback = ['Inter', 'Roboto', 'sans-serif'];
+  static const List<String> uiFallback = [
+    'Inter',
+    'Roboto',
+    'sans-serif',
+    ...scriptFallback,
+  ];
 
   /// Mono font untuk kode dan label teknis: JetBrains Mono bundled.
   static const String monoFamily = 'JetBrainsMono';
@@ -117,6 +148,7 @@ class AppFonts {
     'Consolas',
     'Roboto Mono',
     'monospace',
+    ...scriptFallback,
   ];
 }
 

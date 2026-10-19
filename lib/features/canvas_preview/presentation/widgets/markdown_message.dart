@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 
 /// Merender teks markdown dari AI (bold, heading, list, code, dsb) dengan
 /// gaya yang sesuai tema terang Centauri.
@@ -111,7 +112,7 @@ class MarkdownMessage extends StatelessWidget {
     );
 
     return MarkdownBody(
-      data: text.isEmpty ? '(kosong)' : text,
+      data: text.isEmpty ? context.l10n.markdownEmpty : text,
       styleSheet: style,
       // Render tiap blok sebagai teks biasa; seleksi lintas-blok ditangani
       // oleh SelectionArea di pemanggil (mis. daftar pesan).
