@@ -604,6 +604,138 @@ class AppLocalizationsDe extends AppLocalizations {
   String get providerNotFound => 'Provider nicht gefunden.';
 
   @override
+  String get errorCancelled => 'Abgebrochen.';
+
+  @override
+  String get errorApiTimeout =>
+      'Zeitüberschreitung bei der Verbindung. Prüfen Sie die Adresse oder Ihr Netzwerk.';
+
+  @override
+  String get errorApiUnreachable =>
+      'Verbindung fehlgeschlagen. Prüfen Sie die Adresse.';
+
+  @override
+  String get errorApiUnauthorized =>
+      'Der Zugriffsschlüssel ist ungültig oder hat keine Berechtigung.';
+
+  @override
+  String get errorApiRateLimited =>
+      'Der Dienst begrenzt Anfragen. Versuchen Sie es gleich noch einmal.';
+
+  @override
+  String get errorApiNotFound =>
+      'Adresse oder Model nicht gefunden. Prüfen Sie beides.';
+
+  @override
+  String get errorApiRejected => 'Der Dienst hat die Anfrage abgelehnt.';
+
+  @override
+  String get errorApiCertificate =>
+      'Das Serverzertifikat ist ungültig. Prüfen Sie die Adresse.';
+
+  @override
+  String get errorApiSendFailed =>
+      'Anfrage konnte nicht gesendet werden. Prüfen Sie Verbindung und Adresse.';
+
+  @override
+  String get errorApiBadResponse =>
+      'Die Antwort hatte ein unerwartetes Format. Die Adresse sollte auf /v1 enden.';
+
+  @override
+  String get errorApiNoChatEndpoint =>
+      'Dieser Dienst hat noch keine Chat-Adresse.';
+
+  @override
+  String get errorApiModelUnavailable =>
+      'Dieses Model ist hier nicht verfügbar. Wählen Sie ein anderes.';
+
+  @override
+  String get errorApiConnectionBroken =>
+      'Die Verbindung wurde unterbrochen. Versuchen Sie es noch einmal.';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return 'Meldung des Dienstes: $detail';
+  }
+
+  @override
+  String get errorGenerationTimeout =>
+      'Generierung gestoppt: Sie hat zu lange gedauert. Versuchen Sie es noch einmal.';
+
+  @override
+  String get errorExportNotReady =>
+      'Die Seite ist noch nicht bereit. Warten Sie einen Moment.';
+
+  @override
+  String get errorExportTimeout =>
+      'Zeitüberschreitung beim Export. Versuchen Sie es noch einmal.';
+
+  @override
+  String get errorExportNoElements => 'Noch nichts zum Exportieren.';
+
+  @override
+  String get errorExportEmptyResult =>
+      'Das Ergebnis war leer. Versuchen Sie es noch einmal.';
+
+  @override
+  String get errorExportWriteFailed =>
+      'Datei konnte nicht gespeichert werden. Wählen Sie einen anderen Ort.';
+
+  @override
+  String get errorImportInvalidFile =>
+      'Diese Datei ist kein gültiges JSON. Wählen Sie eine Centauri-.mydesign-Datei.';
+
+  @override
+  String get errorImportNotProject => 'Das ist keine Centauri-Projektdatei.';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return 'Diese Datei braucht eine neuere Centauri-Version ($version). Aktualisieren Sie zuerst die App.';
+  }
+
+  @override
+  String get errorImportEmpty => 'Diese Projektdatei ist leer.';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return 'Die Datei $name ist leer.';
+  }
+
+  @override
+  String get errorImportUnusable =>
+      'Die Datei kann nicht gelesen werden. Wählen Sie eine andere Datei.';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return 'Die Datei $name kann nicht gelesen werden. Wählen Sie eine andere Datei.';
+  }
+
+  @override
+  String get errorAttachmentEmpty => 'Die Datei ist leer.';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return 'Die Datei $name ist leer.';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return 'Die Datei ist zu groß (max. $maxMb MB).';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return 'Dieses Format wird nicht unterstützt. Verwenden Sie $formats.';
+  }
+
+  @override
+  String get errorStorageFailed =>
+      'Der Schlüssel auf diesem Gerät ist nicht verfügbar.';
+
+  @override
+  String get errorTransformNoCode => 'Diese Seite hat noch keinen Code.';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override

@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../core/errors/app_error.dart';
 import '../../../prompt_editor/domain/ai_response.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 import '../../../prompt_editor/domain/prompt_templates.dart';
@@ -566,10 +568,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
     if (activeProvider == null) {
       _appendMessage(
-        CanvasMessage(
-          role: ChatRole.error,
-          text: l10nOf(ref).canvasNoProvider,
-        ),
+        CanvasMessage(role: ChatRole.error, text: l10nOf(ref).canvasNoProvider),
       );
       return;
     }
@@ -678,12 +677,14 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
         status: AiStatus.idle,
       );
     } on ApiConnectionException catch (e) {
-      if (e.message == '__CANCELLED__') {
+      if (e.code == AppErrorCode.cancelled) {
         _cancelGeneration(promptWasDiscarded: true);
         return;
       }
+      // Detail teknis (URL, status HTTP, pesan provider) hanya masuk log.
+      debugPrint(e.debugLabel);
       if (!state.isGenerating) return;
-      _failGeneration(e.message);
+      _failGeneration(localizedAppError(l10nOf(ref), e));
     } catch (e) {
       if (!state.isGenerating) return;
       _failGeneration(l10nOf(ref).commonGenericError);

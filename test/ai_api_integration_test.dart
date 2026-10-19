@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:centauri/core/errors/app_error.dart';
 import 'package:centauri/features/provider_config/data/datasources/ai_api_service.dart';
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -102,11 +103,9 @@ void main() {
         ],
       ),
       throwsA(
-        isA<ApiConnectionException>().having(
-          (e) => e.message,
-          'message',
-          contains('HTML'),
-        ),
+        isA<ApiConnectionException>()
+            .having((e) => e.code, 'code', AppErrorCode.apiBadResponse)
+            .having((e) => e.detail, 'detail', contains('HTML')),
       ),
     );
   });
@@ -149,16 +148,18 @@ void main() {
         ],
       ),
       throwsA(
-        isA<ApiConnectionException>().having(
-          (e) => e.message,
-          'message',
-          allOf(
-            contains('404'),
-            contains('No endpoints found for test-model.'),
-            contains('http://127.0.0.1:${server.port}/v1/chat/completions'),
-            contains('Model: test-model'),
-          ),
-        ),
+        isA<ApiConnectionException>()
+            .having((e) => e.code, 'code', AppErrorCode.apiNotFound)
+            .having(
+              (e) => e.detail,
+              'detail',
+              allOf(
+                contains('HTTP 404'),
+                contains('No endpoints found for test-model.'),
+                contains('http://127.0.0.1:${server.port}/v1/chat/completions'),
+                contains('model=test-model'),
+              ),
+            ),
       ),
     );
   });

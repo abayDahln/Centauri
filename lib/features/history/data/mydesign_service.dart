@@ -3,14 +3,20 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 
+import '../../../core/errors/app_error.dart';
 import '../domain/project.dart';
 
-class MydesignException implements Exception {
-  MydesignException(this.message);
-  final String message;
+/// Kegagalan impor/ekspor berkas proyek; membawa kode yang diterjemahkan di UI.
+class MydesignException extends AppErrorDetails implements Exception {
+  const MydesignException(
+    super.code, {
+    super.detail,
+    super.name,
+    super.version,
+  });
 
   @override
-  String toString() => message;
+  String toString() => debugLabel;
 }
 
 /// Format file proyek offline Centauri (`.mydesign`, JSON).
@@ -38,29 +44,25 @@ class MydesignService {
   Project parseMydesign(String raw) {
     final decoded = _tryDecode(raw);
     if (decoded is! Map<String, dynamic>) {
-      throw MydesignException(
-        'File bukan JSON yang valid. Pilih file .mydesign dari Centauri.',
-      );
+      throw const MydesignException(AppErrorCode.importInvalidFile);
     }
 
     // Terima dua bentuk: envelope .mydesign ATAU JSON project mentah.
     final Map<String, dynamic> projectJson;
     if (decoded['format'] == 'mydesign' || decoded.containsKey('project')) {
       if (decoded['app'] != 'centauri' || decoded['format'] != 'mydesign') {
-        throw MydesignException(
-          'File bukan proyek Centauri (.mydesign) yang valid.',
-        );
+        throw const MydesignException(AppErrorCode.importNotProject);
       }
       final version = decoded['version'];
       if (version is num && version > currentVersion) {
         throw MydesignException(
-          'File dibuat oleh Centauri versi lebih baru (v$version). '
-          'Perbarui aplikasi terlebih dahulu.',
+          AppErrorCode.importNewerVersion,
+          version: 'v$version',
         );
       }
       final project = decoded['project'];
       if (project is! Map<String, dynamic>) {
-        throw MydesignException('Bagian "project" rusak di file ini.');
+        throw const MydesignException(AppErrorCode.importUnusable);
       }
       projectJson = project;
     } else {
@@ -70,12 +72,12 @@ class MydesignService {
     try {
       final project = Project.fromJson(projectJson);
       if (project.pages.isEmpty && project.messages.isEmpty) {
-        throw MydesignException('Proyek di file ini kosong.');
+        throw const MydesignException(AppErrorCode.importEmpty);
       }
       return project;
     } catch (e) {
       if (e is MydesignException) rethrow;
-      throw MydesignException('Isi proyek rusak: $e');
+      throw MydesignException(AppErrorCode.importUnusable, detail: '$e');
     }
   }
 
@@ -83,9 +85,7 @@ class MydesignService {
     try {
       return jsonDecode(raw.trim());
     } catch (_) {
-      throw MydesignException(
-        'File bukan JSON yang valid. Pilih file .mydesign dari Centauri.',
-      );
+      throw const MydesignException(AppErrorCode.importInvalidFile);
     }
   }
 
@@ -110,7 +110,8 @@ class MydesignService {
       return outputPath;
     } catch (_) {
       throw MydesignException(
-        'Gagal menulis file ke $outputPath. Coba lokasi lain.',
+        AppErrorCode.exportWriteFailed,
+        detail: outputPath,
       );
     }
   }
@@ -134,14 +135,16 @@ class MydesignService {
     } else if (picked.path != null) {
       try {
         raw = await File(picked.path!).readAsString();
-      } catch (_) {
+      } catch (e) {
         throw MydesignException(
-          'Gagal membaca file ${picked.name}. Coba file lain.',
+          AppErrorCode.importUnusable,
+          name: picked.name,
+          detail: '$e',
         );
       }
     }
     if (raw == null || raw.trim().isEmpty) {
-      throw MydesignException('File ${picked.name} kosong.');
+      throw MydesignException(AppErrorCode.importEmpty, name: picked.name);
     }
     return parseMydesign(raw);
   }

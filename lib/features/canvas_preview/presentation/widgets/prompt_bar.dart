@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../history/presentation/history_provider.dart';
 import '../../../prompt_editor/data/attachment_service.dart';
@@ -79,7 +80,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
     try {
       _addAttachment(_attachmentService.fromBytes(name, bytes));
     } on AttachmentException catch (e) {
-      _toast(e.message);
+      _toast(localizedAppError(context.l10n, e));
     }
   }
 

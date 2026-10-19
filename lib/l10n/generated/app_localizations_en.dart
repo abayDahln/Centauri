@@ -596,6 +596,130 @@ class AppLocalizationsEn extends AppLocalizations {
   String get providerNotFound => 'Provider not found.';
 
   @override
+  String get errorCancelled => 'Cancelled.';
+
+  @override
+  String get errorApiTimeout =>
+      'Connection timed out. Check the address or your network.';
+
+  @override
+  String get errorApiUnreachable => 'Couldn\'t connect. Check the address.';
+
+  @override
+  String get errorApiUnauthorized =>
+      'The access key is invalid or has no access.';
+
+  @override
+  String get errorApiRateLimited =>
+      'The service is limiting requests. Try again shortly.';
+
+  @override
+  String get errorApiNotFound => 'Address or model not found. Check both.';
+
+  @override
+  String get errorApiRejected => 'The service rejected the request.';
+
+  @override
+  String get errorApiCertificate =>
+      'The server certificate isn\'t valid. Check the address.';
+
+  @override
+  String get errorApiSendFailed =>
+      'Couldn\'t send the request. Check your connection and the address.';
+
+  @override
+  String get errorApiBadResponse =>
+      'The reply wasn\'t in the expected format. The address should end with /v1.';
+
+  @override
+  String get errorApiNoChatEndpoint => 'This service has no chat address yet.';
+
+  @override
+  String get errorApiModelUnavailable =>
+      'This model isn\'t available here. Pick another.';
+
+  @override
+  String get errorApiConnectionBroken => 'The connection dropped. Try again.';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return 'Service message: $detail';
+  }
+
+  @override
+  String get errorGenerationTimeout =>
+      'Generation stopped: it took too long. Try again.';
+
+  @override
+  String get errorExportNotReady => 'The page isn\'t ready yet. Wait a moment.';
+
+  @override
+  String get errorExportTimeout => 'Export timed out. Try again.';
+
+  @override
+  String get errorExportNoElements => 'Nothing to export yet.';
+
+  @override
+  String get errorExportEmptyResult => 'The result came back empty. Try again.';
+
+  @override
+  String get errorExportWriteFailed =>
+      'Couldn\'t save the file. Try another location.';
+
+  @override
+  String get errorImportInvalidFile =>
+      'This file isn\'t valid JSON. Pick a Centauri .mydesign file.';
+
+  @override
+  String get errorImportNotProject => 'This isn\'t a Centauri project file.';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return 'This file needs a newer Centauri version ($version). Update the app first.';
+  }
+
+  @override
+  String get errorImportEmpty => 'This project file is empty.';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return 'The file $name is empty.';
+  }
+
+  @override
+  String get errorImportUnusable =>
+      'The file can\'t be read. Try another file.';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return 'The file $name can\'t be read. Try another file.';
+  }
+
+  @override
+  String get errorAttachmentEmpty => 'The file is empty.';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return 'The file $name is empty.';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return 'The file is too large (max $maxMb MB).';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return 'That format isn\'t supported. Use $formats.';
+  }
+
+  @override
+  String get errorStorageFailed => 'Couldn\'t access the key on this device.';
+
+  @override
+  String get errorTransformNoCode => 'This page has no code yet.';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override

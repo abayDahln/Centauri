@@ -1,15 +1,15 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../errors/app_error.dart';
 import '../utils/app_constants.dart';
 
 /// Kegagalan secure storage (native OS) yang aman ditampilkan ke pengguna.
 /// Tidak pernah memuat API key (NFR-01).
-class SecureStorageException implements Exception {
-  SecureStorageException(this.message);
-  final String message;
+class SecureStorageException extends AppErrorDetails implements Exception {
+  const SecureStorageException(super.code, {super.detail});
 
   @override
-  String toString() => message;
+  String toString() => debugLabel;
 }
 
 /// Penyimpanan terenkripsi native OS untuk API Key (NFR-01).
@@ -66,7 +66,8 @@ class SecureStorageService {
       await _storage.write(key: _keyFor(providerId), value: apiKey);
     } catch (e) {
       throw SecureStorageException(
-        'Gagal menyimpan API key secara terenkripsi: $e',
+        AppErrorCode.storageFailed,
+        detail: 'write: $e',
       );
     }
   }
@@ -77,7 +78,10 @@ class SecureStorageService {
     try {
       return await _storage.read(key: _keyFor(providerId));
     } catch (e) {
-      throw SecureStorageException('Gagal membaca API key terenkripsi: $e');
+      throw SecureStorageException(
+        AppErrorCode.storageFailed,
+        detail: 'read: $e',
+      );
     }
   }
 
@@ -88,7 +92,10 @@ class SecureStorageService {
     } catch (e) {
       // Key mungkin belum ada / storage belum siap. Jangan gagalkan operasi
       // hapus provider; key yatim tidak berbahaya (tak ada provider-nya).
-      throw SecureStorageException('Gagal menghapus API key: $e');
+      throw SecureStorageException(
+        AppErrorCode.storageFailed,
+        detail: 'delete: $e',
+      );
     }
   }
 

@@ -4,17 +4,20 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/errors/app_error.dart';
 import '../../../../core/utils/app_constants.dart';
 import '../../domain/entities/api_provider.dart';
 
-/// Exception koneksi API dengan pesan yang aman ditampilkan ke pengguna.
-/// Tidak pernah memuat header/API key (NFR-01).
-class ApiConnectionException implements Exception {
-  ApiConnectionException(this.message);
-  final String message;
+/// Exception koneksi API.
+///
+/// Membawa [code] yang diterjemahkan di lapisan UI (lihat
+/// `localizedAppError`) dan [detail] teknis untuk log — detail tidak pernah
+/// memuat header/API key (NFR-01).
+class ApiConnectionException extends AppErrorDetails implements Exception {
+  const ApiConnectionException(super.code, {super.detail});
 
   @override
-  String toString() => message;
+  String toString() => debugLabel;
 }
 
 /// HTTP client dinamis berbasis Dio (TR-03). Dio dibuat per-request agar
@@ -137,12 +140,16 @@ class AiApiService {
         ),
       );
     } on DioException catch (e) {
-      throw ApiConnectionException(mapDioError(e));
+      throw ApiConnectionException(
+        mapDioError(e),
+        detail: dioErrorDetail(e, url: url),
+      );
     }
 
     if (response.statusCode != 200) {
       throw ApiConnectionException(
-        'Endpoint membalas dengan status ${response.statusCode}.',
+        AppErrorCode.apiRejected,
+        detail: 'HTTP ${response.statusCode}',
       );
     }
 
@@ -172,7 +179,8 @@ class AiApiService {
     if (found) return;
 
     throw ApiConnectionException(
-      'Model $wanted tidak tersedia di layanan ini. Pilih model lain.',
+      AppErrorCode.apiModelUnavailable,
+      detail: 'model=$wanted',
     );
   }
 
@@ -226,8 +234,8 @@ class AiApiService {
 
     if (provider.normalizedBaseUrl.isEmpty) {
       throw ApiConnectionException(
-        'Provider ini tidak punya alamat chat. Periksa Base URL provider '
-        'atau pilih layanan yang mendukung chat.',
+        AppErrorCode.apiNoChatEndpoint,
+        detail: 'Base URL kosong',
       );
     }
 
@@ -264,7 +272,8 @@ class AiApiService {
       // "No endpoints found for <model>") ikut tampil, bukan pesan generik.
       final errorBody = await _readErrorBody(e);
       throw ApiConnectionException(
-        mapDioError(
+        mapDioError(e),
+        detail: dioErrorDetail(
           e,
           responseBody: errorBody,
           url: url,
@@ -281,7 +290,10 @@ class AiApiService {
     final body = response.data;
     if (body == null) {
       _activeTokens.remove(token);
-      throw ApiConnectionException('Provider membalas body kosong.\nURL: $url');
+      throw ApiConnectionException(
+        AppErrorCode.apiBadResponse,
+        detail: 'Body kosong | $url',
+      );
     }
     String raw;
     try {
@@ -295,7 +307,10 @@ class AiApiService {
     }
 
     if (raw.isEmpty) {
-      throw ApiConnectionException('Provider membalas body kosong.\nURL: $url');
+      throw ApiConnectionException(
+        AppErrorCode.apiBadResponse,
+        detail: 'Body kosong | $url',
+      );
     }
 
     // Deteksi HTML lebih awal (halaman web, bukan API).
@@ -304,10 +319,8 @@ class AiApiService {
         head.startsWith('<!doctype') ||
         head.startsWith('<html')) {
       throw ApiConnectionException(
-        'Endpoint membalas halaman HTML, bukan API JSON. '
-        'Base URL kemungkinan salah; arahkan ke endpoint API '
-        '(mis. https://api.openai.com/v1).\n'
-        'URL: $url\nCuplikan: ${_snippet(raw)}',
+        AppErrorCode.apiBadResponse,
+        detail: 'HTML | $url | ${_snippet(raw)}',
       );
     }
 
@@ -323,17 +336,20 @@ class AiApiService {
       return _extractContent(decoded);
     } on FormatException {
       throw ApiConnectionException(
-        'Respons provider bukan JSON/SSE yang valid.\n'
-        'URL: $url\nCuplikan: ${_snippet(raw)}',
+        AppErrorCode.apiBadResponse,
+        detail: 'Bukan JSON/SSE | $url | ${_snippet(raw)}',
       );
     } on ApiConnectionException catch (e) {
       // Status 200 dengan body error berarti provider melaporkan kegagalan di
       // dalam respons sukses (mis. upstream overload); baris status hanya
-      // menambah kebisingan.
+      // menambah kebisingan saat dicatat sebagai detail.
       final statusLine = response.statusCode == 200
           ? ''
-          : '\nStatus: ${response.statusCode}, Content-Type: $contentType';
-      throw ApiConnectionException('${e.message}\nURL: $url$statusLine');
+          : 'Status: ${response.statusCode}, Content-Type: $contentType';
+      throw ApiConnectionException(
+        e.code,
+        detail: [e.detail, statusLine, url].whereType<String>().join(' | '),
+      );
     }
   }
 
@@ -364,16 +380,16 @@ class AiApiService {
       }
     }
 
-    // Pembatalan dari UI: hentikan baca & lempar penanda khusus cancel.
+    // Pembatalan dari UI: hentikan baca & tandai sebagai cancelled.
     if (cancelToken != null) {
       cancelWatch = Completer<void>();
       cancelToken.whenCancel.then((_) {
         if (!cancelWatch!.isCompleted) {
-          finish(ApiConnectionException('__CANCELLED__'));
+          finish(ApiConnectionException(AppErrorCode.cancelled));
         }
       });
       if (cancelToken.isCancelled) {
-        finish(ApiConnectionException('__CANCELLED__'));
+        finish(ApiConnectionException(AppErrorCode.cancelled));
         return completer.future;
       }
     }
@@ -383,8 +399,8 @@ class AiApiService {
       inactivity = Timer(timeout, () {
         finish(
           ApiConnectionException(
-            'Generate timeout: tidak ada data dari provider selama '
-            '${timeout.inSeconds} detik. Coba lagi atau periksa model/server.',
+            AppErrorCode.apiTimeout,
+            detail: 'Tidak ada data selama ${timeout.inSeconds} detik',
           ),
         );
       });
@@ -394,8 +410,9 @@ class AiApiService {
     total = Timer(AppConstants.generationTimeout, () {
       finish(
         ApiConnectionException(
-          'Generate dihentikan: melewati batas waktu total '
-          '${AppConstants.generationTimeout.inMinutes} menit.',
+          AppErrorCode.generationTimeout,
+          detail:
+              'Batas total ${AppConstants.generationTimeout.inMinutes} menit',
         ),
       );
     });
@@ -409,17 +426,22 @@ class AiApiService {
       onChunk,
       onDone: () => finish(),
       onError: (Object error, StackTrace stack) {
-        finish(ApiConnectionException(_mapStreamError(error)));
+        finish(
+          error is DioException
+              ? ApiConnectionException(
+                  mapDioError(error),
+                  detail: dioErrorDetail(error),
+                )
+              : ApiConnectionException(
+                  AppErrorCode.apiConnectionBroken,
+                  detail: error.toString(),
+                ),
+        );
       },
       cancelOnError: true,
     );
 
     return completer.future;
-  }
-
-  String _mapStreamError(Object error) {
-    if (error is DioException) return mapDioError(error);
-    return 'Koneksi ke provider terputus saat menerima data: $error';
   }
 
   /// Menyusun teks lengkap dari respons Server-Sent Events. Menggabungkan
@@ -493,11 +515,8 @@ class AiApiService {
     if (!looksHtml) return;
 
     throw ApiConnectionException(
-      'Endpoint membalas halaman HTML, bukan API JSON. '
-      'Base URL kemungkinan salah: arahkan ke endpoint API dan sertakan '
-      'versi (mis. https://api.openai.com/v1).\n'
-      'URL: ${response.requestOptions.uri}\n'
-      'Cuplikan: ${_snippet(data)}',
+      AppErrorCode.apiBadResponse,
+      detail: 'HTML | ${response.requestOptions.uri} | ${_snippet(data)}',
     );
   }
 
@@ -516,9 +535,8 @@ class AiApiService {
       // Dio mengembalikan String/List bila content-type bukan JSON, yang
       // biasanya berarti Base URL salah (server membalas halaman HTML).
       throw ApiConnectionException(
-        'Respons provider bukan JSON objek (tipe: ${data.runtimeType}). '
-        'Periksa Base URL - pastikan mengarah ke endpoint API dan berakhir di '
-        '/v1. Cuplikan respons: ${_snippet(data)}',
+        AppErrorCode.apiBadResponse,
+        detail: 'Bukan JSON objek (${data.runtimeType}) | ${_snippet(data)}',
       );
     }
 
@@ -556,16 +574,23 @@ class AiApiService {
     // Sertakan error provider bila ada, agar mudah didiagnosis.
     final providerError = data['error'];
     if (providerError is Map && providerError['message'] is String) {
-      throw ApiConnectionException('Provider: ${providerError['message']}');
+      throw ApiConnectionException(
+        AppErrorCode.apiProviderReported,
+        detail: providerError['message'] as String,
+      );
     }
     if (providerError is String) {
-      throw ApiConnectionException('Provider: $providerError');
+      throw ApiConnectionException(
+        AppErrorCode.apiProviderReported,
+        detail: providerError,
+      );
     }
 
     throw ApiConnectionException(
-      'Struktur respons provider tidak dikenali. '
-      'Kunci: ${data.keys.take(8).join(', ')}. '
-      'Cuplikan: ${_snippet(data)}',
+      AppErrorCode.apiBadResponse,
+      detail:
+          'Kunci tak dikenal: ${data.keys.take(8).join(', ')} | '
+          '${_snippet(data)}',
     );
   }
 
@@ -574,15 +599,47 @@ class AiApiService {
     return text.length > 220 ? '${text.substring(0, 220)}...' : text;
   }
 
-  /// Menyusun pesan error dari [DioException] agar pengguna tahu penyebab
-  /// pastinya. `default` (type unknown) TIDAK dijadikan "kesalahan jaringan"
-  /// mentah-mentah: penyebab asli (`e.error`) disertakan supaya pengguna bisa
-  /// membedakan URL salah, DNS gagal, TLS, dan sebagainya.
+  /// Mengklasifikasikan [DioException] jadi [AppErrorCode]. Teksnya disusun
+  /// lapisan UI (`localizedAppError`) supaya ikut bahasa UI yang aktif; pesan
+  /// mentah provider tetap tersimpan lewat [dioErrorDetail] untuk log.
+  static AppErrorCode mapDioError(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return AppErrorCode.apiTimeout;
+      case DioExceptionType.connectionError:
+        return AppErrorCode.apiUnreachable;
+      case DioExceptionType.badResponse:
+        final status = e.response?.statusCode;
+        // Kunci bisa valid tetapi ditolak untuk model atau kebijakan tertentu
+        // (OpenRouter membalas 403) — kode unauthorized tetap paling dekat.
+        if (status == 401 || status == 403) {
+          return AppErrorCode.apiUnauthorized;
+        }
+        // Model gratis sering kehabisan kapasitas upstream (HTTP 429).
+        if (status == 429) return AppErrorCode.apiRateLimited;
+        if (status == 404) return AppErrorCode.apiNotFound;
+        return AppErrorCode.apiRejected;
+      case DioExceptionType.cancel:
+        return AppErrorCode.cancelled;
+      case DioExceptionType.badCertificate:
+        return AppErrorCode.apiCertificate;
+      case DioExceptionType.transformTimeout:
+      case DioExceptionType.unknown:
+        return AppErrorCode.apiSendFailed;
+    }
+  }
+
+  /// Rincian teknis dari [DioException] untuk log — TIDAK ditampilkan ke
+  /// pengguna. `default` (type unknown) tidak dijadikan "kesalahan jaringan"
+  /// mentah-mentah: penyebab asli (`e.error`) disertakan supaya salah URL, DNS
+  /// gagal, dan TLS bisa dibedakan saat menelusuri masalah.
   ///
   /// [responseBody] diisi pemanggil yang memakai `ResponseType.stream`
   /// (body-nya tidak didekode Dio). [url] dan [model] menempelkan konteks
   /// request yang ditolak provider supaya salah URL vs salah model kelihatan.
-  static String mapDioError(
+  static String? dioErrorDetail(
     DioException e, {
     String? responseBody,
     String? url,
@@ -590,77 +647,22 @@ class AiApiService {
   }) {
     // Sumber pesan detail provider: body yang sudah dibaca pemanggil lebih
     // dulu, jatuh ke data respons Dio (Map/String) bila ada.
-    final detailSource = responseBody ?? e.response?.data;
-    final context = _requestContext(url: url, model: model);
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return 'Koneksi timeout. Periksa Base URL atau jaringan Anda.';
-      case DioExceptionType.connectionError:
-        return 'Tidak dapat terhubung ke endpoint. Periksa Base URL.';
-      case DioExceptionType.badResponse:
-        final status = e.response?.statusCode;
-        if (status == 401 || status == 403) {
-          // Kunci bisa saja valid tetapi ditolak untuk model atau kebijakan
-          // tertentu (OpenRouter membalas 403), jadi pesan asli provider ikut
-          // ditampilkan agar penyebabnya tidak tertutup pesan generik.
-          final detail = _providerErrorMessage(detailSource);
-          final suffix = detail == null ? '' : ': $detail';
-          return 'Kunci akses tidak valid atau tidak memiliki akses '
-              '(HTTP $status)$suffix$context';
-        }
-        if (status == 429) {
-          // Model gratis di OpenRouter sering kehabisan kapasitas upstream;
-          // pengguna perlu tahu bahwa menunggu atau ganti model adalah jalan
-          // keluarnya, bukan memperbaiki kunci.
-          final detail = _providerErrorMessage(detailSource);
-          final suffix = detail == null ? '' : ': $detail';
-          return 'Layanan sedang membatasi permintaan (HTTP 429)$suffix. '
-              'Coba lagi atau pilih model lain.$context';
-        }
-        if (status == 404) {
-          // 404 pada API OpenAI-compatible paling sering berarti model tidak
-          // ada (mis. OpenRouter: "No endpoints found for <model>"), bukan
-          // Base URL salah. Pesan asli provider disertakan agar pengguna tahu
-          // penyebab pastinya.
-          final detail = _providerErrorMessage(detailSource);
-          if (detail != null) {
-            return 'Endpoint atau model tidak ditemukan (HTTP 404): $detail'
-                '$context';
-          }
-          return 'Endpoint atau model tidak ditemukan (HTTP 404). '
-              'Periksa Base URL dan nama model.$context';
-        }
-        final detail = _providerErrorMessage(detailSource);
-        if (detail != null) {
-          return 'Server menolak request (HTTP ${status ?? 'unknown'}): $detail'
-              '$context';
-        }
-        return 'Server menolak request (HTTP ${status ?? 'unknown'}).$context';
-      case DioExceptionType.cancel:
-        return 'Request dibatalkan.';
-      case DioExceptionType.badCertificate:
-        return 'Sertifikat server tidak valid. Periksa Base URL.';
-      case DioExceptionType.transformTimeout:
-      case DioExceptionType.unknown:
-        final detail = _mapUnknownError(e);
-        return detail == null
-            ? 'Tidak dapat mengirim request. Periksa koneksi lalu coba lagi.'
-            : 'Tidak dapat mengirim request: $detail. '
-                  'Periksa jaringan atau Base URL, lalu coba lagi.';
-    }
-  }
-
-  /// Baris konteks (URL final + model) untuk pesan error. Kosong bila keduanya
-  /// tidak diketahui, sehingga pemanggil lama tidak berubah perilakunya.
-  static String _requestContext({String? url, String? model}) {
-    final buffer = StringBuffer();
+    final parts = <String>[];
+    final status = e.response?.statusCode;
+    if (status != null) parts.add('HTTP $status');
+    final providerMessage = _providerErrorMessage(
+      responseBody ?? e.response?.data,
+    );
+    if (providerMessage != null) parts.add(providerMessage);
     final trimmedUrl = url?.trim() ?? '';
-    if (trimmedUrl.isNotEmpty) buffer.write('\nURL: $trimmedUrl');
+    if (trimmedUrl.isNotEmpty) parts.add(trimmedUrl);
     final trimmedModel = model?.trim() ?? '';
-    if (trimmedModel.isNotEmpty) buffer.write('\nModel: $trimmedModel');
-    return buffer.toString();
+    if (trimmedModel.isNotEmpty) parts.add('model=$trimmedModel');
+    if (parts.isNotEmpty) return parts.join(' | ');
+    final raw = e.error?.toString() ?? e.message ?? '';
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+    return trimmed.length > 200 ? '${trimmed.substring(0, 200)}...' : trimmed;
   }
 
   /// Membaca body respons error yang tidak didekode Dio.
@@ -693,16 +695,6 @@ class AiApiService {
       if (merged.length >= maxBytes) break;
     }
     return const Utf8Decoder(allowMalformed: true).convert(merged);
-  }
-
-  /// Detail error asli untuk `DioExceptionType.unknown` (mis. "No host
-  /// specified in URI" saat Base URL kosong) — dibungkus sebagai pesan
-  /// pendek yang aman ditampilkan.
-  static String? _mapUnknownError(DioException e) {
-    final raw = e.error?.toString() ?? e.message ?? '';
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) return null;
-    return trimmed.length > 200 ? '${trimmed.substring(0, 200)}...' : trimmed;
   }
 
   /// Mengambil teks dari `content` yang bisa berupa String atau daftar

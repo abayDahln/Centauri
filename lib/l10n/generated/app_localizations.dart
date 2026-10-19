@@ -1168,6 +1168,204 @@ abstract class AppLocalizations {
   /// **'Provider not found.'**
   String get providerNotFound;
 
+  /// No description provided for @errorCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled.'**
+  String get errorCancelled;
+
+  /// No description provided for @errorApiTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection timed out. Check the address or your network.'**
+  String get errorApiTimeout;
+
+  /// No description provided for @errorApiUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t connect. Check the address.'**
+  String get errorApiUnreachable;
+
+  /// No description provided for @errorApiUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'The access key is invalid or has no access.'**
+  String get errorApiUnauthorized;
+
+  /// No description provided for @errorApiRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'The service is limiting requests. Try again shortly.'**
+  String get errorApiRateLimited;
+
+  /// No description provided for @errorApiNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Address or model not found. Check both.'**
+  String get errorApiNotFound;
+
+  /// No description provided for @errorApiRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The service rejected the request.'**
+  String get errorApiRejected;
+
+  /// No description provided for @errorApiCertificate.
+  ///
+  /// In en, this message translates to:
+  /// **'The server certificate isn\'t valid. Check the address.'**
+  String get errorApiCertificate;
+
+  /// No description provided for @errorApiSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the request. Check your connection and the address.'**
+  String get errorApiSendFailed;
+
+  /// No description provided for @errorApiBadResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'The reply wasn\'t in the expected format. The address should end with /v1.'**
+  String get errorApiBadResponse;
+
+  /// No description provided for @errorApiNoChatEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'This service has no chat address yet.'**
+  String get errorApiNoChatEndpoint;
+
+  /// No description provided for @errorApiModelUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This model isn\'t available here. Pick another.'**
+  String get errorApiModelUnavailable;
+
+  /// No description provided for @errorApiConnectionBroken.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection dropped. Try again.'**
+  String get errorApiConnectionBroken;
+
+  /// No description provided for @errorApiProviderReported.
+  ///
+  /// In en, this message translates to:
+  /// **'Service message: {detail}'**
+  String errorApiProviderReported(String detail);
+
+  /// No description provided for @errorGenerationTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation stopped: it took too long. Try again.'**
+  String get errorGenerationTimeout;
+
+  /// No description provided for @errorExportNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'The page isn\'t ready yet. Wait a moment.'**
+  String get errorExportNotReady;
+
+  /// No description provided for @errorExportTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Export timed out. Try again.'**
+  String get errorExportTimeout;
+
+  /// No description provided for @errorExportNoElements.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to export yet.'**
+  String get errorExportNoElements;
+
+  /// No description provided for @errorExportEmptyResult.
+  ///
+  /// In en, this message translates to:
+  /// **'The result came back empty. Try again.'**
+  String get errorExportEmptyResult;
+
+  /// No description provided for @errorExportWriteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the file. Try another location.'**
+  String get errorExportWriteFailed;
+
+  /// No description provided for @errorImportInvalidFile.
+  ///
+  /// In en, this message translates to:
+  /// **'This file isn\'t valid JSON. Pick a Centauri .mydesign file.'**
+  String get errorImportInvalidFile;
+
+  /// No description provided for @errorImportNotProject.
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a Centauri project file.'**
+  String get errorImportNotProject;
+
+  /// No description provided for @errorImportNewerVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'This file needs a newer Centauri version ({version}). Update the app first.'**
+  String errorImportNewerVersion(String version);
+
+  /// No description provided for @errorImportEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This project file is empty.'**
+  String get errorImportEmpty;
+
+  /// No description provided for @errorImportEmptyFile.
+  ///
+  /// In en, this message translates to:
+  /// **'The file {name} is empty.'**
+  String errorImportEmptyFile(String name);
+
+  /// No description provided for @errorImportUnusable.
+  ///
+  /// In en, this message translates to:
+  /// **'The file can\'t be read. Try another file.'**
+  String get errorImportUnusable;
+
+  /// No description provided for @errorImportUnusableFile.
+  ///
+  /// In en, this message translates to:
+  /// **'The file {name} can\'t be read. Try another file.'**
+  String errorImportUnusableFile(String name);
+
+  /// No description provided for @errorAttachmentEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is empty.'**
+  String get errorAttachmentEmpty;
+
+  /// No description provided for @errorAttachmentEmptyFile.
+  ///
+  /// In en, this message translates to:
+  /// **'The file {name} is empty.'**
+  String errorAttachmentEmptyFile(String name);
+
+  /// No description provided for @errorAttachmentTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is too large (max {maxMb} MB).'**
+  String errorAttachmentTooLarge(int maxMb);
+
+  /// No description provided for @errorAttachmentUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'That format isn\'t supported. Use {formats}.'**
+  String errorAttachmentUnsupported(String formats);
+
+  /// No description provided for @errorStorageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t access the key on this device.'**
+  String get errorStorageFailed;
+
+  /// No description provided for @errorTransformNoCode.
+  ///
+  /// In en, this message translates to:
+  /// **'This page has no code yet.'**
+  String get errorTransformNoCode;
+
   /// No description provided for @exportFigma.
   ///
   /// In en, this message translates to:

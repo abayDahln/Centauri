@@ -1,13 +1,19 @@
+import 'package:centauri/core/errors/app_error.dart';
 import 'package:centauri/core/storage/secure_storage_service.dart';
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('SecureStorageException', () {
-    test('message is preserved verbatim', () {
-      final ex = SecureStorageException('Gagal menyimpan API key.');
-      expect(ex.message, 'Gagal menyimpan API key.');
-      expect(ex.toString(), 'Gagal menyimpan API key.');
+    test('membawa kode error dan detail untuk log', () {
+      const ex = SecureStorageException(
+        AppErrorCode.storageFailed,
+        detail: 'write: PlatformException',
+      );
+      expect(ex.code, AppErrorCode.storageFailed);
+      expect(ex.detail, 'write: PlatformException');
+      expect(ex.toString(), contains('storageFailed'));
+      expect(ex.toString(), contains('PlatformException'));
     });
   });
 

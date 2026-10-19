@@ -324,6 +324,65 @@
   "promptAttachmentLimit": "Up to 6 attachments per message.",
   "providerNotFound": "Provider not found.",
 
+  "errorCancelled": "Cancelled.",
+  "errorApiTimeout": "Connection timed out. Check the address or your network.",
+  "errorApiUnreachable": "Couldn't connect. Check the address.",
+  "errorApiUnauthorized": "The access key is invalid or has no access.",
+  "errorApiRateLimited": "The service is limiting requests. Try again shortly.",
+  "errorApiNotFound": "Address or model not found. Check both.",
+  "errorApiRejected": "The service rejected the request.",
+  "errorApiCertificate": "The server certificate isn't valid. Check the address.",
+  "errorApiSendFailed": "Couldn't send the request. Check your connection and the address.",
+  "errorApiBadResponse": "The reply wasn't in the expected format. The address should end with /v1.",
+  "errorApiNoChatEndpoint": "This service has no chat address yet.",
+  "errorApiModelUnavailable": "This model isn't available here. Pick another.",
+  "errorApiConnectionBroken": "The connection dropped. Try again.",
+  "errorApiProviderReported": "Service message: {detail}",
+  "@errorApiProviderReported": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "errorGenerationTimeout": "Generation stopped: it took too long. Try again.",
+
+  "errorExportNotReady": "The page isn't ready yet. Wait a moment.",
+  "errorExportTimeout": "Export timed out. Try again.",
+  "errorExportNoElements": "Nothing to export yet.",
+  "errorExportEmptyResult": "The result came back empty. Try again.",
+  "errorExportWriteFailed": "Couldn't save the file. Try another location.",
+
+  "errorImportInvalidFile": "This file isn't valid JSON. Pick a Centauri .mydesign file.",
+  "errorImportNotProject": "This isn't a Centauri project file.",
+  "errorImportNewerVersion": "This file needs a newer Centauri version ({version}). Update the app first.",
+  "@errorImportNewerVersion": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "errorImportEmpty": "This project file is empty.",
+  "errorImportEmptyFile": "The file {name} is empty.",
+  "@errorImportEmptyFile": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "errorImportUnusable": "The file can't be read. Try another file.",
+  "errorImportUnusableFile": "The file {name} can't be read. Try another file.",
+  "@errorImportUnusableFile": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+
+  "errorAttachmentEmpty": "The file is empty.",
+  "errorAttachmentEmptyFile": "The file {name} is empty.",
+  "@errorAttachmentEmptyFile": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "errorAttachmentTooLarge": "The file is too large (max {maxMb} MB).",
+  "@errorAttachmentTooLarge": {
+    "placeholders": { "maxMb": { "type": "int" } }
+  },
+  "errorAttachmentUnsupported": "That format isn't supported. Use {formats}.",
+  "@errorAttachmentUnsupported": {
+    "placeholders": { "formats": { "type": "String" } }
+  },
+
+  "errorStorageFailed": "Couldn't access the key on this device.",
+  "errorTransformNoCode": "This page has no code yet.",
+
   "exportFigma": "Figma",
   "catalogSectionFreeTier": "Free Tier",
   "catalogSectionApiKey": "API Key"

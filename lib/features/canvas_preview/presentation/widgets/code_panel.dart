@@ -4,6 +4,7 @@ import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../code_exporter/data/code_export_service.dart';
 import '../provider/workspace_provider.dart';
@@ -46,7 +47,7 @@ class _CodePanelState extends ConsumerState<CodePanel> {
       if (!mounted || path == null) return;
       _toast(context.l10n.exportSaved(path));
     } on CodeExportException catch (e) {
-      if (mounted) _toast(e.message);
+      if (mounted) _toast(localizedAppError(context.l10n, e));
     }
   }
 

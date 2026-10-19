@@ -589,6 +589,127 @@ class AppLocalizationsTh extends AppLocalizations {
   String get providerNotFound => 'ไม่พบ Provider';
 
   @override
+  String get errorCancelled => 'ยกเลิกแล้ว';
+
+  @override
+  String get errorApiTimeout =>
+      'การเชื่อมต่อหมดเวลา ตรวจสอบที่อยู่หรือเครือข่าย';
+
+  @override
+  String get errorApiUnreachable => 'เชื่อมต่อไม่ได้ ตรวจสอบที่อยู่';
+
+  @override
+  String get errorApiUnauthorized => 'คีย์การเข้าถึงไม่ถูกต้องหรือไม่มีสิทธิ์';
+
+  @override
+  String get errorApiRateLimited =>
+      'บริการกำลังจำกัดคำขอ ลองอีกครั้งในอีกสักครู่';
+
+  @override
+  String get errorApiNotFound => 'ไม่พบที่อยู่หรือ Model ตรวจสอบทั้งสองอย่าง';
+
+  @override
+  String get errorApiRejected => 'บริการปฏิเสธคำขอ';
+
+  @override
+  String get errorApiCertificate =>
+      'ใบรับรองเซิร์ฟเวอร์ไม่ถูกต้อง ตรวจสอบที่อยู่';
+
+  @override
+  String get errorApiSendFailed =>
+      'ส่งคำขอไม่ได้ ตรวจสอบการเชื่อมต่อและที่อยู่';
+
+  @override
+  String get errorApiBadResponse =>
+      'รูปแบบการตอบกลับไม่ตรงกับที่คาด ที่อยู่ควรลงท้ายด้วย /v1';
+
+  @override
+  String get errorApiNoChatEndpoint => 'บริการนี้ยังไม่มีที่อยู่สำหรับแชท';
+
+  @override
+  String get errorApiModelUnavailable =>
+      'Model นี้ใช้ไม่ได้ที่นี่ เลือกอันอื่น';
+
+  @override
+  String get errorApiConnectionBroken => 'การเชื่อมต่อขาดหาย ลองอีกครั้ง';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return 'ข้อความจากบริการ: $detail';
+  }
+
+  @override
+  String get errorGenerationTimeout =>
+      'หยุดการสร้างแล้ว ใช้เวลานานเกินไป ลองอีกครั้ง';
+
+  @override
+  String get errorExportNotReady => 'หน้านี้ยังไม่พร้อม รอสักครู่';
+
+  @override
+  String get errorExportTimeout => 'การส่งออกหมดเวลา ลองอีกครั้ง';
+
+  @override
+  String get errorExportNoElements => 'ยังไม่มีอะไรให้ส่งออก';
+
+  @override
+  String get errorExportEmptyResult => 'ผลลัพธ์ว่างเปล่า ลองอีกครั้ง';
+
+  @override
+  String get errorExportWriteFailed => 'บันทึกไฟล์ไม่ได้ เลือกตำแหน่งอื่น';
+
+  @override
+  String get errorImportInvalidFile =>
+      'ไฟล์นี้ไม่ใช่ JSON ที่ถูกต้อง เลือกไฟล์ .mydesign ของ Centauri';
+
+  @override
+  String get errorImportNotProject => 'นี่ไม่ใช่ไฟล์โปรเจกต์ของ Centauri';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return 'ไฟล์นี้ต้องใช้ Centauri เวอร์ชันใหม่กว่า ($version) อัปเดตแอปก่อน';
+  }
+
+  @override
+  String get errorImportEmpty => 'ไฟล์โปรเจกต์นี้ว่างเปล่า';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return 'ไฟล์ $name ว่างเปล่า';
+  }
+
+  @override
+  String get errorImportUnusable => 'อ่านไฟล์ไม่ได้ เลือกไฟล์อื่น';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return 'อ่านไฟล์ $name ไม่ได้ เลือกไฟล์อื่น';
+  }
+
+  @override
+  String get errorAttachmentEmpty => 'ไฟล์ว่างเปล่า';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return 'ไฟล์ $name ว่างเปล่า';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return 'ไฟล์ใหญ่เกินไป (สูงสุด $maxMb MB)';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return 'ไม่รองรับรูปแบบนี้ ใช้ $formats';
+  }
+
+  @override
+  String get errorStorageFailed => 'เข้าถึงคีย์บนอุปกรณ์นี้ไม่ได้';
+
+  @override
+  String get errorTransformNoCode => 'หน้านี้ยังไม่มีโค้ด';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override

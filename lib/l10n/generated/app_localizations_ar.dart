@@ -594,6 +594,126 @@ class AppLocalizationsAr extends AppLocalizations {
   String get providerNotFound => 'Provider غير موجود.';
 
   @override
+  String get errorCancelled => 'تم الإلغاء.';
+
+  @override
+  String get errorApiTimeout =>
+      'انتهت مهلة الاتصال. تحقق من العنوان أو الشبكة.';
+
+  @override
+  String get errorApiUnreachable => 'تعذر الاتصال. تحقق من العنوان.';
+
+  @override
+  String get errorApiUnauthorized => 'مفتاح الوصول غير صالح أو بلا صلاحية.';
+
+  @override
+  String get errorApiRateLimited =>
+      'الخدمة تحدّ من الطلبات. أعد المحاولة بعد قليل.';
+
+  @override
+  String get errorApiNotFound =>
+      'لم يتم العثور على العنوان أو Model. تحقق من كليهما.';
+
+  @override
+  String get errorApiRejected => 'رفضت الخدمة الطلب.';
+
+  @override
+  String get errorApiCertificate => 'شهادة الخادم غير صالحة. تحقق من العنوان.';
+
+  @override
+  String get errorApiSendFailed =>
+      'تعذر إرسال الطلب. تحقق من الاتصال والعنوان.';
+
+  @override
+  String get errorApiBadResponse =>
+      'لم تكن الاستجابة بالتنسيق المتوقع. يجب أن ينتهي العنوان بـ /v1.';
+
+  @override
+  String get errorApiNoChatEndpoint => 'لا تملك هذه الخدمة عنوان محادثة بعد.';
+
+  @override
+  String get errorApiModelUnavailable => 'هذا Model غير متاح هنا. اختر غيره.';
+
+  @override
+  String get errorApiConnectionBroken => 'انقطع الاتصال. أعد المحاولة.';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return 'رسالة الخدمة: $detail';
+  }
+
+  @override
+  String get errorGenerationTimeout =>
+      'توقف الإنشاء: استغرق وقتًا طويلًا. أعد المحاولة.';
+
+  @override
+  String get errorExportNotReady => 'الصفحة ليست جاهزة بعد. انتظر قليلًا.';
+
+  @override
+  String get errorExportTimeout => 'انتهت مهلة التصدير. أعد المحاولة.';
+
+  @override
+  String get errorExportNoElements => 'لا يوجد شيء للتصدير بعد.';
+
+  @override
+  String get errorExportEmptyResult => 'عادت النتيجة فارغة. أعد المحاولة.';
+
+  @override
+  String get errorExportWriteFailed => 'تعذر حفظ الملف. اختر موقعًا آخر.';
+
+  @override
+  String get errorImportInvalidFile =>
+      'هذا الملف ليس JSON صالحًا. اختر ملف .mydesign من Centauri.';
+
+  @override
+  String get errorImportNotProject => 'هذا ليس ملف مشروع Centauri.';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return 'يحتاج هذا الملف إلى إصدار أحدث من Centauri ($version). حدّث التطبيق أولًا.';
+  }
+
+  @override
+  String get errorImportEmpty => 'ملف المشروع هذا فارغ.';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return 'الملف $name فارغ.';
+  }
+
+  @override
+  String get errorImportUnusable => 'تعذر قراءة الملف. اختر ملفًا آخر.';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return 'تعذر قراءة الملف $name. اختر ملفًا آخر.';
+  }
+
+  @override
+  String get errorAttachmentEmpty => 'الملف فارغ.';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return 'الملف $name فارغ.';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return 'الملف كبير جدًا (بحد أقصى $maxMb MB).';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return 'هذا التنسيق غير مدعوم. استخدم $formats.';
+  }
+
+  @override
+  String get errorStorageFailed => 'تعذر الوصول إلى المفتاح على هذا الجهاز.';
+
+  @override
+  String get errorTransformNoCode => 'لا تحتوي هذه الصفحة على كود بعد.';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override

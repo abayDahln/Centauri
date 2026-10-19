@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
 import '../../../app/config/theme.dart';
+import '../../../app/l10n/error_messages.dart';
 import '../../../app/l10n/l10n.dart';
+import '../../../core/errors/app_error.dart';
 import '../../../core/utils/app_constants.dart';
 import '../data/catalog/provider_catalog.dart';
 import '../data/catalog/provider_models.dart';
@@ -283,7 +285,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     final result = ref.read(providerConfigProvider);
     if (result.hasError) {
       _showSnackBar(
-        context.l10n.providerDetailSaveFailed('${result.error}'),
+        context.l10n.providerDetailSaveFailed(_errorText(result.error)),
         isError: true,
       );
       return null;
@@ -297,7 +299,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       final cleared = ref.read(providerConfigProvider);
       if (cleared.hasError) {
         _showSnackBar(
-          context.l10n.providerDetailClearKeyFailed('${cleared.error}'),
+          context.l10n.providerDetailClearKeyFailed(_errorText(cleared.error)),
           isError: true,
         );
         return null;
@@ -336,7 +338,8 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         _showSnackBar(context.l10n.providerDetailTestOk, isError: false);
       }
     } on ApiConnectionException catch (e) {
-      if (mounted) _showSnackBar(e.message, isError: true);
+      if (!mounted) return;
+      _showSnackBar(localizedAppError(context.l10n, e), isError: true);
     } finally {
       if (mounted) setState(() => _isTesting = false);
     }
@@ -377,6 +380,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       context.go(AppRoutes.providers);
     }
   }
+
+  /// Teks error dari state async: error berkode diterjemahkan, sisanya apa
+  /// adanya (mis. pesan validasi formulir).
+  String _errorText(Object? error) => error is AppErrorDetails
+      ? localizedAppError(context.l10n, error)
+      : '$error';
 
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context)

@@ -599,6 +599,134 @@ class AppLocalizationsFil extends AppLocalizations {
   String get providerNotFound => 'Hindi mahanap ang Provider.';
 
   @override
+  String get errorCancelled => 'Kinansela.';
+
+  @override
+  String get errorApiTimeout =>
+      'Nag-time out ang koneksyon. Suriin ang address o ang network.';
+
+  @override
+  String get errorApiUnreachable => 'Hindi makakonekta. Suriin ang address.';
+
+  @override
+  String get errorApiUnauthorized =>
+      'Hindi valid ang access key o walang pahintulot.';
+
+  @override
+  String get errorApiRateLimited =>
+      'Nililimitahan ng serbisyo ang mga request. Subukan muli maya-maya.';
+
+  @override
+  String get errorApiNotFound =>
+      'Hindi mahanap ang address o Model. Suriin ang dalawa.';
+
+  @override
+  String get errorApiRejected => 'Tinanggihan ng serbisyo ang request.';
+
+  @override
+  String get errorApiCertificate =>
+      'Hindi valid ang certificate ng server. Suriin ang address.';
+
+  @override
+  String get errorApiSendFailed =>
+      'Hindi maipadala ang request. Suriin ang koneksyon at address.';
+
+  @override
+  String get errorApiBadResponse =>
+      'Hindi tugma ang format ng sagot. Dapat magtapos sa /v1 ang address.';
+
+  @override
+  String get errorApiNoChatEndpoint =>
+      'Wala pang chat address ang serbisyong ito.';
+
+  @override
+  String get errorApiModelUnavailable =>
+      'Hindi available dito ang Model na ito. Pumili ng iba.';
+
+  @override
+  String get errorApiConnectionBroken => 'Naputol ang koneksyon. Subukan muli.';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return 'Mensahe mula sa serbisyo: $detail';
+  }
+
+  @override
+  String get errorGenerationTimeout =>
+      'Huminto ang paggawa: masyadong matagal. Subukan muli.';
+
+  @override
+  String get errorExportNotReady =>
+      'Hindi pa handa ang page. Maghintay sandali.';
+
+  @override
+  String get errorExportTimeout => 'Nag-time out ang export. Subukan muli.';
+
+  @override
+  String get errorExportNoElements => 'Wala pang ma-export.';
+
+  @override
+  String get errorExportEmptyResult =>
+      'Walang laman ang resulta. Subukan muli.';
+
+  @override
+  String get errorExportWriteFailed =>
+      'Hindi ma-save ang file. Pumili ng ibang lokasyon.';
+
+  @override
+  String get errorImportInvalidFile =>
+      'Hindi valid na JSON ang file na ito. Pumili ng Centauri .mydesign file.';
+
+  @override
+  String get errorImportNotProject => 'Hindi ito Centauri project file.';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return 'Kailangan ng file na ito ng mas bagong Centauri version ($version). I-update muna ang app.';
+  }
+
+  @override
+  String get errorImportEmpty => 'Walang laman ang project file na ito.';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return 'Walang laman ang file na $name.';
+  }
+
+  @override
+  String get errorImportUnusable =>
+      'Hindi mabasa ang file. Pumili ng ibang file.';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return 'Hindi mabasa ang file na $name. Pumili ng ibang file.';
+  }
+
+  @override
+  String get errorAttachmentEmpty => 'Walang laman ang file.';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return 'Walang laman ang file na $name.';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return 'Masyadong malaki ang file (max $maxMb MB).';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return 'Hindi sinusuportahan ang format na iyon. Gamitin ang $formats.';
+  }
+
+  @override
+  String get errorStorageFailed => 'Hindi ma-access ang key sa device na ito.';
+
+  @override
+  String get errorTransformNoCode => 'Wala pang code ang page na ito.';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override

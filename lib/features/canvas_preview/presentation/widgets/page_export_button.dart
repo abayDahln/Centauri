@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../../../code_exporter/data/figma_export_service.dart';
@@ -101,9 +102,9 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
             );
         }
       } on PageExportException catch (e) {
-        snack(e.message);
+        snack(l10n.appError(e));
       } on FigmaExportException catch (e) {
-        snack(e.message);
+        snack(l10n.appError(e));
       } catch (_) {
         snack(l10n.exportFailed);
       } finally {

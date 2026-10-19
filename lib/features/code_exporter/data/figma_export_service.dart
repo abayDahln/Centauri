@@ -6,13 +6,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 
 import '../../canvas_preview/data/services/canvas_service_registry.dart';
+import '../../../core/errors/app_error.dart';
 
-class FigmaExportException implements Exception {
-  FigmaExportException(this.message);
-  final String message;
+/// Kegagalan ekspor Figma; membawa kode yang diterjemahkan di UI.
+class FigmaExportException extends AppErrorDetails implements Exception {
+  const FigmaExportException(super.code, {super.detail});
 
   @override
-  String toString() => message;
+  String toString() => debugLabel;
 }
 
 /// Ekspor desain halaman aktif ke **payload Figma** yang dikonsumsi plugin
@@ -31,9 +32,7 @@ class FigmaExportService {
   Future<Map<String, dynamic>> collectPayload(String pageId) async {
     final service = CanvasServiceRegistry.forFrame(pageId);
     if (service == null) {
-      throw FigmaExportException(
-        'Halaman belum siap (WebView belum terinisialisasi). Tunggu sebentar.',
-      );
+      throw const FigmaExportException(AppErrorCode.exportNotReady);
     }
 
     final future = service.selectionEvents
@@ -41,19 +40,20 @@ class FigmaExportService {
         .timeout(
           const Duration(seconds: 20),
           onTimeout: () =>
-              throw FigmaExportException('Ekspor Figma timeout. Coba lagi.'),
+              throw const FigmaExportException(AppErrorCode.exportTimeout),
         );
     await service.requestFigmaPayload();
 
     final event = await future;
     if (event.type == 'figmaError') {
       throw FigmaExportException(
-        event.errorMessage ?? 'Ekspor Figma gagal tanpa pesan.',
+        AppErrorCode.exportFailed,
+        detail: event.errorMessage,
       );
     }
     final payload = event.payload;
     if (payload == null) {
-      throw FigmaExportException('Payload Figma kosong.');
+      throw const FigmaExportException(AppErrorCode.exportEmptyResult);
     }
     return payload;
   }
@@ -62,9 +62,7 @@ class FigmaExportService {
   String buildFigmaJson(Map<String, dynamic> payload) {
     final nodes = payload['nodes'];
     if (nodes is! List || nodes.isEmpty) {
-      throw FigmaExportException(
-        'Tidak ada elemen untuk diekspor. Halaman masih kosong.',
-      );
+      throw const FigmaExportException(AppErrorCode.exportNoElements);
     }
     final page = payload['page'];
     final normalized = <String, dynamic>{
@@ -118,7 +116,8 @@ class FigmaExportService {
       return outputPath;
     } catch (_) {
       throw FigmaExportException(
-        'Gagal menulis file ke $outputPath. Coba lokasi lain.',
+        AppErrorCode.exportWriteFailed,
+        detail: outputPath,
       );
     }
   }

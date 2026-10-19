@@ -10,13 +10,14 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../canvas_preview/data/services/canvas_service_registry.dart';
+import '../../../core/errors/app_error.dart';
 
-class PageExportException implements Exception {
-  PageExportException(this.message);
-  final String message;
+/// Kegagalan ekspor halaman; membawa kode yang diterjemahkan di UI.
+class PageExportException extends AppErrorDetails implements Exception {
+  const PageExportException(super.code, {super.detail});
 
   @override
-  String toString() => message;
+  String toString() => debugLabel;
 }
 
 /// Ekspor halaman aktif ke PNG/SVG/PDF (offline-first).
@@ -173,9 +174,7 @@ class PageExportService {
   Future<Uint8List> capturePngBytes(String pageId) async {
     final service = CanvasServiceRegistry.forFrame(pageId);
     if (service == null) {
-      throw PageExportException(
-        'Halaman belum siap (WebView belum terinisialisasi). Tunggu sebentar.',
-      );
+      throw const PageExportException(AppErrorCode.exportNotReady);
     }
 
     final future = service.selectionEvents
@@ -183,24 +182,25 @@ class PageExportService {
         .timeout(
           const Duration(seconds: 20),
           onTimeout: () =>
-              throw PageExportException('Ekspor PNG timeout. Coba lagi.'),
+              throw const PageExportException(AppErrorCode.exportTimeout),
         );
     await service.requestFramePng(pixelRatio: 2);
 
     final event = await future;
     if (event.type == 'pngError') {
       throw PageExportException(
-        event.errorMessage ?? 'Ekspor PNG gagal tanpa pesan.',
+        AppErrorCode.exportFailed,
+        detail: event.errorMessage,
       );
     }
     final dataUrl = event.dataUrl;
     if (dataUrl == null || !dataUrl.startsWith('data:image/png;base64,')) {
-      throw PageExportException('Hasil PNG tidak valid.');
+      throw const PageExportException(AppErrorCode.exportEmptyResult);
     }
     try {
       return base64Decode(dataUrl.substring('data:image/png;base64,'.length));
     } catch (_) {
-      throw PageExportException('Hasil PNG rusak (base64 tidak valid).');
+      throw const PageExportException(AppErrorCode.exportEmptyResult);
     }
   }
 
@@ -233,7 +233,8 @@ class PageExportService {
       return outputPath;
     } catch (_) {
       throw PageExportException(
-        'Gagal menulis file ke $outputPath. Coba lokasi lain.',
+        AppErrorCode.exportWriteFailed,
+        detail: outputPath,
       );
     }
   }
@@ -254,7 +255,8 @@ class PageExportService {
       return outputPath;
     } catch (_) {
       throw PageExportException(
-        'Gagal menulis file ke $outputPath. Coba lokasi lain.',
+        AppErrorCode.exportWriteFailed,
+        detail: outputPath,
       );
     }
   }

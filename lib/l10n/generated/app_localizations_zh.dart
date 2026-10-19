@@ -582,6 +582,120 @@ class AppLocalizationsZh extends AppLocalizations {
   String get providerNotFound => '找不到 Provider。';
 
   @override
+  String get errorCancelled => '已取消。';
+
+  @override
+  String get errorApiTimeout => '连接超时。请检查地址或网络。';
+
+  @override
+  String get errorApiUnreachable => '无法连接。请检查地址。';
+
+  @override
+  String get errorApiUnauthorized => '访问密钥无效或没有权限。';
+
+  @override
+  String get errorApiRateLimited => '服务正在限制请求。请稍后再试。';
+
+  @override
+  String get errorApiNotFound => '找不到地址或 Model。请检查两者。';
+
+  @override
+  String get errorApiRejected => '服务拒绝了请求。';
+
+  @override
+  String get errorApiCertificate => '服务器证书无效。请检查地址。';
+
+  @override
+  String get errorApiSendFailed => '无法发送请求。请检查网络和地址。';
+
+  @override
+  String get errorApiBadResponse => '回复格式不符。地址应以 /v1 结尾。';
+
+  @override
+  String get errorApiNoChatEndpoint => '此服务还没有聊天地址。';
+
+  @override
+  String get errorApiModelUnavailable => '此 Model 不可用。请换一个。';
+
+  @override
+  String get errorApiConnectionBroken => '连接中断。请重试。';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return '服务消息：$detail';
+  }
+
+  @override
+  String get errorGenerationTimeout => '生成已停止：耗时过长。请重试。';
+
+  @override
+  String get errorExportNotReady => '页面尚未就绪。请稍等。';
+
+  @override
+  String get errorExportTimeout => '导出超时。请重试。';
+
+  @override
+  String get errorExportNoElements => '还没有可导出的内容。';
+
+  @override
+  String get errorExportEmptyResult => '结果为空。请重试。';
+
+  @override
+  String get errorExportWriteFailed => '无法保存文件。请换个位置。';
+
+  @override
+  String get errorImportInvalidFile =>
+      '此文件不是有效的 JSON。请选择 Centauri .mydesign 文件。';
+
+  @override
+  String get errorImportNotProject => '这不是 Centauri 项目文件。';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return '此文件需要更新的 Centauri 版本（$version）。请先更新应用。';
+  }
+
+  @override
+  String get errorImportEmpty => '此项目文件为空。';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return '文件 $name 为空。';
+  }
+
+  @override
+  String get errorImportUnusable => '无法读取此文件。请换一个文件。';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return '无法读取文件 $name。请换一个文件。';
+  }
+
+  @override
+  String get errorAttachmentEmpty => '文件为空。';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return '文件 $name 为空。';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return '文件太大（最大 $maxMb MB）。';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return '不支持此格式。请使用 $formats。';
+  }
+
+  @override
+  String get errorStorageFailed => '无法访问此设备上的密钥。';
+
+  @override
+  String get errorTransformNoCode => '此页面还没有代码。';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override

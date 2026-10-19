@@ -1,5 +1,6 @@
 import 'package:html/parser.dart' as html;
 
+import '../../../core/errors/app_error.dart';
 import 'export_format.dart';
 import 'html_to_flutter.dart';
 import 'html_to_react.dart';
@@ -8,11 +9,14 @@ import 'html_to_tailwind.dart';
 /// Dilempar ketika HTML dari Alpha tidak bisa diubah ke format target.
 /// Dipakai UI untuk menampilkan pesan yang bisa dibaca pengguna, bukan
 /// stack trace dari parser.
-class CodeTransformException implements Exception {
-  CodeTransformException(this.message, {this.format, this.cause});
-
-  /// Pesan siap tampil di UI.
-  final String message;
+class CodeTransformException extends AppErrorDetails implements Exception {
+  const CodeTransformException(
+    super.code, {
+    super.detail,
+    super.formats,
+    this.format,
+    this.cause,
+  });
 
   /// Format yang gagal dihasilkan, null jika sumbernya sendiri bermasalah.
   final CodeFormat? format;
@@ -21,7 +25,7 @@ class CodeTransformException implements Exception {
   final Object? cause;
 
   @override
-  String toString() => message;
+  String toString() => debugLabel;
 }
 
 /// Membersihkan dan menormalkan output HTML AI menjadi HTML murni.
@@ -36,7 +40,7 @@ String transformToHtml(String htmlSource) {
 /// dilempar ulang sebagai [CodeTransformException] agar tidak menjatuhkan UI.
 String transformCode({required String htmlSource, required CodeFormat format}) {
   if (htmlSource.trim().isEmpty) {
-    throw CodeTransformException('Halaman ini belum punya kode untuk diubah.');
+    throw const CodeTransformException(AppErrorCode.transformNoCode);
   }
 
   try {
@@ -52,8 +56,10 @@ String transformCode({required String htmlSource, required CodeFormat format}) {
     }
   } catch (error) {
     throw CodeTransformException(
-      'Kode dari Alpha tidak bisa diubah ke ${format.label}.',
+      AppErrorCode.transformFailed,
       format: format,
+      formats: format.label,
+      detail: '$error',
       cause: error,
     );
   }

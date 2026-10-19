@@ -586,6 +586,120 @@ class AppLocalizationsJa extends AppLocalizations {
   String get providerNotFound => 'Provider が見つかりません。';
 
   @override
+  String get errorCancelled => 'キャンセルしました。';
+
+  @override
+  String get errorApiTimeout => '接続がタイムアウトしました。アドレスかネットワークを確認してください。';
+
+  @override
+  String get errorApiUnreachable => '接続できませんでした。アドレスを確認してください。';
+
+  @override
+  String get errorApiUnauthorized => 'アクセスキーが無効か、権限がありません。';
+
+  @override
+  String get errorApiRateLimited => 'サービスがリクエストを制限しています。しばらくしてからもう一度お試しください。';
+
+  @override
+  String get errorApiNotFound => 'アドレスまたは Model が見つかりません。両方を確認してください。';
+
+  @override
+  String get errorApiRejected => 'サービスがリクエストを拒否しました。';
+
+  @override
+  String get errorApiCertificate => 'サーバー証明書が無効です。アドレスを確認してください。';
+
+  @override
+  String get errorApiSendFailed => 'リクエストを送信できませんでした。接続とアドレスを確認してください。';
+
+  @override
+  String get errorApiBadResponse => '返信の形式が想定と違います。アドレスは /v1 で終わる必要があります。';
+
+  @override
+  String get errorApiNoChatEndpoint => 'このサービスにはまだチャット用アドレスがありません。';
+
+  @override
+  String get errorApiModelUnavailable => 'この Model は利用できません。別のものを選んでください。';
+
+  @override
+  String get errorApiConnectionBroken => '接続が切れました。もう一度お試しください。';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return 'サービスからのメッセージ：$detail';
+  }
+
+  @override
+  String get errorGenerationTimeout => '生成を停止しました。時間がかかりすぎています。もう一度お試しください。';
+
+  @override
+  String get errorExportNotReady => 'ページの準備ができていません。少しお待ちください。';
+
+  @override
+  String get errorExportTimeout => 'エクスポートがタイムアウトしました。もう一度お試しください。';
+
+  @override
+  String get errorExportNoElements => 'まだエクスポートできるものがありません。';
+
+  @override
+  String get errorExportEmptyResult => '結果が空でした。もう一度お試しください。';
+
+  @override
+  String get errorExportWriteFailed => 'ファイルを保存できませんでした。別の場所を選んでください。';
+
+  @override
+  String get errorImportInvalidFile =>
+      'このファイルは有効な JSON ではありません。Centauri の .mydesign ファイルを選んでください。';
+
+  @override
+  String get errorImportNotProject => 'これは Centauri のプロジェクトファイルではありません。';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return 'このファイルには新しい Centauri バージョン（$version）が必要です。先にアプリを更新してください。';
+  }
+
+  @override
+  String get errorImportEmpty => 'このプロジェクトファイルは空です。';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return 'ファイル $name は空です。';
+  }
+
+  @override
+  String get errorImportUnusable => 'このファイルを読み取れません。別のファイルを選んでください。';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return 'ファイル $name を読み取れません。別のファイルを選んでください。';
+  }
+
+  @override
+  String get errorAttachmentEmpty => 'ファイルは空です。';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return 'ファイル $name は空です。';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return 'ファイルが大きすぎます（最大 $maxMb MB）。';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return 'この形式はサポートされていません。$formats を使用してください。';
+  }
+
+  @override
+  String get errorStorageFailed => 'このデバイス上のキーにアクセスできませんでした。';
+
+  @override
+  String get errorTransformNoCode => 'このページにはまだコードがありません。';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override

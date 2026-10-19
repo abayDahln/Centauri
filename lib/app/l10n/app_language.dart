@@ -51,51 +51,15 @@ class AppLanguage {
       nativeName: '简体中文',
       englishName: 'Chinese (Simplified)',
     ),
-    AppLanguage(
-      code: 'ja',
-      nativeName: '日本語',
-      englishName: 'Japanese',
-    ),
-    AppLanguage(
-      code: 'ko',
-      nativeName: '한국어',
-      englishName: 'Korean',
-    ),
-    AppLanguage(
-      code: 'ru',
-      nativeName: 'Русский',
-      englishName: 'Russian',
-    ),
-    AppLanguage(
-      code: 'de',
-      nativeName: 'Deutsch',
-      englishName: 'German',
-    ),
-    AppLanguage(
-      code: 'ar',
-      nativeName: 'العربية',
-      englishName: 'Arabic',
-    ),
-    AppLanguage(
-      code: 'fr',
-      nativeName: 'Français',
-      englishName: 'French',
-    ),
-    AppLanguage(
-      code: 'pt',
-      nativeName: 'Português',
-      englishName: 'Portuguese',
-    ),
-    AppLanguage(
-      code: 'th',
-      nativeName: 'ไทย',
-      englishName: 'Thai',
-    ),
-    AppLanguage(
-      code: 'fil',
-      nativeName: 'Filipino',
-      englishName: 'Filipino',
-    ),
+    AppLanguage(code: 'ja', nativeName: '日本語', englishName: 'Japanese'),
+    AppLanguage(code: 'ko', nativeName: '한국어', englishName: 'Korean'),
+    AppLanguage(code: 'ru', nativeName: 'Русский', englishName: 'Russian'),
+    AppLanguage(code: 'de', nativeName: 'Deutsch', englishName: 'German'),
+    AppLanguage(code: 'ar', nativeName: 'العربية', englishName: 'Arabic'),
+    AppLanguage(code: 'fr', nativeName: 'Français', englishName: 'French'),
+    AppLanguage(code: 'pt', nativeName: 'Português', englishName: 'Portuguese'),
+    AppLanguage(code: 'th', nativeName: 'ไทย', englishName: 'Thai'),
+    AppLanguage(code: 'fil', nativeName: 'Filipino', englishName: 'Filipino'),
   ];
 
   /// Cari bahasa dari kode tersimpan. Kode lengkap seperti `en_US` dicocokkan

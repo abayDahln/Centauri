@@ -3,6 +3,7 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../data/code_export_service.dart';
 import '../domain/code_transformer.dart';
@@ -47,12 +48,10 @@ class _CodeExportViewState extends State<CodeExportView> {
         transformCode(htmlSource: widget.htmlSource, format: format),
       );
     } on CodeTransformException catch (e) {
-      return _CodeResult.error(e.message);
+      return _CodeResult.error(localizedAppError(context.l10n, e));
     } catch (_) {
       return _CodeResult.error(
-        context.mounted
-            ? context.l10n.codeExportTransformErrorFallback(format.label)
-            : 'Alpha code could not be transformed into ${format.label}.',
+        context.l10n.codeExportTransformErrorFallback(format.label),
       );
     }
   });
@@ -100,7 +99,7 @@ class _CodeExportViewState extends State<CodeExportView> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text(e.message),
+              content: Text(localizedAppError(context.l10n, e)),
               backgroundColor: AppColors.bgElevated,
               behavior: SnackBarBehavior.floating,
             ),
@@ -229,7 +228,10 @@ class _CodeExportViewState extends State<CodeExportView> {
                 child: OutlinedButton.icon(
                   onPressed: code == null ? null : _copy,
                   icon: const Icon(Icons.copy_all_outlined, size: 15),
-                  label: Text(l10n.codeExportCopy, style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    l10n.codeExportCopy,
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -248,7 +250,10 @@ class _CodeExportViewState extends State<CodeExportView> {
                       : const Icon(Icons.download_outlined, size: 15),
                   label: Text(
                     l10n.codeExportDownload,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -310,7 +315,10 @@ class _TransformError extends StatelessWidget {
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: onUseHtml,
-                child: Text(l10n.codeExportUseHtml, style: const TextStyle(fontSize: 12)),
+                child: Text(
+                  l10n.codeExportUseHtml,
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
             ],
           ],

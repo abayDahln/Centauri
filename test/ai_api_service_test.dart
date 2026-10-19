@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:centauri/core/errors/app_error.dart';
 import 'package:centauri/core/utils/app_constants.dart';
 import 'package:centauri/features/provider_config/data/datasources/ai_api_service.dart';
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
@@ -179,11 +180,13 @@ void main() {
           'error': {'message': 'model not found: gpt-99'},
         }),
         throwsA(
-          isA<ApiConnectionException>().having(
-            (e) => e.message,
-            'message',
-            contains('model not found: gpt-99'),
-          ),
+          isA<ApiConnectionException>()
+              .having((e) => e.code, 'code', AppErrorCode.apiProviderReported)
+              .having(
+                (e) => e.detail,
+                'detail',
+                contains('model not found: gpt-99'),
+              ),
         ),
       );
     });
@@ -199,11 +202,9 @@ void main() {
       expect(
         () => service.extractContent({'foo': 1, 'bar': 2}),
         throwsA(
-          isA<ApiConnectionException>().having(
-            (e) => e.message,
-            'message',
-            contains('foo'),
-          ),
+          isA<ApiConnectionException>()
+              .having((e) => e.code, 'code', AppErrorCode.apiBadResponse)
+              .having((e) => e.detail, 'detail', contains('foo')),
         ),
       );
     });
@@ -233,127 +234,94 @@ void main() {
       ),
     );
 
-    test('404 menyertakan pesan asli provider (model tidak ada)', () {
-      final message = AiApiService.mapDioError(
-        badResponse(
-          404,
-          body: {
-            'error': {
-              'message': 'No endpoints found for stealth/space-bunny-alpha.',
-              'code': 404,
-            },
+    test('404 jadi apiNotFound, detail memuat pesan asli provider', () {
+      final e = badResponse(
+        404,
+        body: {
+          'error': {
+            'message': 'No endpoints found for stealth/space-bunny-alpha.',
+            'code': 404,
           },
-        ),
+        },
       );
 
-      expect(message, contains('404'));
-      expect(message, contains('space-bunny-alpha'));
+      expect(AiApiService.mapDioError(e), AppErrorCode.apiNotFound);
+      final detail = AiApiService.dioErrorDetail(e)!;
+      expect(detail, contains('HTTP 404'));
+      expect(detail, contains('space-bunny-alpha'));
     });
 
-    test('404 tanpa body tetap menyebut Base URL & nama model', () {
-      final message = AiApiService.mapDioError(badResponse(404));
-
-      expect(message, contains('404'));
-      expect(message, contains('Base URL'));
-      expect(message, contains('model'));
-    });
-
-    test('404 dari respons stream mengangkat error.message provider', () {
-      // ResponseType.stream membuat Dio tidak mendekode body error; pemanggil
-      // membacanya sendiri dan menyerahkannya via `responseBody`.
-      final message = AiApiService.mapDioError(
+    test('detail menyertakan URL final dan nama model', () {
+      final detail = AiApiService.dioErrorDetail(
         badResponse(404),
         responseBody: '{"error":{"message":"No endpoints found for openai/gpt-9.","code":404}}',
         url: 'https://openrouter.ai/api/v1/chat/completions',
         model: 'openai/gpt-9',
-      );
+      )!;
 
-      expect(message, contains('No endpoints found for openai/gpt-9'));
-      expect(
-        message,
-        contains('https://openrouter.ai/api/v1/chat/completions'),
-      );
-      expect(message, contains('Model: openai/gpt-9'));
+      expect(detail, contains('No endpoints found for openai/gpt-9'));
+      expect(detail, contains('https://openrouter.ai/api/v1/chat/completions'));
+      expect(detail, contains('model=openai/gpt-9'));
     });
 
-    test('404 tanpa detail menyertakan URL final dan model', () {
-      final message = AiApiService.mapDioError(
-        badResponse(404),
-        responseBody: '',
-        url: 'https://openrouter.ai/api/v1/chat/completions',
-        model: 'openai/gpt-5.4',
-      );
-
-      expect(message, contains('404'));
-      expect(message, contains('Base URL'));
-      expect(message, contains('Model: openai/gpt-5.4'));
-    });
-
-    test('body error HTML tidak JSON tampil sebagai cuplikan', () {
-      final message = AiApiService.mapDioError(
+    test('body HTML tetap terbaca sebagai detail', () {
+      final detail = AiApiService.dioErrorDetail(
         badResponse(404),
         responseBody: '<!DOCTYPE html><html><body>404 Not Found</body></html>',
         url: 'https://api.example.com/v1/chat/completions',
-        model: 'x',
-      );
+      )!;
 
-      expect(message, contains('404 Not Found'));
-      expect(message, contains('https://api.example.com/v1/chat/completions'));
+      expect(detail, contains('HTTP 404'));
+      expect(detail, contains('https://api.example.com/v1/chat/completions'));
     });
 
-    test('status non-404 menyertakan detail provider + konteks request', () {
-      final message = AiApiService.mapDioError(
-        badResponse(400),
-        responseBody: '{"error":{"message":"max_tokens too large"}}',
-        url: 'https://api.example.com/v1/chat/completions',
-        model: 'gpt-4o',
-      );
+    test('status non-404 memakai apiRejected + status di detail', () {
+      final e = badResponse(400);
 
-      expect(message, contains('HTTP 400'));
-      expect(message, contains('max_tokens too large'));
-      expect(message, contains('Model: gpt-4o'));
+      expect(AiApiService.mapDioError(e), AppErrorCode.apiRejected);
+      expect(AiApiService.dioErrorDetail(e), contains('HTTP 400'));
     });
 
-    test('401 menjelaskan kunci akses, bukan Base URL', () {
-      final message = AiApiService.mapDioError(badResponse(401));
-
-      expect(message, contains('401'));
-      expect(message, contains('Kunci akses'));
+    test('401 dan 403 jadi apiUnauthorized', () {
+      expect(
+        AiApiService.mapDioError(badResponse(401)),
+        AppErrorCode.apiUnauthorized,
+      );
+      expect(
+        AiApiService.mapDioError(badResponse(403)),
+        AppErrorCode.apiUnauthorized,
+      );
     });
 
-    test('429 menjelaskan batas layanan dan menyertakan detail', () {
-      final message = AiApiService.mapDioError(
-        badResponse(
-          429,
-          body: {
-            'error': {'message': 'Provider returned error'},
-          },
-        ),
+    test('429 jadi apiRateLimited', () {
+      expect(
+        AiApiService.mapDioError(badResponse(429)),
+        AppErrorCode.apiRateLimited,
       );
-
-      expect(message, contains('429'));
-      expect(message, contains('membatasi'));
-      expect(message, contains('Provider returned error'));
     });
 
-    test('403 menampilkan pesan asli provider', () {
-      final message = AiApiService.mapDioError(
-        badResponse(
-          403,
-          body: {
-            'error': {
-              'message': 'Key limit exceeded (total limit).',
-              'code': 403,
-            },
-          },
-        ),
-        url: 'https://openrouter.ai/api/v1/chat/completions',
-        model: 'x-ai/grok-4.5',
+    test('timeout, koneksi putus, dan cancel punya kode masing-masing', () {
+      DioException typed(DioExceptionType type) => DioException(
+        requestOptions: RequestOptions(path: '/models'),
+        type: type,
       );
 
-      expect(message, contains('403'));
-      expect(message, contains('Key limit exceeded'));
-      expect(message, contains('x-ai/grok-4.5'));
+      expect(
+        AiApiService.mapDioError(typed(DioExceptionType.connectionTimeout)),
+        AppErrorCode.apiTimeout,
+      );
+      expect(
+        AiApiService.mapDioError(typed(DioExceptionType.receiveTimeout)),
+        AppErrorCode.apiTimeout,
+      );
+      expect(
+        AiApiService.mapDioError(typed(DioExceptionType.connectionError)),
+        AppErrorCode.apiUnreachable,
+      );
+      expect(
+        AiApiService.mapDioError(typed(DioExceptionType.cancel)),
+        AppErrorCode.cancelled,
+      );
     });
   });
 
@@ -381,11 +349,9 @@ void main() {
       await expectLater(
         service.testConnection(provider.copyWith(model: 'space-bunny-alpha')),
         throwsA(
-          isA<ApiConnectionException>().having(
-            (e) => e.message,
-            'message',
-            allOf(contains('space-bunny-alpha'), contains('tidak tersedia')),
-          ),
+          isA<ApiConnectionException>()
+              .having((e) => e.code, 'code', AppErrorCode.apiModelUnavailable)
+              .having((e) => e.detail, 'detail', contains('space-bunny-alpha')),
         ),
       );
     });

@@ -2,14 +2,22 @@ import 'dart:typed_data';
 
 import 'package:uuid/uuid.dart';
 
+import '../../../core/errors/app_error.dart';
 import '../domain/attachment.dart';
 
-class AttachmentException implements Exception {
-  AttachmentException(this.message);
-  final String message;
+/// Lampiran ditolak: kode error + nama berkas/batas ukuran/format yang
+/// didukung, supaya pesannya bisa diterjemahkan di UI.
+class AttachmentException extends AppErrorDetails implements Exception {
+  const AttachmentException(
+    super.code, {
+    super.detail,
+    super.name,
+    super.maxMb,
+    super.formats,
+  });
 
   @override
-  String toString() => message;
+  String toString() => debugLabel;
 }
 
 /// Memuat dan memvalidasi lampiran dari berbagai sumber (file, drag&drop,
@@ -29,17 +37,21 @@ class AttachmentService {
   /// Melempar [AttachmentException] bila format tak didukung atau terlalu besar.
   Attachment fromBytes(String fileName, Uint8List bytes) {
     if (bytes.isEmpty) {
-      throw AttachmentException('File "$fileName" kosong.');
+      throw AttachmentException(AppErrorCode.attachmentEmpty, name: fileName);
     }
     if (bytes.length > maxBytes) {
       throw AttachmentException(
-        'File "$fileName" terlalu besar (maks ${maxBytes ~/ (1024 * 1024)} MB).',
+        AppErrorCode.attachmentTooLarge,
+        name: fileName,
+        maxMb: maxBytes ~/ (1024 * 1024),
       );
     }
     final resolved = AttachmentFormats.resolve(fileName);
     if (resolved == null) {
       throw AttachmentException(
-        'Format "$fileName" tidak didukung. Didukung: ${AttachmentFormats.acceptLabel}.',
+        AppErrorCode.attachmentUnsupported,
+        name: fileName,
+        formats: AttachmentFormats.acceptLabel,
       );
     }
     return Attachment(

@@ -1,3 +1,4 @@
+import 'package:centauri/core/errors/app_error.dart';
 import 'package:centauri/features/code_exporter/domain/code_transformer.dart';
 import 'package:centauri/features/code_exporter/domain/export_format.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -138,22 +139,24 @@ void main() {
   });
 
   group('transformCode - output Alpha yang rusak', () {
-    test('melempar CodeTransformException saat sumber kosong', () {
+    test('sumber kosong jadi kode transformNoCode', () {
       expect(
         () => transformCode(htmlSource: '   ', format: CodeFormat.reactJsx),
-        throwsA(isA<CodeTransformException>()),
+        throwsA(
+          isA<CodeTransformException>().having(
+            (e) => e.code,
+            'code',
+            AppErrorCode.transformNoCode,
+          ),
+        ),
       );
     });
 
-    test('pesan galat siap tampil, tanpa istilah teknis', () {
-      try {
-        transformCode(htmlSource: '', format: CodeFormat.flutterDart);
-        fail('seharusnya melempar CodeTransformException');
-      } on CodeTransformException catch (e) {
-        expect(e.message, isNotEmpty);
-        expect(e.message.contains('Exception'), isFalse);
-        expect(e.message.contains('null'), isFalse);
-      }
+    test('label log tidak membocorkan istilah teknis', () {
+      expect(
+        const CodeTransformException(AppErrorCode.transformNoCode).toString(),
+        'AppErrorCode.transformNoCode',
+      );
     });
 
     test('HTML tidak lengkap tetap dikonversi, bukan crash', () {

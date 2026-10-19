@@ -602,6 +602,136 @@ class AppLocalizationsRu extends AppLocalizations {
   String get providerNotFound => 'Provider не найден.';
 
   @override
+  String get errorCancelled => 'Отменено.';
+
+  @override
+  String get errorApiTimeout =>
+      'Время подключения истекло. Проверьте адрес или сеть.';
+
+  @override
+  String get errorApiUnreachable => 'Не удалось подключиться. Проверьте адрес.';
+
+  @override
+  String get errorApiUnauthorized =>
+      'Ключ доступа недействителен или не имеет прав.';
+
+  @override
+  String get errorApiRateLimited =>
+      'Сервис ограничивает запросы. Повторите попытку позже.';
+
+  @override
+  String get errorApiNotFound =>
+      'Адрес или Model не найдены. Проверьте и то и другое.';
+
+  @override
+  String get errorApiRejected => 'Сервис отклонил запрос.';
+
+  @override
+  String get errorApiCertificate =>
+      'Сертификат сервера недействителен. Проверьте адрес.';
+
+  @override
+  String get errorApiSendFailed =>
+      'Не удалось отправить запрос. Проверьте подключение и адрес.';
+
+  @override
+  String get errorApiBadResponse =>
+      'Ответ пришёл в неожиданном формате. Адрес должен заканчиваться на /v1.';
+
+  @override
+  String get errorApiNoChatEndpoint =>
+      'У этого сервиса пока нет адреса для чата.';
+
+  @override
+  String get errorApiModelUnavailable =>
+      'Эта Model здесь недоступна. Выберите другую.';
+
+  @override
+  String get errorApiConnectionBroken =>
+      'Подключение прервалось. Повторите попытку.';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return 'Сообщение сервиса: $detail';
+  }
+
+  @override
+  String get errorGenerationTimeout =>
+      'Генерация остановлена: это заняло слишком много времени. Повторите попытку.';
+
+  @override
+  String get errorExportNotReady =>
+      'Страница ещё не готова. Подождите немного.';
+
+  @override
+  String get errorExportTimeout => 'Время экспорта истекло. Повторите попытку.';
+
+  @override
+  String get errorExportNoElements => 'Пока нечего экспортировать.';
+
+  @override
+  String get errorExportEmptyResult =>
+      'Результат оказался пустым. Повторите попытку.';
+
+  @override
+  String get errorExportWriteFailed =>
+      'Не удалось сохранить файл. Выберите другое место.';
+
+  @override
+  String get errorImportInvalidFile =>
+      'Этот файл не является допустимым JSON. Выберите файл Centauri .mydesign.';
+
+  @override
+  String get errorImportNotProject => 'Это не файл проекта Centauri.';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return 'Для этого файла нужна более новая версия Centauri ($version). Сначала обновите приложение.';
+  }
+
+  @override
+  String get errorImportEmpty => 'Этот файл проекта пуст.';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return 'Файл $name пуст.';
+  }
+
+  @override
+  String get errorImportUnusable =>
+      'Не удалось прочитать файл. Выберите другой файл.';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return 'Не удалось прочитать файл $name. Выберите другой файл.';
+  }
+
+  @override
+  String get errorAttachmentEmpty => 'Файл пуст.';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return 'Файл $name пуст.';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return 'Файл слишком большой (макс. $maxMb MB).';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return 'Этот формат не поддерживается. Используйте $formats.';
+  }
+
+  @override
+  String get errorStorageFailed =>
+      'Не удалось получить доступ к ключу на этом устройстве.';
+
+  @override
+  String get errorTransformNoCode => 'У этой страницы пока нет кода.';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override

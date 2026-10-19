@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 
-class CodeExportException implements Exception {
-  CodeExportException(this.message);
-  final String message;
+import '../../../core/errors/app_error.dart';
+
+/// Kegagalan menyimpan kode; membawa kode yang diterjemahkan di UI.
+class CodeExportException extends AppErrorDetails implements Exception {
+  const CodeExportException(super.code, {super.detail});
 
   @override
-  String toString() => message;
+  String toString() => debugLabel;
 }
 
 /// Copy + simpan kode hasil export (FR-05).
@@ -37,7 +39,8 @@ class CodeExportService {
       return outputPath;
     } catch (_) {
       throw CodeExportException(
-        'Gagal menulis file ke $outputPath. Salin kode ke clipboard sebagai alternatif.',
+        AppErrorCode.exportWriteFailed,
+        detail: outputPath,
       );
     }
   }

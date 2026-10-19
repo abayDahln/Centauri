@@ -593,6 +593,132 @@ class AppLocalizationsId extends AppLocalizations {
   String get providerNotFound => 'Provider tidak ditemukan.';
 
   @override
+  String get errorCancelled => 'Dibatalkan.';
+
+  @override
+  String get errorApiTimeout =>
+      'Koneksi timeout. Periksa alamat layanan atau jaringan.';
+
+  @override
+  String get errorApiUnreachable =>
+      'Tidak bisa terhubung. Periksa alamat layanan.';
+
+  @override
+  String get errorApiUnauthorized =>
+      'Kunci akses tidak berlaku atau tidak punya akses.';
+
+  @override
+  String get errorApiRateLimited =>
+      'Layanan sedang membatasi permintaan. Coba lagi sebentar.';
+
+  @override
+  String get errorApiNotFound =>
+      'Alamat atau model tidak ditemukan. Periksa keduanya.';
+
+  @override
+  String get errorApiRejected => 'Layanan menolak permintaan.';
+
+  @override
+  String get errorApiCertificate =>
+      'Sertifikat server tidak valid. Periksa alamat layanan.';
+
+  @override
+  String get errorApiSendFailed =>
+      'Gagal mengirim permintaan. Periksa koneksi dan alamat layanan.';
+
+  @override
+  String get errorApiBadResponse =>
+      'Balasan tidak sesuai format. Alamat sebaiknya berakhir dengan /v1.';
+
+  @override
+  String get errorApiNoChatEndpoint => 'Layanan ini belum punya alamat chat.';
+
+  @override
+  String get errorApiModelUnavailable =>
+      'Model ini tidak tersedia di layanan ini. Pilih model lain.';
+
+  @override
+  String get errorApiConnectionBroken => 'Koneksi terputus. Coba lagi.';
+
+  @override
+  String errorApiProviderReported(String detail) {
+    return 'Pesan layanan: $detail';
+  }
+
+  @override
+  String get errorGenerationTimeout =>
+      'Generate dihentikan: terlalu lama. Coba lagi.';
+
+  @override
+  String get errorExportNotReady => 'Halaman belum siap. Tunggu sebentar.';
+
+  @override
+  String get errorExportTimeout => 'Ekspor timeout. Coba lagi.';
+
+  @override
+  String get errorExportNoElements => 'Belum ada yang bisa diekspor.';
+
+  @override
+  String get errorExportEmptyResult => 'Hasil kosong. Coba lagi.';
+
+  @override
+  String get errorExportWriteFailed =>
+      'Gagal menyimpan file. Coba lokasi lain.';
+
+  @override
+  String get errorImportInvalidFile =>
+      'File ini bukan JSON yang valid. Pilih file .mydesign dari Centauri.';
+
+  @override
+  String get errorImportNotProject => 'File ini bukan proyek Centauri.';
+
+  @override
+  String errorImportNewerVersion(String version) {
+    return 'File ini butuh Centauri versi lebih baru ($version). Perbarui aplikasi dulu.';
+  }
+
+  @override
+  String get errorImportEmpty => 'Proyek di file ini kosong.';
+
+  @override
+  String errorImportEmptyFile(String name) {
+    return 'File $name kosong.';
+  }
+
+  @override
+  String get errorImportUnusable => 'File tidak bisa dibaca. Coba file lain.';
+
+  @override
+  String errorImportUnusableFile(String name) {
+    return 'File $name tidak bisa dibaca. Coba file lain.';
+  }
+
+  @override
+  String get errorAttachmentEmpty => 'File kosong.';
+
+  @override
+  String errorAttachmentEmptyFile(String name) {
+    return 'File $name kosong.';
+  }
+
+  @override
+  String errorAttachmentTooLarge(int maxMb) {
+    return 'File terlalu besar (maks $maxMb MB).';
+  }
+
+  @override
+  String errorAttachmentUnsupported(String formats) {
+    return 'Format tidak didukung. Pakai $formats.';
+  }
+
+  @override
+  String get errorStorageFailed =>
+      'Tidak bisa mengakses kunci di perangkat ini.';
+
+  @override
+  String get errorTransformNoCode => 'Halaman ini belum punya kode.';
+
+  @override
   String get exportFigma => 'Figma';
 
   @override
