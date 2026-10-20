@@ -6,6 +6,7 @@ import '../../../app/config/routes.dart';
 import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/l10n.dart';
+import '../../../app/widgets/app_toast.dart';
 import '../../../app/widgets/stitch_widgets.dart';
 import '../../canvas_preview/presentation/widgets/skeleton.dart';
 import '../../mcp/presentation/mcp_status_section.dart';
@@ -214,9 +215,7 @@ class ProviderListPage extends ConsumerWidget {
     if (!confirmed) return;
     await ref.read(providerConfigProvider.notifier).deleteProvider(provider.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.providerDeleted)));
+    showAppToast(context, l10n.providerDeleted, kind: AppToastKind.success);
   }
 }
 

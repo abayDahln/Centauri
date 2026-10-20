@@ -7,6 +7,7 @@ import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_toast.dart';
 import '../../../code_exporter/data/code_export_service.dart';
 import '../provider/workspace_provider.dart';
 
@@ -52,11 +53,7 @@ class _CodePanelState extends ConsumerState<CodePanel> {
     }
   }
 
-  void _toast(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _toast(String message) => showAppToast(context, message);
 
   @override
   Widget build(BuildContext context) {

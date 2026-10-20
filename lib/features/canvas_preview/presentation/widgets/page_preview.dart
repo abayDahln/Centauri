@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_toast.dart';
 import '../../data/services/canvas_service_registry.dart';
 import '../../data/services/canvas_webview_service.dart';
 import '../../data/services/canvas_webview_service_factory.dart';
@@ -206,9 +207,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    showAppToast(context, message, kind: AppToastKind.error);
   }
 
   @override

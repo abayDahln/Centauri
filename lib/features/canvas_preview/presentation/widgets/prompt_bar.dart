@@ -11,6 +11,7 @@ import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_toast.dart';
 import '../../../history/presentation/history_provider.dart';
 import '../../../prompt_editor/data/attachment_service.dart';
 import '../../../prompt_editor/domain/attachment.dart';
@@ -162,9 +163,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    showAppToast(context, message, kind: AppToastKind.error);
   }
 
   // ---------------------------------------------------------------- build --

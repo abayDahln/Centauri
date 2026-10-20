@@ -7,6 +7,7 @@ import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/error_messages.dart';
 import '../../../app/l10n/l10n.dart';
+import '../../../app/widgets/app_toast.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../core/utils/app_constants.dart';
 import '../data/catalog/provider_catalog.dart';
@@ -389,36 +390,11 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       : '$error';
 
   void _showSnackBar(String message, {required bool isError}) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                isError ? Icons.error_outline : Icons.check_circle_outline,
-                size: 16,
-                color: isError
-                    ? context.palette.statusError
-                    : context.palette.statusSuccess,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    color: context.palette.textPrimary,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: context.palette.bgElevated,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+    showAppToast(
+      context,
+      message,
+      kind: isError ? AppToastKind.error : AppToastKind.success,
+    );
   }
 
   // -------------------------------------------------------------- build ----

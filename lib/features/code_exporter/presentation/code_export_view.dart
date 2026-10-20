@@ -6,6 +6,7 @@ import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_toast.dart';
 import '../data/code_export_service.dart';
 import '../domain/code_transformer.dart';
 import '../domain/export_format.dart';
@@ -62,15 +63,11 @@ class _CodeExportViewState extends State<CodeExportView> {
     if (code == null) return;
     await _exportService.copyToClipboard(code);
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.codeExportCopied(_format.label)),
-          backgroundColor: context.palette.bgElevated,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    showAppToast(
+      context,
+      context.l10n.codeExportCopied(_format.label),
+      kind: AppToastKind.success,
+    );
   }
 
   Future<void> _save() async {
@@ -84,27 +81,19 @@ class _CodeExportViewState extends State<CodeExportView> {
       );
       if (!mounted) return;
       if (path != null) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.exportSaved(path)),
-              backgroundColor: context.palette.bgElevated,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+        showAppToast(
+          context,
+          context.l10n.exportSaved(path),
+          kind: AppToastKind.success,
+        );
       }
     } on CodeExportException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(localizedAppError(context.l10n, e)),
-              backgroundColor: context.palette.bgElevated,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+        showAppToast(
+          context,
+          localizedAppError(context.l10n, e),
+          kind: AppToastKind.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

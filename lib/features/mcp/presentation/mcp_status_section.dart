@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_toast.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../data/mcp_bridge.dart';
 import '../data/mcp_server.dart';
@@ -196,14 +197,11 @@ class _EndpointRow extends StatelessWidget {
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: value));
             if (context.mounted) {
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  SnackBar(
-                    content: Text(context.l10n.mcpAddressCopied),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+              showAppToast(
+                context,
+                context.l10n.mcpAddressCopied,
+                kind: AppToastKind.success,
+              );
             }
           },
         ),

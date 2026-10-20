@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_toast.dart';
 
 /// Kartu satu model pada section "Available Models" (ala 9router).
 ///
@@ -140,14 +141,11 @@ class _ModelCardState extends State<ModelCard> {
                 onPressed: () {
                   // Id polos, bukan label: hanya id inilah yang dikenal API.
                   Clipboard.setData(ClipboardData(text: widget.modelId));
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      SnackBar(
-                        content: Text(l10n.modelCardCopied(widget.modelId)),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                  showAppToast(
+                    context,
+                    l10n.modelCardCopied(widget.modelId),
+                    kind: AppToastKind.success,
+                  );
                 },
               ),
             ],

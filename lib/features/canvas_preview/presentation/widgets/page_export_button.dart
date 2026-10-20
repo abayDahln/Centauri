@@ -5,6 +5,7 @@ import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_toast.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../../../code_exporter/data/figma_export_service.dart';
 import '../../../code_exporter/data/page_export_service.dart';
@@ -45,15 +46,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
 
     void snack(String message) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: context.palette.bgElevated,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      showAppToast(context, message);
     }
 
     Future<void> run(_PageExportKind kind) async {
