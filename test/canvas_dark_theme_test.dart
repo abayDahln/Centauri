@@ -16,13 +16,10 @@ class _BusyWorkspaceNotifier extends WorkspaceNotifier {
 }
 
 void main() {
-  testWidgets('indikator AI memakai aksen secondary, bukan primary', (
-    tester,
-  ) async {
+  testWidgets('indikator AI memakai aksen primary', (tester) async {
     _busyStatus = const WorkspaceState(status: AiStatus.thinking);
     final palette = AppPalette.dark(
-      primary: AppAccentPreset.blue.seedColor,
-      secondary: AppAccentPreset.violet.seedColor,
+      primary: AppAccentPreset.violet.seedColor,
     );
 
     await tester.pumpWidget(
@@ -38,8 +35,7 @@ void main() {
     final spinner = tester.widget<CircularProgressIndicator>(
       find.byType(CircularProgressIndicator),
     );
-    expect(spinner.color, palette.secondary);
-    expect(spinner.color, isNot(palette.primary));
+    expect(spinner.color, palette.primary);
   });
 
   testWidgets('warna permukaan widget ikut palet gelap', (tester) async {

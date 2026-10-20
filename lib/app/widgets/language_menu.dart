@@ -6,6 +6,7 @@ import '../config/theme.dart';
 import '../l10n/app_language.dart';
 import '../l10n/l10n.dart';
 import '../l10n/locale_provider.dart';
+import 'app_dialog.dart';
 import 'stitch_widgets.dart';
 
 /// Tombol pemilih bahasa UI (ikon globe) untuk top bar / app bar.
@@ -29,7 +30,7 @@ class LanguageMenuButton extends ConsumerWidget {
 
 /// Buka dialog pilih bahasa UI.
 Future<void> showLanguageDialog(BuildContext context) {
-  return showDialog<void>(
+  return showAppDialog<void>(
     context: context,
     builder: (_) => const LanguageDialog(),
   );

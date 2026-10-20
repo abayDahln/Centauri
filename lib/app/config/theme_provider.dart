@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/storage/local_storage_service.dart';
 import 'app_palette.dart';
 
-/// Pilihan tampilan: mode (terang/gelap/ikut sistem) dan dua warna aksen.
+/// Pilihan tampilan: mode (terang/gelap/ikut sistem) dan satu warna aksen.
 ///
 /// Dibaca dari Hive saat aplikasi mulai (storage sudah siap sebelum `runApp`)
 /// dan ditulis kembali setiap kali pengguna mengganti pilihan, jadi tidak perlu
@@ -16,7 +16,6 @@ class AppThemeSelection {
   const AppThemeSelection({
     this.mode = AppThemeMode.light,
     this.primary = AppAccentPreset.blue,
-    this.secondary = AppAccentPreset.blue,
   });
 
   /// Default tampilan: identik dengan sebelum fitur tema ada.
@@ -24,20 +23,13 @@ class AppThemeSelection {
 
   final AppThemeMode mode;
   final AppAccentPreset primary;
-  final AppAccentPreset secondary;
 
   /// Palet yang dipakai saat aplikasi tampil terang.
-  AppPalette get lightPalette => AppPalette.light(
-    primary: primary.seedColor,
-    secondary: secondary.seedColor,
-  );
+  AppPalette get lightPalette => AppPalette.light(primary: primary.seedColor);
 
   /// Palet yang dipakai saat aplikasi tampil gelap; aksen diterangkan otomatis
   /// oleh [AppPalette.dark] supaya tetap terbaca.
-  AppPalette get darkPalette => AppPalette.dark(
-    primary: primary.seedColor,
-    secondary: secondary.seedColor,
-  );
+  AppPalette get darkPalette => AppPalette.dark(primary: primary.seedColor);
 
   /// Nilai untuk `MaterialApp.themeMode`.
   ThemeMode get flutterMode => switch (mode) {
@@ -49,12 +41,10 @@ class AppThemeSelection {
   AppThemeSelection copyWith({
     AppThemeMode? mode,
     AppAccentPreset? primary,
-    AppAccentPreset? secondary,
   }) {
     return AppThemeSelection(
       mode: mode ?? this.mode,
       primary: primary ?? this.primary,
-      secondary: secondary ?? this.secondary,
     );
   }
 }
@@ -87,7 +77,6 @@ class AppThemeNotifier extends Notifier<AppThemeSelection> {
     return AppThemeSelection(
       mode: AppThemeMode.byId(storage.appThemeMode),
       primary: AppAccentPreset.byId(storage.appAccentPrimary),
-      secondary: AppAccentPreset.byId(storage.appAccentSecondary),
     );
   }
 
@@ -106,19 +95,11 @@ class AppThemeNotifier extends Notifier<AppThemeSelection> {
     await LocalStorageService().setAppAccentPrimary(preset.id);
   }
 
-  /// Ganti aksen AI/generatif.
-  Future<void> selectSecondary(AppAccentPreset preset) async {
-    if (preset == state.secondary) return;
-    state = state.copyWith(secondary: preset);
-    await LocalStorageService().setAppAccentSecondary(preset.id);
-  }
-
   /// Kembalikan seluruh pilihan tampilan ke default (terang + biru).
   Future<void> reset() async {
     state = AppThemeSelection.defaults;
     final storage = LocalStorageService();
     await storage.setAppThemeMode(AppThemeMode.light.id);
     await storage.setAppAccentPrimary(AppAccentPreset.blue.id);
-    await storage.setAppAccentSecondary(AppAccentPreset.blue.id);
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../app/widgets/app_dialog.dart';
 import '../presentation/history_provider.dart';
 
 /// Panel riwayat ala Gemini: tombol "Chat baru", pencarian, dan daftar
@@ -96,7 +97,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
   Future<void> _promptRename(String id, String current) async {
     final controller = TextEditingController(text: current);
     final l10n = context.l10n;
-    final result = await showDialog<String>(
+    final result = await showAppDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.historyRenameTitle),

@@ -24,7 +24,6 @@ class AppConstants {
   // Pilihan tema UI. Tidak ada = terang + aksen biru (tampilan lama).
   static const String appThemeModeKey = 'app_theme_mode';
   static const String appAccentPrimaryKey = 'app_accent_primary';
-  static const String appAccentSecondaryKey = 'app_accent_secondary';
 
   // Penanda sekali-jalan: migrasi proyek Hive -> folder sesi.
   static const String sessionsMigratedKey = 'sessions_migrated_v1';

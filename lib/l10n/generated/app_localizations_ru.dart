@@ -779,9 +779,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get appearancePrimaryLabel => 'Основной цвет';
 
   @override
-  String get appearanceSecondaryLabel => 'Цвет ИИ';
-
-  @override
   String get appearanceReset => 'Сбросить';
 
   @override

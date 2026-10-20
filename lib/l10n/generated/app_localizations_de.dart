@@ -783,9 +783,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get appearancePrimaryLabel => 'Primärfarbe';
 
   @override
-  String get appearanceSecondaryLabel => 'KI-Farbe';
-
-  @override
   String get appearanceReset => 'Zurücksetzen';
 
   @override

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_dialog.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 
 /// Menampilkan dialog pratinjau lampiran (gambar besar / isi teks).
@@ -12,7 +13,7 @@ Future<void> showAttachmentPreview(
   BuildContext context,
   Attachment attachment,
 ) {
-  return showDialog<void>(
+  return showAppDialog<void>(
     context: context,
     barrierColor: const Color(0xCC000000),
     builder: (dialogContext) =>

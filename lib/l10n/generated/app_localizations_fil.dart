@@ -774,9 +774,6 @@ class AppLocalizationsFil extends AppLocalizations {
   String get appearancePrimaryLabel => 'Pangunahing kulay';
 
   @override
-  String get appearanceSecondaryLabel => 'Kulay ng AI';
-
-  @override
   String get appearanceReset => 'I-reset';
 
   @override

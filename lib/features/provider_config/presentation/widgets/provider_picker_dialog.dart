@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_dialog.dart';
 import '../../domain/catalog/provider_catalog_entry.dart';
 import 'provider_catalog_panel.dart';
 
@@ -14,7 +15,7 @@ Future<ProviderCatalogEntry?> showProviderPickerDialog(
   BuildContext context, {
   String? selectedId,
 }) {
-  return showDialog<ProviderCatalogEntry>(
+  return showAppDialog<ProviderCatalogEntry>(
     context: context,
     builder: (dialogContext) => _ProviderPickerDialog(selectedId: selectedId),
   );

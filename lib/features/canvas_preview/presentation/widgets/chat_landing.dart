@@ -68,13 +68,13 @@ class _Welcome extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: context.palette.secondarySoft,
+                color: context.palette.primarySoft,
                 borderRadius: AppRadius.md,
               ),
               child: Icon(
                 Icons.brush_outlined,
                 size: 22,
-                color: context.palette.secondary,
+                color: context.palette.primary,
               ),
             ),
             const SizedBox(height: 16),

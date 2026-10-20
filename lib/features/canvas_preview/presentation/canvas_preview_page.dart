@@ -8,9 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
+import '../../../app/config/app_motion.dart';
 import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/l10n.dart';
+import '../../../app/widgets/animated_side_panel.dart';
+import '../../../app/widgets/app_dialog.dart';
 import '../../../app/widgets/appearance_menu.dart';
 import '../../../app/widgets/language_menu.dart';
 import '../../../app/widgets/stitch_widgets.dart';
@@ -277,6 +280,8 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
       workspaceProvider.select((s) => s.hasRenderedPage || s.pages.isNotEmpty),
     );
     final width = MediaQuery.sizeOf(context).width;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     // Lebar panel mengikuti jendela. Di bawah ambang ini panel samping
     // mengambang di atas kanvas supaya pratinjau tidak terhimpit.
@@ -342,31 +347,32 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (historyInline)
-                      SizedBox(
-                        width: historyWidth,
-                        child: const _HistorySidebar(),
-                      ),
+                    AnimatedSidePanel(
+                      visible: historyInline,
+                      width: historyWidth,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: const _HistorySidebar(),
+                    ),
                     if (!canvasVisible)
                       // Mode fokus chat: kanvas dan panel kode ditutup.
                       const Expanded(child: _ChatOnlyPane())
                     else ...[
-                      if (showChat) ...[
-                        SizedBox(
-                          width: chatWidth,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: context.palette.bgSurface,
-                              border: Border(
-                                right: BorderSide(
-                                  color: context.palette.borderSubtle,
-                                ),
+                      AnimatedSidePanel(
+                        visible: showChat,
+                        width: chatWidth,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: context.palette.bgSurface,
+                            border: Border(
+                              right: BorderSide(
+                                color: context.palette.borderSubtle,
                               ),
                             ),
-                            child: PromptChatPanel(),
                           ),
+                          child: PromptChatPanel(),
                         ),
-                      ],
+                      ),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -399,35 +405,51 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                           ],
                         ),
                       ),
-                      if (codeInline) ...[
-                        SizedBox(
-                          width: codeWidth,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: context.palette.bgSurface,
-                              border: Border(
-                                left: BorderSide(
-                                  color: context.palette.borderSubtle,
+                      AnimatedSidePanel(
+                        visible: codeInline,
+                        width: codeWidth,
+                        alignment: AlignmentDirectional.centerEnd,
+                        // Di jendela sempit panel kode memakai mode mengambang;
+                        // jangan bangun salinan kedua yang tersembunyi.
+                        child: width >= _codeInlineWidth
+                            ? DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: context.palette.bgSurface,
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: context.palette.borderSubtle,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            child: const CodePanel(),
-                          ),
-                        ),
-                      ],
+                                child: const CodePanel(),
+                              )
+                            : const SizedBox.expand(),
+                      ),
                     ],
                   ],
                 ),
                 // Jendela sempit: panel kode mengambang agar kanvas tidak
                 // terhimpit jadi beberapa puluh piksel.
-                if (showCode && !codeInline)
-                  PositionedDirectional(
-                    end: 0,
+                if (width < _codeInlineWidth)
+                  AnimatedPositionedDirectional(
+                    duration: reduceMotion ? Duration.zero : AppMotion.panel,
+                    curve: AppMotion.panelCurve,
+                    end: showCode ? 0 : -codeWidth,
                     top: 0,
                     bottom: 0,
-                    child: _FloatingPanel(
-                      width: codeWidth,
-                      child: const CodePanel(),
+                    width: codeWidth,
+                    child: IgnorePointer(
+                      ignoring: !showCode,
+                      child: ExcludeFocus(
+                        excluding: !showCode,
+                        child: ExcludeSemantics(
+                          excluding: !showCode,
+                          child: _FloatingPanel(
+                            width: codeWidth,
+                            child: const CodePanel(),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -441,7 +463,7 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
   /// Riwayat sebagai dialog saat jendela tidak cukup lebar untuk kolom tetap.
   void _openHistoryDialog(BuildContext context) {
     final height = MediaQuery.sizeOf(context).height;
-    showDialog<void>(
+    showAppDialog<void>(
       context: context,
       builder: (dialogContext) => Dialog(
         backgroundColor: context.palette.bgSurface,

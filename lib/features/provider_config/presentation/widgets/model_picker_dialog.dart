@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_dialog.dart';
 import '../../data/catalog/provider_models.dart';
 import 'model_card.dart';
 
@@ -39,7 +40,7 @@ Future<ModelPickerResult?> showModelPickerDialog(
   required List<String> customModels,
   required List<String> removedModels,
 }) {
-  return showDialog<ModelPickerResult>(
+  return showAppDialog<ModelPickerResult>(
     context: context,
     builder: (dialogContext) => _ModelPickerDialog(
       catalogId: catalogId,

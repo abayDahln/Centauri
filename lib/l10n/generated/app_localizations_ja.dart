@@ -747,9 +747,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appearancePrimaryLabel => 'メインカラー';
 
   @override
-  String get appearanceSecondaryLabel => 'AI カラー';
-
-  @override
   String get appearanceReset => 'リセット';
 
   @override

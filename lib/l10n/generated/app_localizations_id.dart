@@ -766,9 +766,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get appearancePrimaryLabel => 'Warna utama';
 
   @override
-  String get appearanceSecondaryLabel => 'Warna AI';
-
-  @override
   String get appearanceReset => 'Atur ulang';
 
   @override

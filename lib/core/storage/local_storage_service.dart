@@ -267,13 +267,6 @@ class LocalStorageService {
   Future<void> setAppAccentPrimary(String id) async =>
       _metaBox?.put(AppConstants.appAccentPrimaryKey, id);
 
-  /// Id preset aksen AI. `null` = mengikuti aksen utama (biru).
-  String? get appAccentSecondary =>
-      _metaBox?.get(AppConstants.appAccentSecondaryKey);
-
-  Future<void> setAppAccentSecondary(String id) async =>
-      _metaBox?.put(AppConstants.appAccentSecondaryKey, id);
-
   /// Kotak proyek siap dibaca (terbuka dan belum ditutup). Dipakai migrator
   /// agar flag sekali-jalan tidak tertulis padahal daftar proyek tak terbaca.
   bool get projectsBoxHealthy => _projectsBox != null && _projectsBox!.isOpen;

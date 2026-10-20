@@ -114,11 +114,15 @@ class _SoftIconButtonState extends State<SoftIconButton> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
+    final hovered = _hovered && enabled;
+    // Mulai dari warna hover yang transparan, bukan `Colors.transparent`
+    // (hitam transparan) agar fade pertama tidak terlihat gelap.
+    final idle = context.palette.hoverBg.withValues(alpha: 0);
     final background = widget.active
         ? context.palette.primarySoft
-        : _hovered && enabled
+        : hovered
         ? context.palette.hoverBg
-        : Colors.transparent;
+        : idle;
     final color = !enabled
         ? context.palette.textDisabled
         : widget.active
@@ -129,12 +133,16 @@ class _SoftIconButtonState extends State<SoftIconButton> {
       message: widget.tooltip,
       child: MouseRegion(
         cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        onEnter: (_) => setState(() => _hovered = true),
+        onEnter: enabled ? (_) => setState(() => _hovered = true) : null,
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: widget.onPressed,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
+            // Keluar langsung, masuk tetap halus. Dengan begitu tombol
+            // sebelumnya tidak ikut terlihat hover saat kursor pindah.
+            duration: hovered
+                ? const Duration(milliseconds: 120)
+                : Duration.zero,
             width: widget.size,
             height: widget.size,
             decoration: BoxDecoration(

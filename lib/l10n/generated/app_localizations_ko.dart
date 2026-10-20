@@ -748,9 +748,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get appearancePrimaryLabel => '기본 색상';
 
   @override
-  String get appearanceSecondaryLabel => 'AI 색상';
-
-  @override
   String get appearanceReset => '초기화';
 
   @override

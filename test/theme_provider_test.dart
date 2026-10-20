@@ -12,7 +12,6 @@ void main() {
     final selection = container.read(appThemeProvider);
     expect(selection.mode, AppThemeMode.light);
     expect(selection.primary, AppAccentPreset.blue);
-    expect(selection.secondary, AppAccentPreset.blue);
     expect(selection.flutterMode, ThemeMode.light);
   });
 
@@ -35,9 +34,6 @@ void main() {
     await notifier.selectPrimary(AppAccentPreset.violet);
     expect(container.read(appThemeProvider).primary, AppAccentPreset.violet);
 
-    await notifier.selectSecondary(AppAccentPreset.teal);
-    expect(container.read(appThemeProvider).secondary, AppAccentPreset.teal);
-
     await notifier.selectMode(AppThemeMode.system);
     expect(container.read(appThemeProvider).flutterMode, ThemeMode.system);
   });
@@ -49,14 +45,12 @@ void main() {
 
     await notifier.selectMode(AppThemeMode.dark);
     await notifier.selectPrimary(AppAccentPreset.rose);
-    await notifier.selectSecondary(AppAccentPreset.amber);
 
     await notifier.reset();
 
     final selection = container.read(appThemeProvider);
     expect(selection.mode, AppThemeMode.light);
     expect(selection.primary, AppAccentPreset.blue);
-    expect(selection.secondary, AppAccentPreset.blue);
   });
 
   test('palet gelap menerangkan aksen yang dipilih', () {
@@ -73,12 +67,8 @@ void main() {
   });
 
   test('palet mengikuti warna yang dipilih', () {
-    const selection = AppThemeSelection(
-      primary: AppAccentPreset.teal,
-      secondary: AppAccentPreset.rose,
-    );
+    const selection = AppThemeSelection(primary: AppAccentPreset.teal);
     expect(selection.lightPalette.primary, AppAccentPreset.teal.seedColor);
-    expect(selection.lightPalette.secondary, AppAccentPreset.rose.seedColor);
     expect(selection.lightPalette.link, AppAccentPreset.teal.seedColor);
   });
 }

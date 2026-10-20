@@ -100,9 +100,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.primary,
     required this.primarySoft,
     required this.onPrimary,
-    required this.secondary,
-    required this.secondarySoft,
-    required this.onSecondary,
     required this.link,
     required this.textPrimary,
     required this.textSecondary,
@@ -117,10 +114,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
 
   /// Palet default mode terang. Nilainya identik dengan tampilan sebelum fitur
   /// tema ada, jadi pengguna lama tidak melihat perubahan apa pun.
-  factory AppPalette.light({
-    Color primary = kDefaultAccent,
-    Color secondary = kDefaultAccent,
-  }) {
+  factory AppPalette.light({Color primary = kDefaultAccent}) {
     const surface = Color(0xFFFFFFFF);
     return AppPalette(
       bgBase: const Color(0xFFF6F7F8),
@@ -137,9 +131,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
       primary: primary,
       primarySoft: softAccent(primary, surface, dark: false),
       onPrimary: onAccent(primary),
-      secondary: secondary,
-      secondarySoft: softAccent(secondary, surface, dark: false),
-      onSecondary: onAccent(secondary),
       link: primary,
       textPrimary: const Color(0xFF16181D),
       textSecondary: const Color(0xFF5B616B),
@@ -173,12 +164,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// Palet default mode gelap (token di `docs/design_system.md`).
   ///
   /// Aksen yang dipilih pengguna diterangkan lebih dulu lewat [liftForDark].
-  factory AppPalette.dark({
-    Color primary = kDefaultAccent,
-    Color secondary = kDefaultAccent,
-  }) {
+  factory AppPalette.dark({Color primary = kDefaultAccent}) {
     final liftedPrimary = liftForDark(primary);
-    final liftedSecondary = liftForDark(secondary);
     const surface = Color(0xFF18181B);
     return AppPalette(
       bgBase: const Color(0xFF09090B),
@@ -195,9 +182,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
       primary: liftedPrimary,
       primarySoft: softAccent(liftedPrimary, surface, dark: true),
       onPrimary: onAccent(liftedPrimary),
-      secondary: liftedSecondary,
-      secondarySoft: softAccent(liftedSecondary, surface, dark: true),
-      onSecondary: onAccent(liftedSecondary),
       link: liftedPrimary,
       textPrimary: const Color(0xFFFAFAFA),
       textSecondary: const Color(0xFFA1A1AA),
@@ -273,15 +257,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// Teks/ikon di atas [primary].
   final Color onPrimary;
 
-  /// Aksen generatif AI (status Alpha, indikator generate, landing chat).
-  final Color secondary;
-
-  /// Aksen AI versi lembut.
-  final Color secondarySoft;
-
-  /// Teks/ikon di atas [secondary].
-  final Color onSecondary;
-
   /// Tautan di dalam teks (markdown).
   final Color link;
 
@@ -318,9 +293,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
     Color? primary,
     Color? primarySoft,
     Color? onPrimary,
-    Color? secondary,
-    Color? secondarySoft,
-    Color? onSecondary,
     Color? link,
     Color? textPrimary,
     Color? textSecondary,
@@ -347,9 +319,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
       primary: primary ?? this.primary,
       primarySoft: primarySoft ?? this.primarySoft,
       onPrimary: onPrimary ?? this.onPrimary,
-      secondary: secondary ?? this.secondary,
-      secondarySoft: secondarySoft ?? this.secondarySoft,
-      onSecondary: onSecondary ?? this.onSecondary,
       link: link ?? this.link,
       textPrimary: textPrimary ?? this.textPrimary,
       textSecondary: textSecondary ?? this.textSecondary,
@@ -385,9 +354,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
       primary: Color.lerp(primary, other.primary, t)!,
       primarySoft: Color.lerp(primarySoft, other.primarySoft, t)!,
       onPrimary: Color.lerp(onPrimary, other.onPrimary, t)!,
-      secondary: Color.lerp(secondary, other.secondary, t)!,
-      secondarySoft: Color.lerp(secondarySoft, other.secondarySoft, t)!,
-      onSecondary: Color.lerp(onSecondary, other.onSecondary, t)!,
       link: Color.lerp(link, other.link, t)!,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,

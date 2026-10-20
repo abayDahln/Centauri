@@ -767,9 +767,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearancePrimaryLabel => 'Primary color';
 
   @override
-  String get appearanceSecondaryLabel => 'AI color';
-
-  @override
   String get appearanceReset => 'Reset';
 
   @override

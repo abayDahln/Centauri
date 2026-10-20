@@ -230,8 +230,8 @@ class AppTheme {
         ? ColorScheme.dark(
             primary: palette.primary,
             onPrimary: palette.onPrimary,
-            secondary: palette.secondary,
-            onSecondary: palette.onSecondary,
+            secondary: palette.primary,
+            onSecondary: palette.onPrimary,
             surface: palette.bgSurface,
             onSurface: palette.textPrimary,
             error: palette.statusError,
@@ -242,8 +242,8 @@ class AppTheme {
         : ColorScheme.light(
             primary: palette.primary,
             onPrimary: palette.onPrimary,
-            secondary: palette.secondary,
-            onSecondary: palette.onSecondary,
+            secondary: palette.primary,
+            onSecondary: palette.onPrimary,
             surface: palette.bgSurface,
             onSurface: palette.textPrimary,
             error: palette.statusError,

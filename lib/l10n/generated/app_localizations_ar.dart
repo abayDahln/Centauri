@@ -761,9 +761,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get appearancePrimaryLabel => 'اللون الأساسي';
 
   @override
-  String get appearanceSecondaryLabel => 'لون الذكاء الاصطناعي';
-
-  @override
   String get appearanceReset => 'إعادة الضبط';
 
   @override

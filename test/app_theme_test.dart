@@ -62,13 +62,13 @@ void main() {
     );
   });
 
-  test('warna aksen kustom sampai ke secondary', () {
+  test('satu aksen dipakai untuk primary dan secondary Material', () {
     final palette = AppPalette.light(
       primary: AppAccentPreset.violet.seedColor,
-      secondary: AppAccentPreset.teal.seedColor,
     );
     final theme = AppTheme.light(palette);
     expect(theme.colorScheme.primary, AppAccentPreset.violet.seedColor);
-    expect(theme.colorScheme.secondary, AppAccentPreset.teal.seedColor);
+    expect(theme.colorScheme.secondary, AppAccentPreset.violet.seedColor);
+    expect(theme.colorScheme.onSecondary, palette.onPrimary);
   });
 }

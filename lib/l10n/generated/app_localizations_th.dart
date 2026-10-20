@@ -757,9 +757,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get appearancePrimaryLabel => 'สีหลัก';
 
   @override
-  String get appearanceSecondaryLabel => 'สีของ AI';
-
-  @override
   String get appearanceReset => 'รีเซ็ต';
 
   @override

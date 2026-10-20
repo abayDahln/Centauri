@@ -5,6 +5,7 @@ import '../config/app_palette.dart';
 import '../config/theme.dart';
 import '../config/theme_provider.dart';
 import '../l10n/l10n.dart';
+import 'app_dialog.dart';
 import 'stitch_widgets.dart';
 
 /// Tombol pemilih tampilan (ikon palette) untuk top bar / app bar.
@@ -28,14 +29,14 @@ class AppearanceMenuButton extends StatelessWidget {
 
 /// Buka dialog pilih mode tampilan dan warna aksen.
 Future<void> showAppearanceDialog(BuildContext context) {
-  return showDialog<void>(
+  return showAppDialog<void>(
     context: context,
     builder: (_) => const AppearanceDialog(),
   );
 }
 
-/// Mode tema, warna utama, dan warna AI. Setiap perubahan langsung dipakai —
-/// dialog tidak perlu tombol simpan.
+/// Mode tema dan warna utama. Setiap perubahan langsung dipakai — dialog tidak
+/// perlu tombol simpan.
 class AppearanceDialog extends ConsumerWidget {
   const AppearanceDialog({super.key});
 
@@ -104,16 +105,6 @@ class AppearanceDialog extends ConsumerWidget {
                   _SwatchRow(
                     selected: selection.primary,
                     onSelect: notifier.selectPrimary,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    l10n.appearanceSecondaryLabel,
-                    style: context.text.sectionTitle,
-                  ),
-                  const SizedBox(height: 10),
-                  _SwatchRow(
-                    selected: selection.secondary,
-                    onSelect: notifier.selectSecondary,
                   ),
                   const SizedBox(height: 20),
                   const _Preview(),
@@ -234,8 +225,8 @@ class _SwatchState extends State<_Swatch> {
   }
 }
 
-/// Pratinjau kecil: kanvas, panel, tombol, dan aksen AI memakai pilihan yang
-/// sedang aktif, sehingga pengguna melihat hasilnya sebelum menutup dialog.
+/// Pratinjau kecil: kanvas, panel, dan tombol memakai warna yang sedang aktif,
+/// sehingga pengguna melihat hasilnya sebelum menutup dialog.
 class _Preview extends StatelessWidget {
   const _Preview();
 
@@ -279,7 +270,7 @@ class _Preview extends StatelessWidget {
             width: 12,
             height: 12,
             decoration: BoxDecoration(
-              color: palette.secondary,
+              color: palette.primary,
               shape: BoxShape.circle,
             ),
           ),

@@ -1456,12 +1456,6 @@ abstract class AppLocalizations {
   /// **'Primary color'**
   String get appearancePrimaryLabel;
 
-  /// No description provided for @appearanceSecondaryLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'AI color'**
-  String get appearanceSecondaryLabel;
-
   /// No description provided for @appearanceReset.
   ///
   /// In en, this message translates to:

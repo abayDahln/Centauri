@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/config/app_palette.dart';
 import '../../../../app/l10n/l10n.dart';
+import '../../../../app/widgets/app_dialog.dart';
 
 /// Menampilkan dialog konfirmasi hapus provider.
 ///
@@ -11,7 +12,7 @@ Future<bool> showDeleteProviderDialog(BuildContext context, String name) async {
   final label = name.trim().isEmpty
       ? l10n.providerDeleteTargetFallback
       : '"${name.trim()}"';
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text(l10n.providerDeleteTitle),

@@ -17,10 +17,7 @@ Widget _host() {
       return Scaffold(
         body: Column(
           children: [
-            Text(
-              'mode:${selection.mode.id} primary:${selection.primary.id} '
-              'secondary:${selection.secondary.id}',
-            ),
+            Text('mode:${selection.mode.id} primary:${selection.primary.id}'),
             const AppearanceMenuButton(),
           ],
         ),
@@ -35,7 +32,7 @@ Future<void> _openDialog(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('tombol membuka dialog dengan mode dan dua baris swatch', (
+  testWidgets('tombol membuka dialog dengan mode dan satu baris swatch', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -54,11 +51,10 @@ void main() {
     expect(find.text('Light'), findsOneWidget);
     expect(find.text('Dark'), findsOneWidget);
     expect(find.text('Primary color'), findsOneWidget);
-    expect(find.text('AI color'), findsOneWidget);
+    expect(find.text('AI color'), findsNothing);
 
-    // 8 preset untuk primary + 8 untuk secondary.
-    expect(find.byTooltip('Blue'), findsNWidgets(2));
-    expect(find.byTooltip('Slate'), findsNWidgets(2));
+    expect(find.byTooltip('Blue'), findsOneWidget);
+    expect(find.byTooltip('Slate'), findsOneWidget);
   });
 
   testWidgets('pilih mode gelap mengubah provider dan palet dialog', (
@@ -77,13 +73,13 @@ void main() {
     await tester.tap(find.text('Dark'));
     await tester.pumpAndSettle();
 
-    expect(find.text('mode:dark primary:blue secondary:blue'), findsOneWidget);
+    expect(find.text('mode:dark primary:blue'), findsOneWidget);
 
     final dialog = tester.widget<Dialog>(find.byType(Dialog));
     expect(dialog.backgroundColor, AppPalette.dark().bgElevated);
   });
 
-  testWidgets('pilih warna primary dan secondary', (tester) async {
+  testWidgets('pilih warna primary', (tester) async {
     await tester.pumpWidget(
       testApp(
         themeFromProvider: true,
@@ -95,20 +91,14 @@ void main() {
 
     await _openDialog(tester);
 
-    // Swatch pertama pada baris primary (biru) sudah aktif; pilih violet.
-    await tester.tap(find.byTooltip('Violet').first);
+    // Swatch biru sudah aktif; pilih violet.
+    await tester.tap(find.byTooltip('Violet'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('mode:light primary:violet secondary:blue'),
-      findsOneWidget,
-    );
+    expect(find.text('mode:light primary:violet'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Teal').last);
+    await tester.tap(find.byTooltip('Teal'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('mode:light primary:violet secondary:teal'),
-      findsOneWidget,
-    );
+    expect(find.text('mode:light primary:teal'), findsOneWidget);
   });
 
   testWidgets('reset mengembalikan mode dan warna ke default', (tester) async {
@@ -124,12 +114,12 @@ void main() {
     await _openDialog(tester);
     await tester.tap(find.text('Dark'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Rose').first);
+    await tester.tap(find.byTooltip('Rose'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Reset'));
     await tester.pumpAndSettle();
 
-    expect(find.text('mode:light primary:blue secondary:blue'), findsOneWidget);
+    expect(find.text('mode:light primary:blue'), findsOneWidget);
   });
 }

@@ -51,7 +51,7 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 
 **Antarmuka Aplikasi**
 
-- Tema Light / Dark / ikuti sistem dengan aksen primary & secondary pilihan (8 preset, memenuhi kontras WCAG ≥ 4.5:1).
+- Tema Light / Dark / ikuti sistem dengan aksen primary pilihan (8 preset, memenuhi kontras WCAG ≥ 4.5:1).
 - Layout responsif mobile–desktop, toast notifikasi terposisis, dan pesan error berkode yang dilokalkan.
 
 **Bahasa**

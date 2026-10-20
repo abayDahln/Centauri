@@ -743,9 +743,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearancePrimaryLabel => '主色';
 
   @override
-  String get appearanceSecondaryLabel => 'AI 颜色';
-
-  @override
   String get appearanceReset => '重置';
 
   @override

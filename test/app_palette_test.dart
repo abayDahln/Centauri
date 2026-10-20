@@ -24,14 +24,8 @@ void main() {
       expect(palette.statusError, const Color(0xFFB42318));
       expect(palette.statusWarning, const Color(0xFFB25E09));
       expect(palette.primary, kDefaultAccent);
-      expect(palette.secondary, kDefaultAccent);
       expect(palette.link, palette.primary);
       expect(palette.textSelectionHandle, palette.primary);
-    });
-
-    test('secondary default sama dengan primary (tampilan lama)', () {
-      expect(palette.secondary, palette.primary);
-      expect(palette.secondarySoft, palette.primarySoft);
     });
 
     test('selection dan soft accent bukan latar polos', () {
@@ -67,15 +61,11 @@ void main() {
     });
 
     test('aksen diterangkan agar terbaca di kanvas gelap', () {
-      final dark = AppPalette.dark(
-        primary: AppAccentPreset.violet.seedColor,
-        secondary: AppAccentPreset.teal.seedColor,
-      );
+      final dark = AppPalette.dark(primary: AppAccentPreset.violet.seedColor);
       expect(
         dark.primary.computeLuminance(),
         greaterThan(AppAccentPreset.violet.seedColor.computeLuminance()),
       );
-      expect(dark.secondary, isNot(AppAccentPreset.teal.seedColor));
     });
 
     test('warna teks sekunder tetap kontras', () {
@@ -115,21 +105,6 @@ void main() {
         greaterThanOrEqualTo(7),
         reason: 'dark text ${preset.id}',
       );
-    }
-  });
-
-  test('secondary juga lulus kontras saat berbeda dari primary', () {
-    for (final preset in AppAccentPreset.values) {
-      for (final palette in [
-        AppPalette.light(secondary: preset.seedColor),
-        AppPalette.dark(secondary: preset.seedColor),
-      ]) {
-        expect(
-          contrastRatio(palette.onSecondary, palette.secondary),
-          greaterThanOrEqualTo(4.5),
-          reason: preset.id,
-        );
-      }
     }
   });
 

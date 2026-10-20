@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
+import '../../../../app/widgets/app_dialog.dart';
 import 'code_export_view.dart';
 
 /// Launcher adaptif: dialog di desktop (>=960px), bottom sheet di mobile.
@@ -12,7 +13,7 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
   final isWide = size.width >= 960;
 
   if (isWide) {
-    showDialog(
+    showAppDialog<void>(
       context: context,
       builder: (dialogContext) => Dialog(
         backgroundColor: context.palette.bgSurface,

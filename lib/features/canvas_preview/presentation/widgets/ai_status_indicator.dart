@@ -47,11 +47,11 @@ class _AiStatusIndicatorState extends ConsumerState<AiStatusIndicator>
               height: widget.compact ? 14 : 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: context.palette.secondary,
+                color: context.palette.primary,
               ),
             ),
             SizedBox(width: widget.compact ? 8 : 10),
-            _Dots(animation: _shimmer, color: context.palette.secondary),
+            _Dots(animation: _shimmer, color: context.palette.primary),
           ],
         );
       },

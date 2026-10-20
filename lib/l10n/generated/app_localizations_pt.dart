@@ -777,9 +777,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get appearancePrimaryLabel => 'Cor principal';
 
   @override
-  String get appearanceSecondaryLabel => 'Cor da IA';
-
-  @override
   String get appearanceReset => 'Redefinir';
 
   @override
