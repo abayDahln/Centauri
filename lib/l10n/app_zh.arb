@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "文件太大（最大 {maxMb} MB）。",
   "errorAttachmentUnsupported": "不支持此格式。请使用 {formats}。",
   "errorStorageFailed": "无法访问此设备上的密钥。",
-  "errorTransformNoCode": "此页面还没有代码。"
+  "errorTransformNoCode": "此页面还没有代码。",
+
+  "appearanceTooltip": "外观",
+  "appearanceTitle": "外观",
+  "appearanceModeLabel": "模式",
+  "appearanceModeSystem": "跟随系统",
+  "appearanceModeLight": "浅色",
+  "appearanceModeDark": "深色",
+  "appearancePrimaryLabel": "主色",
+  "appearanceSecondaryLabel": "AI 颜色",
+  "appearanceReset": "重置",
+  "commonDone": "完成",
+  "colorBlue": "蓝色",
+  "colorIndigo": "靛蓝",
+  "colorViolet": "紫色",
+  "colorTeal": "青色",
+  "colorGreen": "绿色",
+  "colorAmber": "琥珀色",
+  "colorRose": "玫瑰红",
+  "colorSlate": "石板灰"
 }

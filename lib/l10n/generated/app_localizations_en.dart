@@ -727,4 +727,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => 'Appearance';
+
+  @override
+  String get appearanceTitle => 'Appearance';
+
+  @override
+  String get appearanceModeLabel => 'Mode';
+
+  @override
+  String get appearanceModeSystem => 'System';
+
+  @override
+  String get appearanceModeLight => 'Light';
+
+  @override
+  String get appearanceModeDark => 'Dark';
+
+  @override
+  String get appearancePrimaryLabel => 'Primary color';
+
+  @override
+  String get appearanceSecondaryLabel => 'AI color';
+
+  @override
+  String get appearanceReset => 'Reset';
+
+  @override
+  String get commonDone => 'Done';
+
+  @override
+  String get colorBlue => 'Blue';
+
+  @override
+  String get colorIndigo => 'Indigo';
+
+  @override
+  String get colorViolet => 'Violet';
+
+  @override
+  String get colorTeal => 'Teal';
+
+  @override
+  String get colorGreen => 'Green';
+
+  @override
+  String get colorAmber => 'Amber';
+
+  @override
+  String get colorRose => 'Rose';
+
+  @override
+  String get colorSlate => 'Slate';
 }

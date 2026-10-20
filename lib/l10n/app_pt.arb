@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "O arquivo é grande demais (máx. {maxMb} MB).",
   "errorAttachmentUnsupported": "Este formato não é aceito. Use {formats}.",
   "errorStorageFailed": "Não foi possível acessar a chave neste dispositivo.",
-  "errorTransformNoCode": "Esta página ainda não tem código."
+  "errorTransformNoCode": "Esta página ainda não tem código.",
+
+  "appearanceTooltip": "Aparência",
+  "appearanceTitle": "Aparência",
+  "appearanceModeLabel": "Modo",
+  "appearanceModeSystem": "Sistema",
+  "appearanceModeLight": "Claro",
+  "appearanceModeDark": "Escuro",
+  "appearancePrimaryLabel": "Cor principal",
+  "appearanceSecondaryLabel": "Cor da IA",
+  "appearanceReset": "Redefinir",
+  "commonDone": "Concluído",
+  "colorBlue": "Azul",
+  "colorIndigo": "Índigo",
+  "colorViolet": "Violeta",
+  "colorTeal": "Turquesa",
+  "colorGreen": "Verde",
+  "colorAmber": "Âmbar",
+  "colorRose": "Rosa",
+  "colorSlate": "Ardósia"
 }

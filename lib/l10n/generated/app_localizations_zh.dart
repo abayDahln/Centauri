@@ -703,4 +703,58 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => '外观';
+
+  @override
+  String get appearanceTitle => '外观';
+
+  @override
+  String get appearanceModeLabel => '模式';
+
+  @override
+  String get appearanceModeSystem => '跟随系统';
+
+  @override
+  String get appearanceModeLight => '浅色';
+
+  @override
+  String get appearanceModeDark => '深色';
+
+  @override
+  String get appearancePrimaryLabel => '主色';
+
+  @override
+  String get appearanceSecondaryLabel => 'AI 颜色';
+
+  @override
+  String get appearanceReset => '重置';
+
+  @override
+  String get commonDone => '完成';
+
+  @override
+  String get colorBlue => '蓝色';
+
+  @override
+  String get colorIndigo => '靛蓝';
+
+  @override
+  String get colorViolet => '紫色';
+
+  @override
+  String get colorTeal => '青色';
+
+  @override
+  String get colorGreen => '绿色';
+
+  @override
+  String get colorAmber => '琥珀色';
+
+  @override
+  String get colorRose => '玫瑰红';
+
+  @override
+  String get colorSlate => '石板灰';
 }

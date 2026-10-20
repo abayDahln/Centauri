@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "ファイルが大きすぎます（最大 {maxMb} MB）。",
   "errorAttachmentUnsupported": "この形式はサポートされていません。{formats} を使用してください。",
   "errorStorageFailed": "このデバイス上のキーにアクセスできませんでした。",
-  "errorTransformNoCode": "このページにはまだコードがありません。"
+  "errorTransformNoCode": "このページにはまだコードがありません。",
+
+  "appearanceTooltip": "外観",
+  "appearanceTitle": "外観",
+  "appearanceModeLabel": "モード",
+  "appearanceModeSystem": "システム",
+  "appearanceModeLight": "ライト",
+  "appearanceModeDark": "ダーク",
+  "appearancePrimaryLabel": "メインカラー",
+  "appearanceSecondaryLabel": "AI カラー",
+  "appearanceReset": "リセット",
+  "commonDone": "完了",
+  "colorBlue": "ブルー",
+  "colorIndigo": "インディゴ",
+  "colorViolet": "バイオレット",
+  "colorTeal": "ティール",
+  "colorGreen": "グリーン",
+  "colorAmber": "アンバー",
+  "colorRose": "ローズ",
+  "colorSlate": "スレート"
 }

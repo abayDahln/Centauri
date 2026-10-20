@@ -1383,6 +1383,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'API Key'**
   String get catalogSectionApiKey;
+
+  /// No description provided for @appearanceTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearanceTooltip;
+
+  /// No description provided for @appearanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearanceTitle;
+
+  /// No description provided for @appearanceModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get appearanceModeLabel;
+
+  /// No description provided for @appearanceModeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get appearanceModeSystem;
+
+  /// No description provided for @appearanceModeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get appearanceModeLight;
+
+  /// No description provided for @appearanceModeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get appearanceModeDark;
+
+  /// No description provided for @appearancePrimaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary color'**
+  String get appearancePrimaryLabel;
+
+  /// No description provided for @appearanceSecondaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'AI color'**
+  String get appearanceSecondaryLabel;
+
+  /// No description provided for @appearanceReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get appearanceReset;
+
+  /// No description provided for @commonDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get commonDone;
+
+  /// No description provided for @colorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get colorBlue;
+
+  /// No description provided for @colorIndigo.
+  ///
+  /// In en, this message translates to:
+  /// **'Indigo'**
+  String get colorIndigo;
+
+  /// No description provided for @colorViolet.
+  ///
+  /// In en, this message translates to:
+  /// **'Violet'**
+  String get colorViolet;
+
+  /// No description provided for @colorTeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Teal'**
+  String get colorTeal;
+
+  /// No description provided for @colorGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get colorGreen;
+
+  /// No description provided for @colorAmber.
+  ///
+  /// In en, this message translates to:
+  /// **'Amber'**
+  String get colorAmber;
+
+  /// No description provided for @colorRose.
+  ///
+  /// In en, this message translates to:
+  /// **'Rose'**
+  String get colorRose;
+
+  /// No description provided for @colorSlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Slate'**
+  String get colorSlate;
 }
 
 class _AppLocalizationsDelegate

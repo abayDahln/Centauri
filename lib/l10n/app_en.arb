@@ -385,6 +385,25 @@
 
   "exportFigma": "Figma",
   "catalogSectionFreeTier": "Free Tier",
-  "catalogSectionApiKey": "API Key"
+  "catalogSectionApiKey": "API Key",
+
+  "appearanceTooltip": "Appearance",
+  "appearanceTitle": "Appearance",
+  "appearanceModeLabel": "Mode",
+  "appearanceModeSystem": "System",
+  "appearanceModeLight": "Light",
+  "appearanceModeDark": "Dark",
+  "appearancePrimaryLabel": "Primary color",
+  "appearanceSecondaryLabel": "AI color",
+  "appearanceReset": "Reset",
+  "commonDone": "Done",
+  "colorBlue": "Blue",
+  "colorIndigo": "Indigo",
+  "colorViolet": "Violet",
+  "colorTeal": "Teal",
+  "colorGreen": "Green",
+  "colorAmber": "Amber",
+  "colorRose": "Rose",
+  "colorSlate": "Slate"
 }
 

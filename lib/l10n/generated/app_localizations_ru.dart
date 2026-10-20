@@ -739,4 +739,58 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => 'Оформление';
+
+  @override
+  String get appearanceTitle => 'Оформление';
+
+  @override
+  String get appearanceModeLabel => 'Режим';
+
+  @override
+  String get appearanceModeSystem => 'Системный';
+
+  @override
+  String get appearanceModeLight => 'Светлая';
+
+  @override
+  String get appearanceModeDark => 'Тёмная';
+
+  @override
+  String get appearancePrimaryLabel => 'Основной цвет';
+
+  @override
+  String get appearanceSecondaryLabel => 'Цвет ИИ';
+
+  @override
+  String get appearanceReset => 'Сбросить';
+
+  @override
+  String get commonDone => 'Готово';
+
+  @override
+  String get colorBlue => 'Синий';
+
+  @override
+  String get colorIndigo => 'Индиго';
+
+  @override
+  String get colorViolet => 'Фиолетовый';
+
+  @override
+  String get colorTeal => 'Бирюзовый';
+
+  @override
+  String get colorGreen => 'Зелёный';
+
+  @override
+  String get colorAmber => 'Янтарный';
+
+  @override
+  String get colorRose => 'Розовый';
+
+  @override
+  String get colorSlate => 'Грифельный';
 }

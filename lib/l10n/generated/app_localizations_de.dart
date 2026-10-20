@@ -743,4 +743,58 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => 'Darstellung';
+
+  @override
+  String get appearanceTitle => 'Darstellung';
+
+  @override
+  String get appearanceModeLabel => 'Modus';
+
+  @override
+  String get appearanceModeSystem => 'System';
+
+  @override
+  String get appearanceModeLight => 'Hell';
+
+  @override
+  String get appearanceModeDark => 'Dunkel';
+
+  @override
+  String get appearancePrimaryLabel => 'Primärfarbe';
+
+  @override
+  String get appearanceSecondaryLabel => 'KI-Farbe';
+
+  @override
+  String get appearanceReset => 'Zurücksetzen';
+
+  @override
+  String get commonDone => 'Fertig';
+
+  @override
+  String get colorBlue => 'Blau';
+
+  @override
+  String get colorIndigo => 'Indigo';
+
+  @override
+  String get colorViolet => 'Violett';
+
+  @override
+  String get colorTeal => 'Türkis';
+
+  @override
+  String get colorGreen => 'Grün';
+
+  @override
+  String get colorAmber => 'Bernstein';
+
+  @override
+  String get colorRose => 'Rosé';
+
+  @override
+  String get colorSlate => 'Schiefer';
 }

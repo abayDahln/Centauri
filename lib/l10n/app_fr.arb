@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "Le fichier est trop volumineux (max {maxMb} MB).",
   "errorAttachmentUnsupported": "Ce format n'est pas pris en charge. Utilisez {formats}.",
   "errorStorageFailed": "Impossible d'accéder à la clé sur cet appareil.",
-  "errorTransformNoCode": "Cette page n'a pas encore de code."
+  "errorTransformNoCode": "Cette page n'a pas encore de code.",
+
+  "appearanceTooltip": "Apparence",
+  "appearanceTitle": "Apparence",
+  "appearanceModeLabel": "Mode",
+  "appearanceModeSystem": "Système",
+  "appearanceModeLight": "Clair",
+  "appearanceModeDark": "Sombre",
+  "appearancePrimaryLabel": "Couleur principale",
+  "appearanceSecondaryLabel": "Couleur IA",
+  "appearanceReset": "Réinitialiser",
+  "commonDone": "Terminé",
+  "colorBlue": "Bleu",
+  "colorIndigo": "Indigo",
+  "colorViolet": "Violet",
+  "colorTeal": "Turquoise",
+  "colorGreen": "Vert",
+  "colorAmber": "Ambre",
+  "colorRose": "Rose",
+  "colorSlate": "Ardoise"
 }

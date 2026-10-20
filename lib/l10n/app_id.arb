@@ -364,6 +364,25 @@
 
   "exportFigma": "Figma",
   "catalogSectionFreeTier": "Free Tier",
-  "catalogSectionApiKey": "API Key"
+  "catalogSectionApiKey": "API Key",
+
+  "appearanceTooltip": "Tampilan",
+  "appearanceTitle": "Tampilan",
+  "appearanceModeLabel": "Mode",
+  "appearanceModeSystem": "Sistem",
+  "appearanceModeLight": "Terang",
+  "appearanceModeDark": "Gelap",
+  "appearancePrimaryLabel": "Warna utama",
+  "appearanceSecondaryLabel": "Warna AI",
+  "appearanceReset": "Atur ulang",
+  "commonDone": "Selesai",
+  "colorBlue": "Biru",
+  "colorIndigo": "Indigo",
+  "colorViolet": "Ungu",
+  "colorTeal": "Teal",
+  "colorGreen": "Hijau",
+  "colorAmber": "Kuning",
+  "colorRose": "Merah muda",
+  "colorSlate": "Abu"
 }
 

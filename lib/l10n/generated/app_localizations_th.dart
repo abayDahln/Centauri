@@ -717,4 +717,58 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => 'รูปลักษณ์';
+
+  @override
+  String get appearanceTitle => 'รูปลักษณ์';
+
+  @override
+  String get appearanceModeLabel => 'โหมด';
+
+  @override
+  String get appearanceModeSystem => 'ระบบ';
+
+  @override
+  String get appearanceModeLight => 'สว่าง';
+
+  @override
+  String get appearanceModeDark => 'มืด';
+
+  @override
+  String get appearancePrimaryLabel => 'สีหลัก';
+
+  @override
+  String get appearanceSecondaryLabel => 'สีของ AI';
+
+  @override
+  String get appearanceReset => 'รีเซ็ต';
+
+  @override
+  String get commonDone => 'เสร็จสิ้น';
+
+  @override
+  String get colorBlue => 'น้ำเงิน';
+
+  @override
+  String get colorIndigo => 'อินดิโก';
+
+  @override
+  String get colorViolet => 'ม่วง';
+
+  @override
+  String get colorTeal => 'ทีล';
+
+  @override
+  String get colorGreen => 'เขียว';
+
+  @override
+  String get colorAmber => 'แอมเบอร์';
+
+  @override
+  String get colorRose => 'ชมพู';
+
+  @override
+  String get colorSlate => 'เทาอมฟ้า';
 }

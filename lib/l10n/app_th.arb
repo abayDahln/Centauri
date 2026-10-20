@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "ไฟล์ใหญ่เกินไป (สูงสุด {maxMb} MB)",
   "errorAttachmentUnsupported": "ไม่รองรับรูปแบบนี้ ใช้ {formats}",
   "errorStorageFailed": "เข้าถึงคีย์บนอุปกรณ์นี้ไม่ได้",
-  "errorTransformNoCode": "หน้านี้ยังไม่มีโค้ด"
+  "errorTransformNoCode": "หน้านี้ยังไม่มีโค้ด",
+
+  "appearanceTooltip": "รูปลักษณ์",
+  "appearanceTitle": "รูปลักษณ์",
+  "appearanceModeLabel": "โหมด",
+  "appearanceModeSystem": "ระบบ",
+  "appearanceModeLight": "สว่าง",
+  "appearanceModeDark": "มืด",
+  "appearancePrimaryLabel": "สีหลัก",
+  "appearanceSecondaryLabel": "สีของ AI",
+  "appearanceReset": "รีเซ็ต",
+  "commonDone": "เสร็จสิ้น",
+  "colorBlue": "น้ำเงิน",
+  "colorIndigo": "อินดิโก",
+  "colorViolet": "ม่วง",
+  "colorTeal": "ทีล",
+  "colorGreen": "เขียว",
+  "colorAmber": "แอมเบอร์",
+  "colorRose": "ชมพู",
+  "colorSlate": "เทาอมฟ้า"
 }

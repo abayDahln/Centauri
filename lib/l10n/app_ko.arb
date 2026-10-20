@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "파일이 너무 커요(최대 {maxMb} MB).",
   "errorAttachmentUnsupported": "지원하지 않는 형식이에요. 사용 가능한 형식: {formats}.",
   "errorStorageFailed": "이 기기의 키에 접근하지 못했어요.",
-  "errorTransformNoCode": "이 페이지에는 아직 코드가 없어요."
+  "errorTransformNoCode": "이 페이지에는 아직 코드가 없어요.",
+
+  "appearanceTooltip": "모양",
+  "appearanceTitle": "모양",
+  "appearanceModeLabel": "모드",
+  "appearanceModeSystem": "시스템",
+  "appearanceModeLight": "라이트",
+  "appearanceModeDark": "다크",
+  "appearancePrimaryLabel": "기본 색상",
+  "appearanceSecondaryLabel": "AI 색상",
+  "appearanceReset": "초기화",
+  "commonDone": "완료",
+  "colorBlue": "파랑",
+  "colorIndigo": "인디고",
+  "colorViolet": "보라",
+  "colorTeal": "청록",
+  "colorGreen": "초록",
+  "colorAmber": "앰버",
+  "colorRose": "장미색",
+  "colorSlate": "슬레이트"
 }

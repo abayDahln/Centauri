@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "Файл слишком большой (макс. {maxMb} MB).",
   "errorAttachmentUnsupported": "Этот формат не поддерживается. Используйте {formats}.",
   "errorStorageFailed": "Не удалось получить доступ к ключу на этом устройстве.",
-  "errorTransformNoCode": "У этой страницы пока нет кода."
+  "errorTransformNoCode": "У этой страницы пока нет кода.",
+
+  "appearanceTooltip": "Оформление",
+  "appearanceTitle": "Оформление",
+  "appearanceModeLabel": "Режим",
+  "appearanceModeSystem": "Системный",
+  "appearanceModeLight": "Светлая",
+  "appearanceModeDark": "Тёмная",
+  "appearancePrimaryLabel": "Основной цвет",
+  "appearanceSecondaryLabel": "Цвет ИИ",
+  "appearanceReset": "Сбросить",
+  "commonDone": "Готово",
+  "colorBlue": "Синий",
+  "colorIndigo": "Индиго",
+  "colorViolet": "Фиолетовый",
+  "colorTeal": "Бирюзовый",
+  "colorGreen": "Зелёный",
+  "colorAmber": "Янтарный",
+  "colorRose": "Розовый",
+  "colorSlate": "Грифельный"
 }

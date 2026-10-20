@@ -737,4 +737,58 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => 'Aparência';
+
+  @override
+  String get appearanceTitle => 'Aparência';
+
+  @override
+  String get appearanceModeLabel => 'Modo';
+
+  @override
+  String get appearanceModeSystem => 'Sistema';
+
+  @override
+  String get appearanceModeLight => 'Claro';
+
+  @override
+  String get appearanceModeDark => 'Escuro';
+
+  @override
+  String get appearancePrimaryLabel => 'Cor principal';
+
+  @override
+  String get appearanceSecondaryLabel => 'Cor da IA';
+
+  @override
+  String get appearanceReset => 'Redefinir';
+
+  @override
+  String get commonDone => 'Concluído';
+
+  @override
+  String get colorBlue => 'Azul';
+
+  @override
+  String get colorIndigo => 'Índigo';
+
+  @override
+  String get colorViolet => 'Violeta';
+
+  @override
+  String get colorTeal => 'Turquesa';
+
+  @override
+  String get colorGreen => 'Verde';
+
+  @override
+  String get colorAmber => 'Âmbar';
+
+  @override
+  String get colorRose => 'Rosa';
+
+  @override
+  String get colorSlate => 'Ardósia';
 }

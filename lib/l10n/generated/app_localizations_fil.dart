@@ -734,4 +734,58 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => 'Itsura';
+
+  @override
+  String get appearanceTitle => 'Itsura';
+
+  @override
+  String get appearanceModeLabel => 'Mode';
+
+  @override
+  String get appearanceModeSystem => 'Sistema';
+
+  @override
+  String get appearanceModeLight => 'Maliwanag';
+
+  @override
+  String get appearanceModeDark => 'Madilim';
+
+  @override
+  String get appearancePrimaryLabel => 'Pangunahing kulay';
+
+  @override
+  String get appearanceSecondaryLabel => 'Kulay ng AI';
+
+  @override
+  String get appearanceReset => 'I-reset';
+
+  @override
+  String get commonDone => 'Tapos na';
+
+  @override
+  String get colorBlue => 'Asul';
+
+  @override
+  String get colorIndigo => 'Indigo';
+
+  @override
+  String get colorViolet => 'Lila';
+
+  @override
+  String get colorTeal => 'Teal';
+
+  @override
+  String get colorGreen => 'Berde';
+
+  @override
+  String get colorAmber => 'Amber';
+
+  @override
+  String get colorRose => 'Rosas';
+
+  @override
+  String get colorSlate => 'Abuhin';
 }

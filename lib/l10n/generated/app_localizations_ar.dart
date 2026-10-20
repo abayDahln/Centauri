@@ -721,4 +721,58 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => 'المظهر';
+
+  @override
+  String get appearanceTitle => 'المظهر';
+
+  @override
+  String get appearanceModeLabel => 'الوضع';
+
+  @override
+  String get appearanceModeSystem => 'النظام';
+
+  @override
+  String get appearanceModeLight => 'فاتح';
+
+  @override
+  String get appearanceModeDark => 'داكن';
+
+  @override
+  String get appearancePrimaryLabel => 'اللون الأساسي';
+
+  @override
+  String get appearanceSecondaryLabel => 'لون الذكاء الاصطناعي';
+
+  @override
+  String get appearanceReset => 'إعادة الضبط';
+
+  @override
+  String get commonDone => 'تم';
+
+  @override
+  String get colorBlue => 'أزرق';
+
+  @override
+  String get colorIndigo => 'نيلي';
+
+  @override
+  String get colorViolet => 'بنفسجي';
+
+  @override
+  String get colorTeal => 'أزرق مخضر';
+
+  @override
+  String get colorGreen => 'أخضر';
+
+  @override
+  String get colorAmber => 'عنبري';
+
+  @override
+  String get colorRose => 'وردي';
+
+  @override
+  String get colorSlate => 'أردوازي';
 }

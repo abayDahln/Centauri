@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "Masyadong malaki ang file (max {maxMb} MB).",
   "errorAttachmentUnsupported": "Hindi sinusuportahan ang format na iyon. Gamitin ang {formats}.",
   "errorStorageFailed": "Hindi ma-access ang key sa device na ito.",
-  "errorTransformNoCode": "Wala pang code ang page na ito."
+  "errorTransformNoCode": "Wala pang code ang page na ito.",
+
+  "appearanceTooltip": "Itsura",
+  "appearanceTitle": "Itsura",
+  "appearanceModeLabel": "Mode",
+  "appearanceModeSystem": "Sistema",
+  "appearanceModeLight": "Maliwanag",
+  "appearanceModeDark": "Madilim",
+  "appearancePrimaryLabel": "Pangunahing kulay",
+  "appearanceSecondaryLabel": "Kulay ng AI",
+  "appearanceReset": "I-reset",
+  "commonDone": "Tapos na",
+  "colorBlue": "Asul",
+  "colorIndigo": "Indigo",
+  "colorViolet": "Lila",
+  "colorTeal": "Teal",
+  "colorGreen": "Berde",
+  "colorAmber": "Amber",
+  "colorRose": "Rosas",
+  "colorSlate": "Abuhin"
 }

@@ -238,5 +238,24 @@
   "errorAttachmentTooLarge": "الملف كبير جدًا (بحد أقصى {maxMb} MB).",
   "errorAttachmentUnsupported": "هذا التنسيق غير مدعوم. استخدم {formats}.",
   "errorStorageFailed": "تعذر الوصول إلى المفتاح على هذا الجهاز.",
-  "errorTransformNoCode": "لا تحتوي هذه الصفحة على كود بعد."
+  "errorTransformNoCode": "لا تحتوي هذه الصفحة على كود بعد.",
+
+  "appearanceTooltip": "المظهر",
+  "appearanceTitle": "المظهر",
+  "appearanceModeLabel": "الوضع",
+  "appearanceModeSystem": "النظام",
+  "appearanceModeLight": "فاتح",
+  "appearanceModeDark": "داكن",
+  "appearancePrimaryLabel": "اللون الأساسي",
+  "appearanceSecondaryLabel": "لون الذكاء الاصطناعي",
+  "appearanceReset": "إعادة الضبط",
+  "commonDone": "تم",
+  "colorBlue": "أزرق",
+  "colorIndigo": "نيلي",
+  "colorViolet": "بنفسجي",
+  "colorTeal": "أزرق مخضر",
+  "colorGreen": "أخضر",
+  "colorAmber": "عنبري",
+  "colorRose": "وردي",
+  "colorSlate": "أردوازي"
 }

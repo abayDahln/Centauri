@@ -707,4 +707,58 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => '外観';
+
+  @override
+  String get appearanceTitle => '外観';
+
+  @override
+  String get appearanceModeLabel => 'モード';
+
+  @override
+  String get appearanceModeSystem => 'システム';
+
+  @override
+  String get appearanceModeLight => 'ライト';
+
+  @override
+  String get appearanceModeDark => 'ダーク';
+
+  @override
+  String get appearancePrimaryLabel => 'メインカラー';
+
+  @override
+  String get appearanceSecondaryLabel => 'AI カラー';
+
+  @override
+  String get appearanceReset => 'リセット';
+
+  @override
+  String get commonDone => '完了';
+
+  @override
+  String get colorBlue => 'ブルー';
+
+  @override
+  String get colorIndigo => 'インディゴ';
+
+  @override
+  String get colorViolet => 'バイオレット';
+
+  @override
+  String get colorTeal => 'ティール';
+
+  @override
+  String get colorGreen => 'グリーン';
+
+  @override
+  String get colorAmber => 'アンバー';
+
+  @override
+  String get colorRose => 'ローズ';
+
+  @override
+  String get colorSlate => 'スレート';
 }

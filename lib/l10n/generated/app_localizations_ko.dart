@@ -708,4 +708,58 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => '모양';
+
+  @override
+  String get appearanceTitle => '모양';
+
+  @override
+  String get appearanceModeLabel => '모드';
+
+  @override
+  String get appearanceModeSystem => '시스템';
+
+  @override
+  String get appearanceModeLight => '라이트';
+
+  @override
+  String get appearanceModeDark => '다크';
+
+  @override
+  String get appearancePrimaryLabel => '기본 색상';
+
+  @override
+  String get appearanceSecondaryLabel => 'AI 색상';
+
+  @override
+  String get appearanceReset => '초기화';
+
+  @override
+  String get commonDone => '완료';
+
+  @override
+  String get colorBlue => '파랑';
+
+  @override
+  String get colorIndigo => '인디고';
+
+  @override
+  String get colorViolet => '보라';
+
+  @override
+  String get colorTeal => '청록';
+
+  @override
+  String get colorGreen => '초록';
+
+  @override
+  String get colorAmber => '앰버';
+
+  @override
+  String get colorRose => '장미색';
+
+  @override
+  String get colorSlate => '슬레이트';
 }

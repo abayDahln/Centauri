@@ -726,4 +726,58 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get catalogSectionApiKey => 'API Key';
+
+  @override
+  String get appearanceTooltip => 'Tampilan';
+
+  @override
+  String get appearanceTitle => 'Tampilan';
+
+  @override
+  String get appearanceModeLabel => 'Mode';
+
+  @override
+  String get appearanceModeSystem => 'Sistem';
+
+  @override
+  String get appearanceModeLight => 'Terang';
+
+  @override
+  String get appearanceModeDark => 'Gelap';
+
+  @override
+  String get appearancePrimaryLabel => 'Warna utama';
+
+  @override
+  String get appearanceSecondaryLabel => 'Warna AI';
+
+  @override
+  String get appearanceReset => 'Atur ulang';
+
+  @override
+  String get commonDone => 'Selesai';
+
+  @override
+  String get colorBlue => 'Biru';
+
+  @override
+  String get colorIndigo => 'Indigo';
+
+  @override
+  String get colorViolet => 'Ungu';
+
+  @override
+  String get colorTeal => 'Teal';
+
+  @override
+  String get colorGreen => 'Hijau';
+
+  @override
+  String get colorAmber => 'Kuning';
+
+  @override
+  String get colorRose => 'Merah muda';
+
+  @override
+  String get colorSlate => 'Abu';
 }
