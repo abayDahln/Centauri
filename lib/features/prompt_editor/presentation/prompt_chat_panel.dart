@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/l10n.dart';
 import '../../history/presentation/history_provider.dart';
@@ -82,7 +83,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                 fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.palette.textSecondary,
               ),
             ),
           ],
@@ -99,33 +100,33 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.forum_outlined,
               size: 28,
-              color: AppColors.textDisabled,
+              color: context.palette.textDisabled,
             ),
             const SizedBox(height: 12),
             Text(
               l10n.chatNoMessagesTitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.uiFamily,
                 fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: context.palette.textSecondary,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               l10n.chatNoMessagesBody,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.uiFamily,
                 fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 11,
                 height: 1.6,
-                color: AppColors.textDisabled,
+                color: context.palette.textDisabled,
               ),
             ),
           ],
@@ -201,8 +202,8 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
           child: Container(
             constraints: const BoxConstraints(maxWidth: 300),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: const BoxDecoration(
-              color: AppColors.textPrimary,
+            decoration: BoxDecoration(
+              color: context.palette.textPrimary,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(10),
                 topRight: Radius.circular(10),
@@ -283,9 +284,9 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
           alignment: AlignmentDirectional.centerStart,
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.statusError.withValues(alpha: 0.05),
+              color: context.palette.statusError.withValues(alpha: 0.05),
               border: Border.all(
-                color: AppColors.statusError.withValues(alpha: 0.32),
+                color: context.palette.statusError.withValues(alpha: 0.32),
               ),
               borderRadius: AppRadius.md,
             ),
@@ -297,21 +298,21 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.error_outline,
                       size: 14,
-                      color: AppColors.statusError,
+                      color: context.palette.statusError,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         message.text,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AppFonts.uiFamily,
                           fontFamilyFallback: AppFonts.uiFallback,
                           fontSize: 11.5,
                           height: 1.5,
-                          color: AppColors.statusError,
+                          color: context.palette.statusError,
                         ),
                       ),
                     ),
@@ -332,8 +333,8 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                     icon: const Icon(Icons.refresh, size: 14),
                     label: Text(context.l10n.commonRetry),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.statusError,
-                      side: const BorderSide(color: AppColors.statusError),
+                      foregroundColor: context.palette.statusError,
+                      side: BorderSide(color: context.palette.statusError),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       textStyle: const TextStyle(
                         fontFamily: AppFonts.uiFamily,
@@ -362,7 +363,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
           children: [
             Text(
               'Alpha',
-              style: AppText.label.copyWith(fontWeight: FontWeight.w600),
+              style: context.text.label.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             MarkdownMessage(text: text),
@@ -379,8 +380,8 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
       alignment: AlignmentDirectional.centerStart,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.bgSurface,
-          border: Border.all(color: AppColors.borderSubtle),
+          color: context.palette.bgSurface,
+          border: Border.all(color: context.palette.borderSubtle),
           borderRadius: AppRadius.md,
         ),
         clipBehavior: Clip.antiAlias,
@@ -391,20 +392,20 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.brush_outlined,
                     size: 13,
-                    color: AppColors.accentPrimary,
+                    color: context.palette.primary,
                   ),
                   const SizedBox(width: 6),
-                  const Text(
+                  Text(
                     'UI siap',
                     style: TextStyle(
                       fontFamily: AppFonts.uiFamily,
                       fontFamilyFallback: AppFonts.uiFallback,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: context.palette.textPrimary,
                     ),
                   ),
                   const Spacer(),
@@ -418,11 +419,11 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                       expanded
                           ? context.l10n.chatHideCode
                           : context.l10n.chatViewCode,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.uiFamily,
                         fontFamilyFallback: AppFonts.uiFallback,
                         fontSize: 10,
-                        color: AppColors.accentPrimary,
+                        color: context.palette.primary,
                       ),
                     ),
                   ),

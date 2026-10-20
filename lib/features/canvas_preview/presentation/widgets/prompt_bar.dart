@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
@@ -204,15 +205,15 @@ class _PromptBarState extends ConsumerState<PromptBar> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 decoration: BoxDecoration(
-                  color: AppColors.bgSurface,
+                  color: context.palette.bgSurface,
                   borderRadius: AppRadius.md,
                   border: Border.all(
                     color: _dragging
-                        ? AppColors.accentPrimary
-                        : AppColors.borderSubtle,
+                        ? context.palette.primary
+                        : context.palette.borderSubtle,
                     width: _dragging ? 1.4 : 1,
                   ),
-                  boxShadow: AppColors.shadowSoft,
+                  boxShadow: context.palette.shadowSoft,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -286,11 +287,11 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                                 maxLines: 4,
                                 keyboardType: TextInputType.multiline,
                                 textInputAction: TextInputAction.newline,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: AppFonts.uiFamily,
                                   fontFamilyFallback: AppFonts.uiFallback,
                                   fontSize: 14,
-                                  color: AppColors.textPrimary,
+                                  color: context.palette.textPrimary,
                                 ),
                                 decoration: InputDecoration(
                                   border: InputBorder.none,
@@ -298,11 +299,11 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                                   focusedBorder: InputBorder.none,
                                   filled: false,
                                   hintText: context.l10n.promptPlaceholder,
-                                  hintStyle: const TextStyle(
+                                  hintStyle: TextStyle(
                                     fontFamily: AppFonts.uiFamily,
                                     fontFamilyFallback: AppFonts.uiFallback,
                                     fontSize: 14,
-                                    color: AppColors.textDisabled,
+                                    color: context.palette.textDisabled,
                                   ),
                                   contentPadding: const EdgeInsets.symmetric(
                                     vertical: 10,
@@ -348,10 +349,10 @@ class _AttachButton extends StatelessWidget {
           width: 36,
           height: 36,
           alignment: Alignment.center,
-          child: const Icon(
+          child: Icon(
             Icons.add_photo_alternate_outlined,
             size: 18,
-            color: AppColors.textSecondary,
+            color: context.palette.textSecondary,
           ),
         ),
       ),
@@ -385,7 +386,7 @@ class _SendButton extends StatelessWidget {
             style: FilledButton.styleFrom(
               padding: EdgeInsets.zero,
               shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
-              backgroundColor: AppColors.statusError,
+              backgroundColor: context.palette.statusError,
             ),
             child: const Icon(Icons.stop_rounded, size: 18),
           ),
@@ -401,7 +402,7 @@ class _SendButton extends StatelessWidget {
         style: FilledButton.styleFrom(
           padding: EdgeInsets.zero,
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
-          backgroundColor: AppColors.accentPrimary,
+          backgroundColor: context.palette.primary,
         ),
         child: const Icon(Icons.arrow_upward, size: 18),
       ),
@@ -449,25 +450,25 @@ class _MentionChip extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 220),
       padding: const EdgeInsetsDirectional.only(start: 9, end: 2),
       decoration: BoxDecoration(
-        color: AppColors.accentSoft,
+        color: context.palette.primarySoft,
         borderRadius: AppRadius.pill,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: AppColors.accentPrimary),
+          Icon(icon, size: 13, color: context.palette.primary),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
               mention.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.uiFamily,
                 fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
+                color: context.palette.textPrimary,
               ),
             ),
           ),
@@ -475,12 +476,12 @@ class _MentionChip extends StatelessWidget {
           InkWell(
             onTap: onRemove,
             borderRadius: AppRadius.pill,
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.all(4),
               child: Icon(
                 Icons.close,
                 size: 12,
-                color: AppColors.textSecondary,
+                color: context.palette.textSecondary,
               ),
             ),
           ),
@@ -533,7 +534,7 @@ class _MentionButton extends StatelessWidget {
                 page.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.uiSmall,
+                style: context.text.uiSmall,
               ),
             ),
           if (pages.length > 1) ...[
@@ -541,7 +542,10 @@ class _MentionButton extends StatelessWidget {
             PopupMenuItem<String>(
               value: _allPagesValue,
               height: 36,
-              child: Text(context.l10n.commonAllPages, style: AppText.uiSmall),
+              child: Text(
+                context.l10n.commonAllPages,
+                style: context.text.uiSmall,
+              ),
             ),
           ],
         ],
@@ -553,8 +557,8 @@ class _MentionButton extends StatelessWidget {
             Icons.alternate_email,
             size: 18,
             color: pages.isEmpty
-                ? AppColors.textDisabled
-                : AppColors.textSecondary,
+                ? context.palette.textDisabled
+                : context.palette.textSecondary,
           ),
         ),
       ),

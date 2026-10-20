@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import 'code_export_view.dart';
 
@@ -11,11 +12,11 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
     showDialog(
       context: context,
       builder: (dialogContext) => Dialog(
-        backgroundColor: AppColors.bgSurface,
+        backgroundColor: context.palette.bgSurface,
         insetPadding: const EdgeInsets.all(48),
-        shape: const RoundedRectangleBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: AppRadius.xl,
-          side: BorderSide(color: AppColors.borderSubtle),
+          side: BorderSide(color: context.palette.borderSubtle),
         ),
         child: SizedBox(
           width: 760,
@@ -30,10 +31,10 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.bgSurface,
-    shape: const RoundedRectangleBorder(
+    backgroundColor: context.palette.bgSurface,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-      side: BorderSide(color: AppColors.borderSubtle),
+      side: BorderSide(color: context.palette.borderSubtle),
     ),
     builder: (_) =>
         SizedBox(height: 640, child: CodeExportView(htmlSource: htmlSource)),

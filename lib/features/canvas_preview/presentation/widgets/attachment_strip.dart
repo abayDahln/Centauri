@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/attachment.dart';
@@ -55,9 +56,9 @@ class _AttachmentChip extends StatelessWidget {
               onTap: () => showAttachmentPreview(context, attachment),
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppColors.bgSunken,
+                  color: context.palette.bgSunken,
                   borderRadius: AppRadius.sm,
-                  border: Border.all(color: AppColors.borderSubtle),
+                  border: Border.all(color: context.palette.borderSubtle),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Column(
@@ -72,11 +73,11 @@ class _AttachmentChip extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AppFonts.uiFamily,
                           fontFamilyFallback: AppFonts.uiFallback,
                           fontSize: 9,
-                          color: AppColors.textSecondary,
+                          color: context.palette.textSecondary,
                         ),
                       ),
                     ),
@@ -151,7 +152,7 @@ class _FileIcon extends StatelessWidget {
     return SizedBox(
       width: 44,
       height: 32,
-      child: Icon(icon, size: 22, color: AppColors.textSecondary),
+      child: Icon(icon, size: 22, color: context.palette.textSecondary),
     );
   }
 }

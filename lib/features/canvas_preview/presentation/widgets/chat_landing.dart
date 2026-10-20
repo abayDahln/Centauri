@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/attachment.dart';
@@ -21,9 +22,9 @@ class ChatLanding extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: AppRadius.lg,
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: context.palette.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,
       // SelectionArea memungkinkan seleksi teks lintas pesan/blok sekaligus.
@@ -67,25 +68,25 @@ class _Welcome extends StatelessWidget {
             Container(
               width: 44,
               height: 44,
-              decoration: const BoxDecoration(
-                color: AppColors.accentSoft,
+              decoration: BoxDecoration(
+                color: context.palette.secondarySoft,
                 borderRadius: AppRadius.md,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.brush_outlined,
                 size: 22,
-                color: AppColors.accentPrimary,
+                color: context.palette.secondary,
               ),
             ),
             const SizedBox(height: 16),
-            Text(context.l10n.chatWelcomeTitle, style: AppText.panelTitle),
+            Text(context.l10n.chatWelcomeTitle, style: context.text.panelTitle),
             const SizedBox(height: 8),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 380),
               child: Text(
                 context.l10n.chatWelcomeBody,
                 textAlign: TextAlign.center,
-                style: AppText.uiSmall,
+                style: context.text.uiSmall,
               ),
             ),
           ],
@@ -118,9 +119,9 @@ class _Bubble extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: isUser
-                ? AppColors.textPrimary
+                ? context.palette.textPrimary
                 : isError
-                ? AppColors.statusError.withValues(alpha: 0.05)
+                ? context.palette.statusError.withValues(alpha: 0.05)
                 : Colors.transparent,
             borderRadius: isUser
                 ? const BorderRadius.only(
@@ -132,7 +133,7 @@ class _Bubble extends StatelessWidget {
                 : AppRadius.md,
             border: isError
                 ? Border.all(
-                    color: AppColors.statusError.withValues(alpha: 0.32),
+                    color: context.palette.statusError.withValues(alpha: 0.32),
                   )
                 : null,
           ),
@@ -168,7 +169,7 @@ class _Bubble extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
                       'Alpha',
-                      style: AppText.label.copyWith(
+                      style: context.text.label.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -176,8 +177,8 @@ class _Bubble extends StatelessWidget {
                 MarkdownMessage(
                   text: message.text,
                   baseColor: isError
-                      ? AppColors.statusError
-                      : AppColors.textPrimary,
+                      ? context.palette.statusError
+                      : context.palette.textPrimary,
                 ),
               ],
             ],
@@ -205,27 +206,27 @@ class _MessageAttachments extends StatelessWidget {
           onTap: () => showAttachmentPreview(context, attachment),
           child: ClipRRect(
             borderRadius: AppRadius.sm,
-            child: _attachmentThumb(attachment),
+            child: _attachmentThumb(context, attachment),
           ),
         );
       }).toList(),
     );
   }
 
-  Widget _attachmentThumb(Attachment attachment) {
+  Widget _attachmentThumb(BuildContext context, Attachment attachment) {
     if (!attachment.isText) {
       return Image.memory(
         attachment.bytes,
         width: 120,
         height: 84,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fileChip(attachment),
+        errorBuilder: (_, _, _) => _fileChip(context, attachment),
       );
     }
-    return _fileChip(attachment);
+    return _fileChip(context, attachment);
   }
 
-  Widget _fileChip(Attachment attachment) {
+  Widget _fileChip(BuildContext context, Attachment attachment) {
     final icon = attachment.mimeType.contains('svg')
         ? Icons.image_outlined
         : attachment.mimeType.contains('html')
@@ -236,14 +237,14 @@ class _MessageAttachments extends StatelessWidget {
     return Container(
       width: 120,
       height: 84,
-      color: onDark ? Colors.white24 : AppColors.bgSurface,
+      color: onDark ? Colors.white24 : context.palette.bgSurface,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             icon,
             size: 24,
-            color: onDark ? Colors.white : AppColors.textSecondary,
+            color: onDark ? Colors.white : context.palette.textSecondary,
           ),
           const SizedBox(height: 4),
           Padding(
@@ -256,7 +257,7 @@ class _MessageAttachments extends StatelessWidget {
                 fontFamily: AppFonts.uiFamily,
                 fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 9,
-                color: onDark ? Colors.white : AppColors.textSecondary,
+                color: onDark ? Colors.white : context.palette.textSecondary,
               ),
             ),
           ),

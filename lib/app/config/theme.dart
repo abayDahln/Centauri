@@ -1,86 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'app_palette.dart';
 
 /// Centauri Design System — token visual tunggal untuk seluruh aplikasi.
 ///
 /// Sumber kebenaran: `design/Centauri_Design_System.html`.
 ///
 /// Prinsip:
-///  - Kanvas netral dingin, panel putih, garis 1 px. Tanpa bayangan dekoratif.
-///  - Satu aksen biru per layar; warna semantik hanya untuk status.
+///  - Kanvas netral dingin, panel solid, garis 1 px. Tanpa bayangan dekoratif.
+///  - Satu aksen per layar; warna semantik hanya untuk status.
 ///  - Bentuk tegas: kontrol 6, kartu/panel 10, bingkai 14.
 ///  - Tipografi Instrument Sans; JetBrains Mono untuk kode dan label teknis.
-class AppColors {
-  AppColors._();
+///  - Warna diambil dari [AppPalette] lewat `context.palette` supaya mode
+///    terang/gelap dan warna kustom pengguna bisa berubah saat aplikasi jalan.
+///
+/// Dimensi chrome aplikasi. Bukan warna, jadi tidak ikut tema.
+class AppMetrics {
+  AppMetrics._();
 
-  /// Kanvas aplikasi.
-  static const Color bgBase = Color(0xFFF6F7F8);
-
-  /// Permukaan panel/kartu (putih).
-  static const Color bgSurface = Color(0xFFFFFFFF);
-
-  /// Permukaan terkubur (track, area sekunder).
-  static const Color bgSunken = Color(0xFFF6F7F8);
-
-  /// Permukaan mengambang (dialog, popover, sheet).
-  static const Color bgElevated = Color(0xFFFFFFFF);
-
-  /// Hover pada baris/daftar.
-  static const Color hoverBg = Color(0xFFF6F7F8);
-
-  /// Item terpilih (aksen lembut).
-  static const Color selectionBg = Color(0xFFE9EEFE);
-
-  /// Highlight seleksi teks. Amber agar tidak menyatu dengan aksen biru.
-  static const Color textSelection = Color(0xFFFFD54F);
-
-  /// Warna handle & kursor seleksi teks.
-  static const Color textSelectionHandle = Color(0xFF2150E8);
-
-  /// Latar input.
-  static const Color inputBg = Color(0xFFFFFFFF);
-
-  /// Garis pemisah dan border kontrol.
-  static const Color borderSubtle = Color(0xFFE3E5E8);
-
-  /// Garis lebih tegas untuk kontrol yang butuh penekanan.
-  static const Color borderStrong = Color(0xFFD5D8DC);
-
-  /// Aksen utama.
-  static const Color accentPrimary = Color(0xFF2150E8);
-
-  /// Aksen generatif AI (sama dengan aksen utama — satu aksen per layar).
-  static const Color accentAi = Color(0xFF2150E8);
-
-  /// Varian aksen lembut untuk latar chip/badge/tab aktif.
-  static const Color accentSoft = Color(0xFFE9EEFE);
-
-  static const Color link = Color(0xFF2150E8);
-
-  static const Color textPrimary = Color(0xFF16181D);
-  static const Color textSecondary = Color(0xFF5B616B);
-  static const Color textDisabled = Color(0xFF8B9199);
-
-  static const Color statusSuccess = Color(0xFF1F7A4D);
-  static const Color statusError = Color(0xFFB42318);
-  static const Color statusWarning = Color(0xFFB25E09);
-
-  // Dimensi chrome.
   static const double sideBarWidth = 340;
   static const double titleBarHeight = 40;
   static const double topBarHeight = 52;
   static const double toolbarHeight = 40;
   static const double statusBarHeight = 0;
-
-  /// Shadow tipis untuk elemen mengambang (prompt bar, popover).
-  static const List<BoxShadow> shadowSoft = [
-    BoxShadow(color: Color(0x0F16181D), blurRadius: 2, offset: Offset(0, 1)),
-  ];
-
-  /// Shadow untuk dialog/sheet.
-  static const List<BoxShadow> shadowRaised = [
-    BoxShadow(color: Color(0x1416181D), blurRadius: 6, offset: Offset(0, 2)),
-    BoxShadow(color: Color(0x1A16181D), blurRadius: 24, offset: Offset(0, 8)),
-  ];
 }
 
 /// Skala radius: kontrol 6 · kartu 10 · bingkai 14.
@@ -152,207 +95,251 @@ class AppFonts {
   ];
 }
 
+/// Skala tipografi aplikasi.
+///
+/// Ukuran, berat, dan spasi tetap; **hanya warna** yang mengikuti [AppPalette].
+/// Ambil dari widget dengan `context.text.panelTitle`, dari kode tanpa
+/// `BuildContext` dengan `AppText(palette).panelTitle`.
+@immutable
 class AppText {
-  AppText._();
+  const AppText(this.palette);
+
+  final AppPalette palette;
+
+  TextStyle _ui({
+    required double fontSize,
+    required double height,
+    FontWeight weight = FontWeight.w400,
+    double? letterSpacing,
+    required Color color,
+  }) {
+    return TextStyle(
+      fontFamily: AppFonts.uiFamily,
+      fontFamilyFallback: AppFonts.uiFallback,
+      fontSize: fontSize,
+      height: height,
+      fontWeight: weight,
+      letterSpacing: letterSpacing,
+      color: color,
+    );
+  }
+
+  TextStyle _mono({
+    required double fontSize,
+    required double height,
+    FontWeight weight = FontWeight.w400,
+    double? letterSpacing,
+    required Color color,
+  }) {
+    return TextStyle(
+      fontFamily: AppFonts.monoFamily,
+      fontFamilyFallback: AppFonts.monoFallback,
+      fontSize: fontSize,
+      height: height,
+      fontWeight: weight,
+      letterSpacing: letterSpacing,
+      color: color,
+    );
+  }
 
   /// Judul layar: 700 · 28/34.
-  static const TextStyle screenTitle = TextStyle(
-    fontFamily: AppFonts.uiFamily,
-    fontFamilyFallback: AppFonts.uiFallback,
+  TextStyle get screenTitle => _ui(
     fontSize: 28,
     height: 34 / 28,
-    fontWeight: FontWeight.w700,
+    weight: FontWeight.w700,
     letterSpacing: -0.4,
-    color: AppColors.textPrimary,
+    color: palette.textPrimary,
   );
 
   /// Judul panel: 600 · 15/20.
-  static const TextStyle panelTitle = TextStyle(
-    fontFamily: AppFonts.uiFamily,
-    fontFamilyFallback: AppFonts.uiFallback,
+  TextStyle get panelTitle => _ui(
     fontSize: 15,
     height: 20 / 15,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
+    weight: FontWeight.w600,
+    color: palette.textPrimary,
   );
 
   /// Isi dan kontrol: 400 · 14/20.
-  static const TextStyle ui = TextStyle(
-    fontFamily: AppFonts.uiFamily,
-    fontFamilyFallback: AppFonts.uiFallback,
-    fontSize: 14,
-    height: 20 / 14,
-    color: AppColors.textPrimary,
-  );
+  TextStyle get ui =>
+      _ui(fontSize: 14, height: 20 / 14, color: palette.textPrimary);
 
   /// Teks bantu: 400 · 13/19.
-  static const TextStyle uiSmall = TextStyle(
-    fontFamily: AppFonts.uiFamily,
-    fontFamilyFallback: AppFonts.uiFallback,
-    fontSize: 13,
-    height: 19 / 13,
-    color: AppColors.textSecondary,
-  );
+  TextStyle get uiSmall =>
+      _ui(fontSize: 13, height: 19 / 13, color: palette.textSecondary);
 
   /// Label dan bantuan: 500 · 12/16.
-  static const TextStyle label = TextStyle(
-    fontFamily: AppFonts.uiFamily,
-    fontFamilyFallback: AppFonts.uiFallback,
+  TextStyle get label => _ui(
     fontSize: 12,
     height: 16 / 12,
-    fontWeight: FontWeight.w500,
-    color: AppColors.textSecondary,
+    weight: FontWeight.w500,
+    color: palette.textSecondary,
   );
 
-  static const TextStyle caption = TextStyle(
-    fontFamily: AppFonts.uiFamily,
-    fontFamilyFallback: AppFonts.uiFallback,
-    fontSize: 12,
-    height: 16 / 12,
-    color: AppColors.textSecondary,
-  );
+  TextStyle get caption =>
+      _ui(fontSize: 12, height: 16 / 12, color: palette.textSecondary);
 
   /// Judul section ringkas di dalam panel.
-  static const TextStyle sectionTitle = TextStyle(
-    fontFamily: AppFonts.uiFamily,
-    fontFamilyFallback: AppFonts.uiFallback,
+  TextStyle get sectionTitle => _ui(
     fontSize: 12,
     height: 16 / 12,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
+    weight: FontWeight.w600,
+    color: palette.textPrimary,
   );
 
   /// Label teknis (mono, kapital, spasi lebar).
-  static const TextStyle sectionLabel = TextStyle(
-    fontFamily: AppFonts.monoFamily,
-    fontFamilyFallback: AppFonts.monoFallback,
+  TextStyle get sectionLabel => _mono(
     fontSize: 12,
     height: 16 / 12,
-    fontWeight: FontWeight.w600,
+    weight: FontWeight.w600,
     letterSpacing: 0.48,
-    color: AppColors.textSecondary,
+    color: palette.textSecondary,
   );
 
-  static const TextStyle mono = TextStyle(
-    fontFamily: AppFonts.monoFamily,
-    fontFamilyFallback: AppFonts.monoFallback,
-    fontSize: 12,
-    height: 1.5,
-    color: AppColors.textPrimary,
-  );
+  TextStyle get mono =>
+      _mono(fontSize: 12, height: 1.5, color: palette.textPrimary);
 
-  static const TextStyle monoSmall = TextStyle(
-    fontFamily: AppFonts.monoFamily,
-    fontFamilyFallback: AppFonts.monoFallback,
-    fontSize: 11,
-    height: 1.4,
-    color: AppColors.textSecondary,
-  );
+  TextStyle get monoSmall =>
+      _mono(fontSize: 11, height: 1.4, color: palette.textSecondary);
 
   /// Gaya tombol: 600 · 13.
-  static const TextStyle button = TextStyle(
-    fontFamily: AppFonts.uiFamily,
-    fontFamilyFallback: AppFonts.uiFallback,
+  TextStyle get button => _ui(
     fontSize: 13,
     height: 18 / 13,
-    fontWeight: FontWeight.w600,
+    weight: FontWeight.w600,
+    color: palette.textPrimary,
   );
 }
 
+/// Akses gaya teks dari widget: `context.text.ui`.
+extension AppTextContext on BuildContext {
+  AppText get text => AppText(palette);
+}
+
 class AppTheme {
-  static ThemeData get lightTheme {
+  /// Bangun `ThemeData` untuk satu palet. Palet dipasang juga sebagai
+  /// [ThemeExtension] supaya `context.palette` mengembalikan nilai yang sama
+  /// dengan yang sedang dipakai.
+  static ThemeData build({
+    required AppPalette palette,
+    required Brightness brightness,
+  }) {
+    final text = AppText(palette);
+    final isDark = brightness == Brightness.dark;
+
+    final colorScheme = isDark
+        ? ColorScheme.dark(
+            primary: palette.primary,
+            onPrimary: palette.onPrimary,
+            secondary: palette.secondary,
+            onSecondary: palette.onSecondary,
+            surface: palette.bgSurface,
+            onSurface: palette.textPrimary,
+            error: palette.statusError,
+            onError: onAccent(palette.statusError),
+            outline: palette.borderSubtle,
+            outlineVariant: palette.borderStrong,
+          )
+        : ColorScheme.light(
+            primary: palette.primary,
+            onPrimary: palette.onPrimary,
+            secondary: palette.secondary,
+            onSecondary: palette.onSecondary,
+            surface: palette.bgSurface,
+            onSurface: palette.textPrimary,
+            error: palette.statusError,
+            onError: onAccent(palette.statusError),
+            outline: palette.borderSubtle,
+            outlineVariant: palette.borderStrong,
+          );
+
     return ThemeData(
-      brightness: Brightness.light,
+      brightness: brightness,
       useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.bgBase,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.accentPrimary,
-        surface: AppColors.bgSurface,
-        onSurface: AppColors.textPrimary,
-        outline: AppColors.borderSubtle,
-      ),
+      extensions: [palette],
+      scaffoldBackgroundColor: palette.bgBase,
+      colorScheme: colorScheme,
 
       fontFamily: AppFonts.uiFamily,
       fontFamilyFallback: AppFonts.uiFallback,
 
-      hoverColor: AppColors.hoverBg,
+      hoverColor: palette.hoverBg,
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
 
       textSelectionTheme: TextSelectionThemeData(
-        cursorColor: AppColors.accentPrimary,
-        selectionColor: AppColors.textSelection.withValues(alpha: 0.55),
-        selectionHandleColor: AppColors.accentPrimary,
+        cursorColor: palette.primary,
+        selectionColor: palette.textSelection.withValues(alpha: 0.55),
+        selectionHandleColor: palette.textSelectionHandle,
       ),
 
-      textTheme: const TextTheme(
-        displaySmall: AppText.screenTitle,
-        headlineSmall: AppText.panelTitle,
-        titleLarge: AppText.panelTitle,
-        titleMedium: AppText.ui,
-        titleSmall: AppText.sectionTitle,
-        bodyLarge: AppText.ui,
-        bodyMedium: AppText.ui,
-        bodySmall: AppText.uiSmall,
-        labelLarge: AppText.button,
-        labelMedium: AppText.label,
-        labelSmall: AppText.caption,
+      textTheme: TextTheme(
+        displaySmall: text.screenTitle,
+        headlineSmall: text.panelTitle,
+        titleLarge: text.panelTitle,
+        titleMedium: text.ui,
+        titleSmall: text.sectionTitle,
+        bodyLarge: text.ui,
+        bodyMedium: text.ui,
+        bodySmall: text.uiSmall,
+        labelLarge: text.button,
+        labelMedium: text.label,
+        labelSmall: text.caption,
       ),
 
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.bgSurface,
-        foregroundColor: AppColors.textPrimary,
+      appBarTheme: AppBarTheme(
+        backgroundColor: palette.bgSurface,
+        foregroundColor: palette.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        toolbarHeight: AppColors.topBarHeight,
-        shape: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+        toolbarHeight: AppMetrics.topBarHeight,
+        shape: Border(bottom: BorderSide(color: palette.borderSubtle)),
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         titleTextStyle: TextStyle(
           fontFamily: AppFonts.uiFamily,
           fontFamilyFallback: AppFonts.uiFallback,
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+          color: palette.textPrimary,
         ),
       ),
 
-      dividerTheme: const DividerThemeData(
-        color: AppColors.borderSubtle,
+      dividerTheme: DividerThemeData(
+        color: palette.borderSubtle,
         thickness: 1,
         space: 1,
       ),
 
       cardTheme: CardThemeData(
-        color: AppColors.bgSurface,
+        color: palette.bgSurface,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: AppColors.borderSubtle),
+          side: BorderSide(color: palette.borderSubtle),
           borderRadius: AppRadius.md,
         ),
       ),
 
-      iconTheme: const IconThemeData(color: AppColors.textSecondary, size: 18),
+      iconTheme: IconThemeData(color: palette.textSecondary, size: 18),
 
-      primaryIconTheme: const IconThemeData(
-        color: AppColors.textSecondary,
-        size: 18,
-      ),
+      primaryIconTheme: IconThemeData(color: palette.textSecondary, size: 18),
 
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.accentPrimary,
-        linearTrackColor: AppColors.bgSunken,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: palette.primary,
+        linearTrackColor: palette.bgSunken,
       ),
 
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.textPrimary,
-        contentTextStyle: const TextStyle(
+        backgroundColor: palette.textPrimary,
+        contentTextStyle: TextStyle(
           fontFamily: AppFonts.uiFamily,
           fontFamilyFallback: AppFonts.uiFallback,
           fontSize: 13,
-          color: Colors.white,
+          color: palette.bgSurface,
         ),
-        actionTextColor: const Color(0xFF9DB4FF),
+        actionTextColor: palette.primary,
         behavior: SnackBarBehavior.floating,
         elevation: 0,
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
@@ -361,34 +348,34 @@ class AppTheme {
       tooltipTheme: TooltipThemeData(
         waitDuration: const Duration(milliseconds: 400),
         decoration: BoxDecoration(
-          color: AppColors.textPrimary,
+          color: palette.textPrimary,
           borderRadius: AppRadius.sm,
         ),
-        textStyle: const TextStyle(
+        textStyle: TextStyle(
           fontFamily: AppFonts.uiFamily,
           fontFamilyFallback: AppFonts.uiFallback,
           fontSize: 12,
-          color: Colors.white,
+          color: palette.bgSurface,
         ),
       ),
 
       scrollbarTheme: ScrollbarThemeData(
-        thumbVisibility: WidgetStateProperty.all(false),
+        thumbVisibility: const WidgetStatePropertyAll(false),
         thickness: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.hovered) ? 8 : 6,
         ),
-        thumbColor: WidgetStateProperty.all(const Color(0x33737380)),
+        thumbColor: WidgetStatePropertyAll(palette.scrollbarThumb),
         radius: const Radius.circular(999),
       ),
 
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.accentPrimary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.bgSunken,
-          disabledForegroundColor: AppColors.textDisabled,
+          backgroundColor: palette.primary,
+          foregroundColor: palette.onPrimary,
+          disabledBackgroundColor: palette.bgSunken,
+          disabledForegroundColor: palette.textDisabled,
           elevation: 0,
-          textStyle: AppText.button,
+          textStyle: text.button,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           minimumSize: const Size(0, 36),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
@@ -396,12 +383,12 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accentPrimary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.bgSunken,
-          disabledForegroundColor: AppColors.textDisabled,
+          backgroundColor: palette.primary,
+          foregroundColor: palette.onPrimary,
+          disabledBackgroundColor: palette.bgSunken,
+          disabledForegroundColor: palette.textDisabled,
           elevation: 0,
-          textStyle: AppText.button,
+          textStyle: text.button,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           minimumSize: const Size(0, 36),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
@@ -409,11 +396,11 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          backgroundColor: AppColors.bgSurface,
-          foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(color: AppColors.borderSubtle),
+          backgroundColor: palette.bgSurface,
+          foregroundColor: palette.textPrimary,
+          side: BorderSide(color: palette.borderSubtle),
           elevation: 0,
-          textStyle: AppText.button,
+          textStyle: text.button,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           minimumSize: const Size(0, 36),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
@@ -421,8 +408,8 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.accentPrimary,
-          textStyle: AppText.button,
+          foregroundColor: palette.primary,
+          textStyle: text.button,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           minimumSize: const Size(0, 32),
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
@@ -431,70 +418,68 @@ class AppTheme {
 
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
-        fillColor: AppColors.inputBg,
+        fillColor: palette.inputBg,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 10,
         ),
         isDense: true,
-        hintStyle: const TextStyle(
+        hintStyle: TextStyle(
           fontFamily: AppFonts.uiFamily,
           fontFamilyFallback: AppFonts.uiFallback,
           fontSize: 14,
-          color: AppColors.textDisabled,
+          color: palette.textDisabled,
         ),
-        helperStyle: AppText.label,
-        errorStyle: const TextStyle(
+        helperStyle: text.label,
+        errorStyle: TextStyle(
           fontFamily: AppFonts.uiFamily,
           fontFamilyFallback: AppFonts.uiFallback,
           fontSize: 12,
-          color: AppColors.statusError,
+          color: palette.statusError,
         ),
-        border: const OutlineInputBorder(
+        border: OutlineInputBorder(
           borderRadius: AppRadius.md,
-          borderSide: BorderSide(color: AppColors.borderSubtle),
+          borderSide: BorderSide(color: palette.borderSubtle),
         ),
-        enabledBorder: const OutlineInputBorder(
+        enabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.md,
-          borderSide: BorderSide(color: AppColors.borderSubtle),
+          borderSide: BorderSide(color: palette.borderSubtle),
         ),
-        disabledBorder: const OutlineInputBorder(
+        disabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.md,
-          borderSide: BorderSide(color: AppColors.borderSubtle),
+          borderSide: BorderSide(color: palette.borderSubtle),
         ),
-        focusedBorder: const OutlineInputBorder(
+        focusedBorder: OutlineInputBorder(
           borderRadius: AppRadius.md,
-          borderSide: BorderSide(color: AppColors.accentPrimary, width: 1.4),
+          borderSide: BorderSide(color: palette.primary, width: 1.4),
         ),
-        errorBorder: const OutlineInputBorder(
+        errorBorder: OutlineInputBorder(
           borderRadius: AppRadius.md,
-          borderSide: BorderSide(color: AppColors.statusError),
+          borderSide: BorderSide(color: palette.statusError),
         ),
-        focusedErrorBorder: const OutlineInputBorder(
+        focusedErrorBorder: OutlineInputBorder(
           borderRadius: AppRadius.md,
-          borderSide: BorderSide(color: AppColors.statusError, width: 1.4),
+          borderSide: BorderSide(color: palette.statusError, width: 1.4),
         ),
       ),
 
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
           visualDensity: VisualDensity.compact,
-          textStyle: WidgetStateProperty.all(AppText.label),
+          textStyle: WidgetStatePropertyAll(text.label),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return AppColors.accentSoft;
+              return palette.primarySoft;
             }
-            return AppColors.bgSurface;
+            return palette.bgSurface;
           }),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return AppColors.accentPrimary;
+              return palette.primary;
             }
-            return AppColors.textSecondary;
+            return palette.textSecondary;
           }),
-          side: const WidgetStatePropertyAll(
-            BorderSide(color: AppColors.borderSubtle),
-          ),
+          side: WidgetStatePropertyAll(BorderSide(color: palette.borderSubtle)),
           shape: const WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: AppRadius.sm),
           ),
@@ -502,34 +487,42 @@ class AppTheme {
       ),
 
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.bgElevated,
+        backgroundColor: palette.bgElevated,
         elevation: 0,
-        titleTextStyle: AppText.panelTitle,
-        contentTextStyle: AppText.ui,
-        shape: const RoundedRectangleBorder(
+        titleTextStyle: text.panelTitle,
+        contentTextStyle: text.ui,
+        shape: RoundedRectangleBorder(
           borderRadius: AppRadius.xl,
-          side: BorderSide(color: AppColors.borderSubtle),
+          side: BorderSide(color: palette.borderSubtle),
         ),
       ),
 
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AppColors.bgSurface,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: palette.bgSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-          side: BorderSide(color: AppColors.borderSubtle),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+          side: BorderSide(color: palette.borderSubtle),
         ),
       ),
 
       popupMenuTheme: PopupMenuThemeData(
-        color: AppColors.bgElevated,
-        textStyle: AppText.ui,
+        color: palette.bgElevated,
+        textStyle: text.ui,
         elevation: 1,
-        shape: const RoundedRectangleBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: AppRadius.md,
-          side: BorderSide(color: AppColors.borderSubtle),
+          side: BorderSide(color: palette.borderSubtle),
         ),
       ),
     );
   }
+
+  /// Tema mode terang untuk palet [palette].
+  static ThemeData light(AppPalette palette) =>
+      build(palette: palette, brightness: Brightness.light);
+
+  /// Tema mode gelap untuk palet [palette].
+  static ThemeData dark(AppPalette palette) =>
+      build(palette: palette, brightness: Brightness.dark);
 }

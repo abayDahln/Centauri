@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simple_icons/simple_icons.dart';
 
-import '../../../../app/config/theme.dart';
 import '../data/catalog/provider_catalog.dart';
 import '../domain/catalog/provider_catalog_entry.dart';
 import '../domain/entities/api_provider.dart';
@@ -12,7 +11,7 @@ import '../domain/entities/api_provider.dart';
 /// (logo brand SimpleIcons) → [textIcon] sebagai fallback bebas-asset.
 class ProviderLogoData {
   const ProviderLogoData({
-    required this.color,
+    this.color,
     required this.textIcon,
     this.brandIcon,
     this.assetPath,
@@ -23,7 +22,10 @@ class ProviderLogoData {
   /// Path aset ikon, mis. `assets/icons/groq.png`. Null bila memakai
   /// [brandIcon] atau [textIcon].
   final String? assetPath;
-  final Color color;
+
+  /// Warna brand logo. Null = provider tanpa brand dikenal; widget memakai
+  /// warna teks sekunder dari palet aktif.
+  final Color? color;
   final String textIcon;
 }
 
@@ -190,10 +192,7 @@ class ProviderCatalogViewModel {
       case 'custom-api':
         return const ProviderLogoData(color: Color(0xFF5F6368), textIcon: 'CU');
       default:
-        return const ProviderLogoData(
-          color: AppColors.textSecondary,
-          textIcon: '?',
-        );
+        return const ProviderLogoData(textIcon: '?');
     }
   }
 }

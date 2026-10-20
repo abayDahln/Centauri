@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/attachment.dart';
@@ -28,12 +29,12 @@ class _AttachmentPreviewDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final isImage = !attachment.isText;
     return Dialog(
-      backgroundColor: AppColors.bgSurface,
+      backgroundColor: context.palette.bgSurface,
       insetPadding: const EdgeInsets.all(40),
       clipBehavior: Clip.antiAlias,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadius.xl,
-        side: BorderSide(color: AppColors.borderSubtle),
+        side: BorderSide(color: context.palette.borderSubtle),
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
@@ -72,10 +73,10 @@ class _Header extends StatelessWidget {
               attachment.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppText.sectionTitle,
+              style: context.text.sectionTitle,
             ),
           ),
-          Text(_humanSize(attachment.sizeBytes), style: AppText.caption),
+          Text(_humanSize(attachment.sizeBytes), style: context.text.caption),
           const SizedBox(width: 8),
           IconButton(
             tooltip: context.l10n.commonClose,
@@ -112,7 +113,7 @@ class _ImageBody extends StatelessWidget {
             padding: const EdgeInsets.all(32),
             child: Text(
               context.l10n.attachmentImageFailed,
-              style: AppText.caption,
+              style: context.text.caption,
             ),
           ),
         ),
@@ -132,12 +133,12 @@ class _TextBody extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: SelectableText(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: AppFonts.monoFamily,
           fontFamilyFallback: AppFonts.monoFallback,
           fontSize: 12,
           height: 1.5,
-          color: AppColors.textPrimary,
+          color: context.palette.textPrimary,
         ),
       ),
     );

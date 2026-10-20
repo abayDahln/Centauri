@@ -1,3 +1,6 @@
+import 'package:centauri/app/config/app_palette.dart';
+import 'package:centauri/app/config/theme.dart';
+import 'package:centauri/app/config/theme_provider.dart';
 import 'package:centauri/app/l10n/app_language.dart';
 import 'package:centauri/app/l10n/locale_provider.dart';
 import 'package:centauri/l10n/generated/app_localizations.dart';
@@ -17,36 +20,63 @@ const Locale testLocaleEn = Locale('en');
 ///
 /// [localeFromProvider] dipakai test pemilih bahasa: locale mengikuti
 /// `appLanguageProvider` persis seperti `CentauriApp`, bukan dipatok.
+///
+/// [themeFromProvider] dipakai test pemilih tampilan: tema mengikuti
+/// `appThemeProvider` (mode + warna aksen) persis seperti `CentauriApp`.
+/// [palette] memasang satu palet tetap tanpa provider.
 Widget testApp({
   required Widget home,
   Locale locale = testLocaleId,
   ThemeData? theme,
+  AppPalette? palette,
+  Brightness brightness = Brightness.light,
   List<Override> overrides = const [],
   bool localeFromProvider = false,
+  bool themeFromProvider = false,
 }) {
-  Widget app(Locale resolved) => MaterialApp(
-    locale: resolved,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLanguage.supportedLocales,
-    theme: theme,
-    home: home,
-  );
-
   return ProviderScope(
     overrides: overrides,
-    child: localeFromProvider
-        ? Consumer(
-            builder: (_, ref, _) =>
-                app(ref.watch(appLanguageProvider).locale),
-          )
-        : app(locale),
+    child: Consumer(
+      builder: (context, ref, _) {
+        final resolvedLocale = localeFromProvider
+            ? ref.watch(appLanguageProvider).locale
+            : locale;
+        final resolvedTheme = themeFromProvider
+            ? _themeFromSelection(ref.watch(appThemeProvider))
+            : theme ??
+                  (palette == null
+                      ? null
+                      : AppTheme.build(
+                          palette: palette,
+                          brightness: brightness,
+                        ));
+
+        return MaterialApp(
+          locale: resolvedLocale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLanguage.supportedLocales,
+          theme: resolvedTheme,
+          home: home,
+        );
+      },
+    ),
   );
+}
+
+/// Mode `system` di test memakai terang (platform brightness default test).
+ThemeData _themeFromSelection(AppThemeSelection selection) {
+  final dark = selection.mode == AppThemeMode.dark;
+  return dark
+      ? AppTheme.dark(selection.darkPalette)
+      : AppTheme.light(selection.lightPalette);
 }
 
 /// Paksa bahasa UI tanpa menyentuh Hive (box tidak terbuka di test).
 ///
 /// Default Indonesia karena ekspektasi teks di test memakai teks Indonesia.
-List<Override> languageOverride([AppLanguage language = AppLanguage.indonesian]) => [
+List<Override> languageOverride([
+  AppLanguage language = AppLanguage.indonesian,
+]) => [
   appLanguageProvider.overrideWith(() => _TestLanguageNotifier(language.code)),
 ];
 

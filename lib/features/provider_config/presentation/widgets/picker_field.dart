@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 
 /// Label field form (12px, secondary) — dipakai konsisten di kartu setelan.
@@ -12,18 +13,19 @@ class FieldLabel extends StatelessWidget {
   final String text;
   final Widget? trailing;
 
-  static const TextStyle _style = TextStyle(
-    color: AppColors.textSecondary,
+  static TextStyle _style(BuildContext context) => TextStyle(
+    color: context.palette.textSecondary,
     fontSize: 12,
     fontWeight: FontWeight.w500,
   );
 
   @override
   Widget build(BuildContext context) {
-    if (trailing == null) return Text(text, style: _style);
+    final style = _style(context);
+    if (trailing == null) return Text(text, style: style);
     return Row(
       children: [
-        Text(text, style: _style),
+        Text(text, style: style),
         const Spacer(),
         trailing!,
       ],
@@ -74,9 +76,11 @@ class PickerField extends StatelessWidget {
     final hasValue = value.trim().isNotEmpty;
     final Color textColor;
     if (!enabled) {
-      textColor = AppColors.textDisabled;
+      textColor = context.palette.textDisabled;
     } else {
-      textColor = hasValue ? AppColors.textPrimary : AppColors.textDisabled;
+      textColor = hasValue
+          ? context.palette.textPrimary
+          : context.palette.textDisabled;
     }
 
     final Widget box = InkWell(
@@ -89,8 +93,8 @@ class PickerField extends StatelessWidget {
         // tenggelam. Garisnya sama tipis supaya field pilihan dan field teks
         // terbaca sebagai satu keluarga kontrol.
         decoration: BoxDecoration(
-          color: enabled ? AppColors.inputBg : AppColors.bgSunken,
-          border: Border.all(color: AppColors.borderSubtle),
+          color: enabled ? context.palette.inputBg : context.palette.bgSunken,
+          border: Border.all(color: context.palette.borderSubtle),
           borderRadius: AppRadius.md,
         ),
         child: Row(
@@ -109,7 +113,9 @@ class PickerField extends StatelessWidget {
             Icon(
               Icons.expand_more,
               size: 18,
-              color: enabled ? AppColors.textSecondary : AppColors.textDisabled,
+              color: enabled
+                  ? context.palette.textSecondary
+                  : context.palette.textDisabled,
             ),
           ],
         ),

@@ -1,4 +1,4 @@
-import 'package:centauri/app/config/theme.dart';
+import 'package:centauri/app/config/app_palette.dart';
 import 'package:centauri/features/provider_config/presentation/widgets/centauri_table.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -106,7 +106,7 @@ void main() {
           .where((container) {
             final decoration = container.decoration;
             return decoration is BoxDecoration &&
-                decoration.color == AppColors.selectionBg;
+                decoration.color == AppPalette.lightDefault.selectionBg;
           });
 
       expect(highlighted.length, 1);

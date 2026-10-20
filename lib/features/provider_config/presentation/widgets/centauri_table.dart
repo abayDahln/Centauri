@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 
 /// Definisi satu kolom pada [CentauriTable].
@@ -52,7 +53,7 @@ class CentauriTable<T> extends StatelessWidget {
 
   final void Function(T row)? onRowTap;
 
-  /// Baris terpilih → latar [AppColors.selectionBg].
+  /// Baris terpilih → latar [context.palette.selectionBg].
   final bool Function(T row)? isSelected;
 
   /// Baris aktif → border aksen.
@@ -69,7 +70,7 @@ class CentauriTable<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildHeader(),
+        _buildHeader(context),
         for (final row in rows) ...[
           _buildRow(context, row),
           const SizedBox(height: 6),
@@ -78,7 +79,7 @@ class CentauriTable<T> extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
       child: Row(
@@ -88,9 +89,9 @@ class CentauriTable<T> extends StatelessWidget {
               column,
               child: Text(
                 column.label,
-                style: AppText.label.copyWith(
+                style: context.text.label.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: context.palette.textSecondary,
                 ),
               ),
             ),
@@ -146,11 +147,11 @@ class _TableRowState extends State<_TableRow> {
   @override
   Widget build(BuildContext context) {
     final background = widget.selected
-        ? AppColors.selectionBg
-        : (_hovered ? AppColors.hoverBg : AppColors.bgSurface);
+        ? context.palette.selectionBg
+        : (_hovered ? context.palette.hoverBg : context.palette.bgSurface);
     final borderColor = widget.active
-        ? AppColors.accentPrimary
-        : AppColors.borderSubtle;
+        ? context.palette.primary
+        : context.palette.borderSubtle;
 
     return MouseRegion(
       cursor: widget.onTap != null

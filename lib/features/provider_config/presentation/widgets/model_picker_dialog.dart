@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../data/catalog/provider_models.dart';
@@ -200,18 +201,18 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: AppRadius.lg,
-          border: Border.all(color: AppColors.borderStrong),
+          border: Border.all(color: context.palette.borderStrong),
         ),
         child: Row(
           children: [
-            const Icon(Icons.add, size: 18, color: AppColors.accentPrimary),
+            Icon(Icons.add, size: 18, color: context.palette.primary),
             const SizedBox(width: 8),
             Text(
               context.l10n.modelPickerAddModel,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.accentPrimary,
+                color: context.palette.primary,
               ),
             ),
           ],

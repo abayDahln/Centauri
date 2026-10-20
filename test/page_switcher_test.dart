@@ -1,4 +1,4 @@
-import 'package:centauri/app/config/theme.dart';
+import 'package:centauri/app/config/app_palette.dart';
 import 'package:centauri/features/canvas_preview/domain/page.dart';
 import 'package:centauri/features/canvas_preview/presentation/provider/workspace_provider.dart';
 import 'package:centauri/features/canvas_preview/presentation/widgets/page_switcher.dart';
@@ -47,7 +47,7 @@ void main() {
       return border.bottom.color;
     }
 
-    expect(tabUnderline('Home'), AppColors.accentPrimary);
+    expect(tabUnderline('Home'), AppPalette.lightDefault.primary);
     expect(tabUnderline('Login'), Colors.transparent);
 
     // Pindah halaman via state (mis. dari navigasi link HTML) — tab harus
@@ -55,7 +55,7 @@ void main() {
     container.read(workspaceProvider.notifier).setActivePage('page_2');
     await tester.pump();
 
-    expect(tabUnderline('Login'), AppColors.accentPrimary);
+    expect(tabUnderline('Login'), AppPalette.lightDefault.primary);
     expect(tabUnderline('Home'), Colors.transparent);
   });
 

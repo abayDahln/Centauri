@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
+import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/error_messages.dart';
 import '../../../app/l10n/l10n.dart';
@@ -398,22 +399,22 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                 isError ? Icons.error_outline : Icons.check_circle_outline,
                 size: 16,
                 color: isError
-                    ? AppColors.statusError
-                    : AppColors.statusSuccess,
+                    ? context.palette.statusError
+                    : context.palette.statusSuccess,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   message,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: context.palette.textPrimary,
                     fontSize: 13,
                   ),
                 ),
               ),
             ],
           ),
-          backgroundColor: AppColors.bgElevated,
+          backgroundColor: context.palette.bgElevated,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
         ),
@@ -460,8 +461,8 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        border: Border.all(color: AppColors.borderSubtle),
+        color: context.palette.bgSurface,
+        border: Border.all(color: context.palette.borderSubtle),
         borderRadius: AppRadius.md,
       ),
       child: Form(
@@ -537,12 +538,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                 key: const ValueKey('button-test'),
                 onPressed: _isTesting ? null : _testConnection,
                 child: _isTesting
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 16,
                         width: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.accentPrimary,
+                          color: context.palette.primary,
                         ),
                       )
                     : Text(l10n.providerDetailTestAction),
@@ -574,7 +575,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           decoration: InputDecoration(
             hintText: 'https://api.openai.com/v1',
             // Nonaktif = tenggelam, sama seperti field pilihan yang terkunci.
-            fillColor: _isCustom ? AppColors.inputBg : AppColors.bgSunken,
+            fillColor: _isCustom
+                ? context.palette.inputBg
+                : context.palette.bgSunken,
           ),
           validator: (value) {
             final text = value?.trim() ?? '';
@@ -596,11 +599,11 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.lock_outline, size: 12, color: AppColors.textDisabled),
+        Icon(Icons.lock_outline, size: 12, color: context.palette.textDisabled),
         const SizedBox(width: 4),
         Text(
           context.l10n.providerDetailApiKeyFromProvider,
-          style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
+          style: TextStyle(color: context.palette.textDisabled, fontSize: 11),
         ),
       ],
     );
@@ -643,8 +646,8 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                     hintText: _apiKeyLocked ? '••••••••' : 'sk-...',
                     // Terkunci = tenggelam, sejalan dengan field nonaktif lain.
                     fillColor: _apiKeyLocked
-                        ? AppColors.bgSunken
-                        : AppColors.inputBg,
+                        ? context.palette.bgSunken
+                        : context.palette.inputBg,
                   ),
                 ),
               ),
@@ -662,7 +665,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         const SizedBox(height: 6),
         Text(
           _apiKeyHelper,
-          style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
+          style: TextStyle(color: context.palette.textDisabled, fontSize: 11),
         ),
       ],
     );
@@ -704,10 +707,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(
+        Icon(
           Icons.arrow_forward,
           size: 12,
-          color: AppColors.textDisabled,
+          color: context.palette.textDisabled,
         ),
         const SizedBox(width: 6),
         Expanded(
@@ -715,12 +718,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             endpoint,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.monoFamily,
               fontFamilyFallback: AppFonts.monoFallback,
               fontSize: 10,
               height: 1.4,
-              color: AppColors.textDisabled,
+              color: context.palette.textDisabled,
             ),
           ),
         ),

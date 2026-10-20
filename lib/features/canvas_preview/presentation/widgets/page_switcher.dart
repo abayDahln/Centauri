@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../domain/page.dart';
@@ -66,7 +67,7 @@ class _PageSwitcherBarState extends ConsumerState<PageSwitcherBar> {
     _tabKeys.removeWhere((id, _) => pages.every((p) => p.id != id));
 
     return SizedBox(
-      height: AppColors.toolbarHeight,
+      height: AppMetrics.toolbarHeight,
       child: SingleChildScrollView(
         controller: _controller,
         scrollDirection: Axis.horizontal,
@@ -146,12 +147,12 @@ class _PageTab extends StatelessWidget {
         onTap: onTap,
         onDoubleTap: onRename,
         child: Container(
-          height: AppColors.toolbarHeight,
+          height: AppMetrics.toolbarHeight,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: active ? AppColors.accentPrimary : Colors.transparent,
+                color: active ? context.palette.primary : Colors.transparent,
                 width: 2,
               ),
             ),
@@ -163,9 +164,11 @@ class _PageTab extends StatelessWidget {
               page.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppText.button.copyWith(
+              style: context.text.button.copyWith(
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                color: active ? AppColors.textPrimary : AppColors.textSecondary,
+                color: active
+                    ? context.palette.textPrimary
+                    : context.palette.textSecondary,
               ),
             ),
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
@@ -66,7 +67,7 @@ class _CodeExportViewState extends State<CodeExportView> {
       ..showSnackBar(
         SnackBar(
           content: Text(context.l10n.codeExportCopied(_format.label)),
-          backgroundColor: AppColors.bgElevated,
+          backgroundColor: context.palette.bgElevated,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -88,7 +89,7 @@ class _CodeExportViewState extends State<CodeExportView> {
           ..showSnackBar(
             SnackBar(
               content: Text(context.l10n.exportSaved(path)),
-              backgroundColor: AppColors.bgElevated,
+              backgroundColor: context.palette.bgElevated,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -100,7 +101,7 @@ class _CodeExportViewState extends State<CodeExportView> {
           ..showSnackBar(
             SnackBar(
               content: Text(localizedAppError(context.l10n, e)),
-              backgroundColor: AppColors.bgElevated,
+              backgroundColor: context.palette.bgElevated,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -123,16 +124,16 @@ class _CodeExportViewState extends State<CodeExportView> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(
             children: [
-              Text(l10n.codeExportTitle, style: AppText.panelTitle),
+              Text(l10n.codeExportTitle, style: context.text.panelTitle),
               const Spacer(),
               if (code != null)
                 Text(
                   l10n.codeExportCharCount(code.length),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AppFonts.monoFamily,
                     fontFamilyFallback: AppFonts.monoFallback,
                     fontSize: 10,
-                    color: AppColors.textDisabled,
+                    color: context.palette.textDisabled,
                   ),
                 ),
             ],
@@ -161,19 +162,19 @@ class _CodeExportViewState extends State<CodeExportView> {
               style: ButtonStyle(
                 visualDensity: VisualDensity.compact,
                 side: WidgetStateProperty.all(
-                  const BorderSide(color: AppColors.borderSubtle),
+                  BorderSide(color: context.palette.borderSubtle),
                 ),
                 backgroundColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
-                    return AppColors.accentPrimary;
+                    return context.palette.primary;
                   }
-                  return AppColors.bgSurface;
+                  return context.palette.bgSurface;
                 }),
                 foregroundColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return Colors.white;
                   }
-                  return AppColors.textSecondary;
+                  return context.palette.textSecondary;
                 }),
               ),
             ),
@@ -183,10 +184,10 @@ class _CodeExportViewState extends State<CodeExportView> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Text(
             _formatNotice(l10n),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               height: 1.6,
-              color: AppColors.textDisabled,
+              color: context.palette.textDisabled,
             ),
           ),
         ),
@@ -195,7 +196,7 @@ class _CodeExportViewState extends State<CodeExportView> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: const Color(0xFF16181D),
-              border: Border.all(color: AppColors.borderSubtle),
+              border: Border.all(color: context.palette.borderSubtle),
               borderRadius: AppRadius.sm,
             ),
             clipBehavior: Clip.antiAlias,
@@ -294,21 +295,24 @@ class _TransformError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.report_gmailerrorred_outlined,
               size: 22,
-              color: AppColors.statusError,
+              color: context.palette.statusError,
             ),
             const SizedBox(height: 10),
-            Text(l10n.codeExportTransformErrorTitle, style: AppText.panelTitle),
+            Text(
+              l10n.codeExportTransformErrorTitle,
+              style: context.text.panelTitle,
+            ),
             const SizedBox(height: 4),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.5,
-                color: AppColors.textSecondary,
+                color: context.palette.textSecondary,
               ),
             ),
             if (onUseHtml != null) ...[

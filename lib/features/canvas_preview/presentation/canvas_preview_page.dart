@@ -7,8 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
+import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/l10n.dart';
+import '../../../app/widgets/appearance_menu.dart';
 import '../../../app/widgets/language_menu.dart';
 import '../../../app/widgets/stitch_widgets.dart';
 import '../../../core/storage/local_storage_service.dart';
@@ -280,7 +282,7 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
     final showCode = canvasVisible && hasUi && mode == OutputMode.dev;
 
     return Scaffold(
-      backgroundColor: AppColors.bgBase,
+      backgroundColor: context.palette.bgBase,
       body: Column(
         children: [
           _TopBar(
@@ -307,13 +309,15 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                   const Expanded(child: _ChatOnlyPane())
                 else ...[
                   if (showChat) ...[
-                    const SizedBox(
-                      width: AppColors.sideBarWidth,
+                    SizedBox(
+                      width: AppMetrics.sideBarWidth,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppColors.bgSurface,
+                          color: context.palette.bgSurface,
                           border: Border(
-                            right: BorderSide(color: AppColors.borderSubtle),
+                            right: BorderSide(
+                              color: context.palette.borderSubtle,
+                            ),
                           ),
                         ),
                         child: PromptChatPanel(),
@@ -353,13 +357,15 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                     ),
                   ),
                   if (showCode) ...[
-                    const SizedBox(
+                    SizedBox(
                       width: 420,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppColors.bgSurface,
+                          color: context.palette.bgSurface,
                           border: Border(
-                            left: BorderSide(color: AppColors.borderSubtle),
+                            left: BorderSide(
+                              color: context.palette.borderSubtle,
+                            ),
                           ),
                         ),
                         child: CodePanel(),
@@ -388,9 +394,11 @@ class _HistorySidebar extends ConsumerWidget {
     return SizedBox(
       width: width,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppColors.bgSurface,
-          border: Border(right: BorderSide(color: AppColors.borderSubtle)),
+        decoration: BoxDecoration(
+          color: context.palette.bgSurface,
+          border: Border(
+            right: BorderSide(color: context.palette.borderSubtle),
+          ),
         ),
         child: HistoryPanel(
           // Buka proyek dari sidebar: pastikan percakapannya terlihat.
@@ -410,8 +418,8 @@ class _ChatOnlyPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: AppColors.bgSurface,
+    return ColoredBox(
+      color: context.palette.bgSurface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -461,11 +469,11 @@ class _TopBar extends ConsumerWidget {
     }
 
     return Container(
-      height: AppColors.topBarHeight,
+      height: AppMetrics.topBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.bgSurface,
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+      decoration: BoxDecoration(
+        color: context.palette.bgSurface,
+        border: Border(bottom: BorderSide(color: context.palette.borderSubtle)),
       ),
       child: Row(
         children: [
@@ -510,15 +518,15 @@ class _TopBar extends ConsumerWidget {
                     projectTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppText.ui.copyWith(fontSize: 14),
+                    style: context.text.ui.copyWith(fontSize: 14),
                   ),
                 ),
                 if (workspaceActive) ...[
                   const SizedBox(width: 10),
                   Text(
                     l10n.canvasPageCount(state.pages.length),
-                    style: AppText.monoSmall.copyWith(
-                      color: AppColors.textSecondary,
+                    style: context.text.monoSmall.copyWith(
+                      color: context.palette.textSecondary,
                     ),
                   ),
                 ],
@@ -547,6 +555,8 @@ class _TopBar extends ConsumerWidget {
                   PageExportButton(primary: true),
                   const SizedBox(width: 8),
                 ],
+                const AppearanceMenuButton(),
+                const SizedBox(width: 2),
                 const LanguageMenuButton(),
                 const SizedBox(width: 2),
                 SoftIconButton(
@@ -574,11 +584,11 @@ class _PreviewToolbar extends ConsumerWidget {
     );
     final l10n = context.l10n;
     return Container(
-      height: AppColors.toolbarHeight,
+      height: AppMetrics.toolbarHeight,
       padding: const EdgeInsetsDirectional.only(start: 4, end: 8),
-      decoration: const BoxDecoration(
-        color: AppColors.bgSurface,
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+      decoration: BoxDecoration(
+        color: context.palette.bgSurface,
+        border: Border(bottom: BorderSide(color: context.palette.borderSubtle)),
       ),
       child: Row(
         children: [
@@ -586,10 +596,12 @@ class _PreviewToolbar extends ConsumerWidget {
           const SizedBox(width: 8),
           Text(
             '100%',
-            style: AppText.monoSmall.copyWith(color: AppColors.textSecondary),
+            style: context.text.monoSmall.copyWith(
+              color: context.palette.textSecondary,
+            ),
           ),
           const SizedBox(width: 8),
-          Container(width: 1, height: 16, color: AppColors.borderSubtle),
+          Container(width: 1, height: 16, color: context.palette.borderSubtle),
           const SizedBox(width: 4),
           SoftIconButton(
             icon: Icons.touch_app_outlined,
@@ -617,9 +629,9 @@ class _CanvasSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.bgBase,
+      color: context.palette.bgBase,
       child: CustomPaint(
-        painter: const _DotGridPainter(),
+        painter: _DotGridPainter(color: context.palette.borderStrong),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
           child: Center(
@@ -635,11 +647,14 @@ class _CanvasSurface extends StatelessWidget {
 }
 
 class _DotGridPainter extends CustomPainter {
-  const _DotGridPainter();
+  const _DotGridPainter({required this.color});
+
+  /// Warna titik mengikuti palet agar kanvas gelap tidak bertitik terang.
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFD5D8DC);
+    final paint = Paint()..color = color;
     const gap = 16.0;
     for (var x = 8.0; x < size.width; x += gap) {
       for (var y = 8.0; y < size.height; y += gap) {
@@ -649,7 +664,8 @@ class _DotGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DotGridPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DotGridPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 /// Bingkai pratinjau: bilah browser + halaman.
@@ -661,10 +677,10 @@ class _PreviewFrame extends ConsumerWidget {
     final page = ref.watch(workspaceProvider.select((s) => s.activePage));
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: AppRadius.xl,
-        border: Border.all(color: AppColors.borderSubtle),
-        boxShadow: AppColors.shadowSoft,
+        border: Border.all(color: context.palette.borderSubtle),
+        boxShadow: context.palette.shadowSoft,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -673,9 +689,11 @@ class _PreviewFrame extends ConsumerWidget {
           Container(
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: const BoxDecoration(
-              color: AppColors.bgBase,
-              border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+            decoration: BoxDecoration(
+              color: context.palette.bgBase,
+              border: Border(
+                bottom: BorderSide(color: context.palette.borderSubtle),
+              ),
             ),
             child: Row(
               children: [
@@ -683,8 +701,8 @@ class _PreviewFrame extends ConsumerWidget {
                   Container(
                     width: 9,
                     height: 9,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFD5D8DC),
+                    decoration: BoxDecoration(
+                      color: context.palette.borderStrong,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -693,8 +711,8 @@ class _PreviewFrame extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Text(
                   'centauri / ${page?.slug ?? context.l10n.canvasBreadcrumbFallback}',
-                  style: AppText.monoSmall.copyWith(
-                    color: AppColors.textSecondary,
+                  style: context.text.monoSmall.copyWith(
+                    color: context.palette.textSecondary,
                   ),
                 ),
               ],
@@ -722,10 +740,10 @@ class _AiStatusPill extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: AppRadius.pill,
-        border: Border.all(color: AppColors.borderSubtle),
-        boxShadow: AppColors.shadowSoft,
+        border: Border.all(color: context.palette.borderSubtle),
+        boxShadow: context.palette.shadowSoft,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -744,16 +762,16 @@ class _AiStatusPill extends ConsumerWidget {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.statusError.withValues(alpha: 0.14),
+                  color: context.palette.statusError.withValues(alpha: 0.14),
                   borderRadius: AppRadius.pill,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.stop_rounded,
                       size: 14,
-                      color: AppColors.statusError,
+                      color: context.palette.statusError,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -763,7 +781,7 @@ class _AiStatusPill extends ConsumerWidget {
                         fontFamilyFallback: AppFonts.uiFallback,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.statusError,
+                        color: context.palette.statusError,
                       ),
                     ),
                   ],
@@ -783,9 +801,9 @@ class _EmptyPreviewHint extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: AppRadius.lg,
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: context.palette.borderSubtle),
       ),
       child: Center(
         child: Padding(
@@ -793,10 +811,10 @@ class _EmptyPreviewHint extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.dashboard_customize_outlined,
                 size: 30,
-                color: AppColors.textDisabled,
+                color: context.palette.textDisabled,
               ),
               const SizedBox(height: 12),
               Text(
@@ -806,11 +824,11 @@ class _EmptyPreviewHint extends StatelessWidget {
                   fontFamilyFallback: AppFonts.uiFallback,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: context.palette.textSecondary,
                 ),
               ),
               const SizedBox(height: 6),
-              Text(context.l10n.canvasEmptyBody, style: AppText.caption),
+              Text(context.l10n.canvasEmptyBody, style: context.text.caption),
             ],
           ),
         ),
@@ -832,7 +850,7 @@ class _MobileShell extends ConsumerWidget {
     final l10n = context.l10n;
 
     return Scaffold(
-      backgroundColor: AppColors.bgBase,
+      backgroundColor: context.palette.bgBase,
       appBar: AppBar(
         titleSpacing: 12,
         title: Row(
@@ -840,8 +858,8 @@ class _MobileShell extends ConsumerWidget {
             Container(
               width: 24,
               height: 24,
-              decoration: const BoxDecoration(
-                color: AppColors.textPrimary,
+              decoration: BoxDecoration(
+                color: context.palette.textPrimary,
                 borderRadius: AppRadius.sm,
               ),
               alignment: Alignment.center,
@@ -861,7 +879,7 @@ class _MobileShell extends ConsumerWidget {
                 hasUi ? l10n.canvasPrototypeTitle : 'Centauri',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.panelTitle.copyWith(fontSize: 15),
+                style: context.text.panelTitle.copyWith(fontSize: 15),
               ),
             ),
           ],
@@ -900,7 +918,7 @@ class _MobileShell extends ConsumerWidget {
               children: [
                 if (hasUi)
                   Container(
-                    color: AppColors.bgSurface,
+                    color: context.palette.bgSurface,
                     child: const PageSwitcherBar(),
                   ),
                 Expanded(
@@ -911,9 +929,11 @@ class _MobileShell extends ConsumerWidget {
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 92),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: AppColors.bgSurface,
+                              color: context.palette.bgSurface,
                               borderRadius: AppRadius.md,
-                              border: Border.all(color: AppColors.borderSubtle),
+                              border: Border.all(
+                                color: context.palette.borderSubtle,
+                              ),
                             ),
                             clipBehavior: Clip.antiAlias,
                             child: const PagePreview(),
@@ -946,7 +966,7 @@ class _MobileShell extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.bgSurface,
+      backgroundColor: context.palette.bgSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -978,15 +998,15 @@ class _StorageBannerState extends ConsumerState<StorageBanner> {
     final l10n = context.l10n;
 
     return Material(
-      color: AppColors.statusWarning.withValues(alpha: 0.12),
+      color: context.palette.statusWarning.withValues(alpha: 0.12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.storage_rounded,
               size: 16,
-              color: AppColors.statusWarning,
+              color: context.palette.statusWarning,
             ),
             const SizedBox(width: 8),
             Expanded(

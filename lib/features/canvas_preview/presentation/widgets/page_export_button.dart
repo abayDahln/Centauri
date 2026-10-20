@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
@@ -49,7 +50,7 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
         ..showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: AppColors.bgElevated,
+            backgroundColor: context.palette.bgElevated,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -180,7 +181,7 @@ class _PrimaryExportButton extends StatelessWidget {
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: active ? AppColors.accentPrimary : AppColors.bgSunken,
+        color: active ? context.palette.primary : context.palette.bgSunken,
         borderRadius: AppRadius.sm,
       ),
       child: Row(
@@ -199,13 +200,13 @@ class _PrimaryExportButton extends StatelessWidget {
             Icon(
               Icons.download_outlined,
               size: 16,
-              color: active ? Colors.white : AppColors.textDisabled,
+              color: active ? Colors.white : context.palette.textDisabled,
             ),
           const SizedBox(width: 8),
           Text(
             context.l10n.exportAction,
-            style: AppText.button.copyWith(
-              color: active ? Colors.white : AppColors.textDisabled,
+            style: context.text.button.copyWith(
+              color: active ? Colors.white : context.palette.textDisabled,
             ),
           ),
         ],

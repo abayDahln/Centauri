@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 
@@ -61,13 +62,15 @@ class _ModelCardState extends State<ModelCard> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.accentSoft
-                : (_hovered ? AppColors.hoverBg : AppColors.bgSurface),
+                ? context.palette.primarySoft
+                : (_hovered
+                      ? context.palette.hoverBg
+                      : context.palette.bgSurface),
             borderRadius: AppRadius.md,
             border: Border.all(
               color: selected
-                  ? AppColors.accentPrimary
-                  : AppColors.borderSubtle,
+                  ? context.palette.primary
+                  : context.palette.borderSubtle,
             ),
           ),
           child: Row(
@@ -76,14 +79,14 @@ class _ModelCardState extends State<ModelCard> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.accentSoft,
+                  color: context.palette.primarySoft,
                   borderRadius: AppRadius.sm,
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   Icons.smart_toy_outlined,
                   size: 17,
-                  color: AppColors.accentPrimary,
+                  color: context.palette.primary,
                 ),
               ),
               const SizedBox(width: 10),
@@ -96,12 +99,12 @@ class _ModelCardState extends State<ModelCard> {
                       widget.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.monoFamily,
                         fontFamilyFallback: AppFonts.monoFallback,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: context.palette.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -109,10 +112,10 @@ class _ModelCardState extends State<ModelCard> {
                       widget.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontStyle: FontStyle.italic,
-                        color: AppColors.textSecondary,
+                        color: context.palette.textSecondary,
                       ),
                     ),
                   ],
@@ -123,7 +126,7 @@ class _ModelCardState extends State<ModelCard> {
                 IconButton(
                   tooltip: l10n.modelCardDeleteTooltip,
                   icon: const Icon(Icons.delete_outline, size: 15),
-                  color: AppColors.textDisabled,
+                  color: context.palette.textDisabled,
                   splashRadius: 16,
                   visualDensity: VisualDensity.compact,
                   onPressed: widget.onDelete,
@@ -131,7 +134,7 @@ class _ModelCardState extends State<ModelCard> {
               IconButton(
                 tooltip: l10n.modelCardCopyIdTooltip,
                 icon: const Icon(Icons.copy_outlined, size: 15),
-                color: AppColors.textDisabled,
+                color: context.palette.textDisabled,
                 splashRadius: 16,
                 visualDensity: VisualDensity.compact,
                 onPressed: () {

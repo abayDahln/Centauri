@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/app_palette.dart';
 import '../config/theme.dart';
 import '../l10n/app_language.dart';
 import '../l10n/l10n.dart';
@@ -46,11 +47,11 @@ class LanguageDialog extends ConsumerWidget {
     final available = _availableLanguages();
 
     return Dialog(
-      backgroundColor: AppColors.bgElevated,
+      backgroundColor: context.palette.bgElevated,
       elevation: 0,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadius.xl,
-        side: BorderSide(color: AppColors.borderSubtle),
+        side: BorderSide(color: context.palette.borderSubtle),
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380, maxHeight: 480),
@@ -60,9 +61,12 @@ class LanguageDialog extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-              child: Text(l10n.languageDialogTitle, style: AppText.panelTitle),
+              child: Text(
+                l10n.languageDialogTitle,
+                style: context.text.panelTitle,
+              ),
             ),
-            const Divider(height: 1, color: AppColors.borderSubtle),
+            Divider(height: 1, color: context.palette.borderSubtle),
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -129,9 +133,9 @@ class _LanguageRowState extends State<_LanguageRow> {
         behavior: HitTestBehavior.opaque,
         child: Container(
           color: selected
-              ? AppColors.selectionBg
+              ? context.palette.selectionBg
               : _hovered
-              ? AppColors.hoverBg
+              ? context.palette.hoverBg
               : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
           child: Row(
@@ -142,24 +146,25 @@ class _LanguageRowState extends State<_LanguageRow> {
                   children: [
                     Text(
                       widget.language.nativeName,
-                      style: AppText.ui.copyWith(
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                      style: context.text.ui.copyWith(
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                         color: selected
-                            ? AppColors.accentPrimary
-                            : AppColors.textPrimary,
+                            ? context.palette.primary
+                            : context.palette.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 1),
-                    Text(widget.language.englishName, style: AppText.caption),
+                    Text(
+                      widget.language.englishName,
+                      style: context.text.caption,
+                    ),
                   ],
                 ),
               ),
               if (selected)
-                const Icon(
-                  Icons.check,
-                  size: 16,
-                  color: AppColors.accentPrimary,
-                ),
+                Icon(Icons.check, size: 16, color: context.palette.primary),
             ],
           ),
         ),

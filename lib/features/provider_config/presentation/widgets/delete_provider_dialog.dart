@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/config/theme.dart';
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/l10n/l10n.dart';
 
 /// Menampilkan dialog konfirmasi hapus provider.
@@ -23,7 +23,9 @@ Future<bool> showDeleteProviderDialog(BuildContext context, String name) async {
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
-          style: TextButton.styleFrom(foregroundColor: AppColors.statusError),
+          style: TextButton.styleFrom(
+            foregroundColor: context.palette.statusError,
+          ),
           child: Text(l10n.commonDelete),
         ),
       ],

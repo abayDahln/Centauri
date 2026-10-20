@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
@@ -44,17 +45,17 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
         children: [
           Text(
             l10n.mcpDesktopTitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: context.palette.textPrimary,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.mcpDesktopOnlyDesc,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: context.palette.textSecondary,
               fontSize: 13,
               height: 1.5,
             ),
@@ -74,24 +75,26 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
             Expanded(
               child: Text(
                 l10n.mcpDesktopTitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: context.palette.textPrimary,
                 ),
               ),
             ),
             StatusPill(
               label: running ? l10n.mcpRunning : l10n.mcpStopped,
-              color: running ? AppColors.statusSuccess : AppColors.textDisabled,
+              color: running
+                  ? context.palette.statusSuccess
+                  : context.palette.textDisabled,
             ),
           ],
         ),
         const SizedBox(height: 6),
         Text(
           l10n.mcpDescription,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
+          style: TextStyle(
+            color: context.palette.textSecondary,
             fontSize: 13,
             height: 1.5,
           ),
@@ -110,7 +113,7 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
             value: endpoint.replaceFirst('/mcp', '/status'),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Tools: get_canvas_structure, get_selected_node, get_node_html, '
             'add_node, update_node, delete_node, rearrange_layout.',
             style: TextStyle(
@@ -118,7 +121,7 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
               fontFamilyFallback: AppFonts.monoFallback,
               fontSize: 11,
               height: 1.6,
-              color: AppColors.textSecondary,
+              color: context.palette.textSecondary,
             ),
           ),
         ] else ...[
@@ -133,7 +136,7 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
           const SizedBox(height: 6),
           Text(
             l10n.mcpAutoStartNote,
-            style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+            style: TextStyle(fontSize: 12, color: context.palette.textDisabled),
           ),
         ],
       ],
@@ -151,8 +154,8 @@ class _McpCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        border: Border.all(color: AppColors.borderSubtle),
+        color: context.palette.bgSurface,
+        border: Border.all(color: context.palette.borderSubtle),
         borderRadius: AppRadius.md,
       ),
       child: Column(
@@ -173,17 +176,17 @@ class _EndpointRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        SizedBox(width: 84, child: Text(label, style: AppText.caption)),
+        SizedBox(width: 84, child: Text(label, style: context.text.caption)),
         Expanded(
           child: Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.monoFamily,
               fontFamilyFallback: AppFonts.monoFallback,
               fontSize: 12,
-              color: AppColors.textPrimary,
+              color: context.palette.textPrimary,
             ),
           ),
         ),

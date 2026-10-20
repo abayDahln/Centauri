@@ -41,7 +41,7 @@ class ProviderCatalogPanel extends StatelessWidget {
           if (section.cards.any((card) => card.id != custom.id)) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
-              child: Text(section.title, style: AppText.sectionTitle),
+              child: Text(section.title, style: context.text.sectionTitle),
             ),
             // Satu kolom penuh (bukan grid) agar nama/subtitle tampil penuh.
             for (final card in section.cards.where(

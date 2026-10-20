@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../data/services/canvas_service_registry.dart';
@@ -285,12 +286,12 @@ class _PageSwitchLoading extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.2,
-                  color: AppColors.accentPrimary,
+                  color: context.palette.primary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -301,7 +302,7 @@ class _PageSwitchLoading extends StatelessWidget {
                   fontFamilyFallback: AppFonts.uiFallback,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: context.palette.textSecondary,
                 ),
               ),
             ],
@@ -318,17 +319,17 @@ class _PreviewEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.bgSurface,
+      color: context.palette.bgSurface,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.web_asset_outlined,
                 size: 30,
-                color: AppColors.textDisabled,
+                color: context.palette.textDisabled,
               ),
               const SizedBox(height: 12),
               Text(
@@ -338,11 +339,14 @@ class _PreviewEmptyState extends StatelessWidget {
                   fontFamilyFallback: AppFonts.uiFallback,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: context.palette.textSecondary,
                 ),
               ),
               const SizedBox(height: 6),
-              Text(context.l10n.previewNoPagesBody, style: AppText.caption),
+              Text(
+                context.l10n.previewNoPagesBody,
+                style: context.text.caption,
+              ),
             ],
           ),
         ),
@@ -360,17 +364,17 @@ class _WebviewError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.bgSunken,
+      color: context.palette.bgSunken,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.web_asset_off_outlined,
                 size: 26,
-                color: AppColors.statusError,
+                color: context.palette.statusError,
               ),
               const SizedBox(height: 8),
               Text(
@@ -380,7 +384,7 @@ class _WebviewError extends StatelessWidget {
                   fontFamilyFallback: AppFonts.uiFallback,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: context.palette.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -389,12 +393,12 @@ class _WebviewError extends StatelessWidget {
                     ? '${message.substring(0, 220)}…'
                     : message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AppFonts.monoFamily,
                   fontFamilyFallback: AppFonts.monoFallback,
                   fontSize: 10.5,
                   height: 1.5,
-                  color: AppColors.textSecondary,
+                  color: context.palette.textSecondary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -406,9 +410,9 @@ class _WebviewError extends StatelessWidget {
               Text(
                 context.l10n.previewWebView2Hint,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
-                  color: AppColors.textDisabled,
+                  color: context.palette.textDisabled,
                 ),
               ),
             ],
@@ -424,15 +428,15 @@ class _WebviewLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: AppColors.bgSurface,
+    return ColoredBox(
+      color: context.palette.bgSurface,
       child: Center(
         child: SizedBox(
           width: 18,
           height: 18,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: AppColors.accentPrimary,
+            color: context.palette.primary,
           ),
         ),
       ),

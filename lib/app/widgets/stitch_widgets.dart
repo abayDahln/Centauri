@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/app_palette.dart';
 import '../config/theme.dart';
 
 /// Panel dasar: permukaan putih, garis 1 px, sudut 10.
@@ -28,9 +29,11 @@ class SoftPanel extends StatelessWidget {
       padding: padding,
       clipBehavior: clip ? Clip.antiAlias : Clip.none,
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: radius,
-        border: showBorder ? Border.all(color: AppColors.borderSubtle) : null,
+        border: showBorder
+            ? Border.all(color: context.palette.borderSubtle)
+            : null,
       ),
       child: child,
     );
@@ -40,26 +43,24 @@ class SoftPanel extends StatelessWidget {
 /// Pil status: titik warna + teks. Status selalu disertai teks, tidak pernah
 /// titik sendirian.
 class StatusPill extends StatelessWidget {
-  const StatusPill({
-    super.key,
-    required this.label,
-    this.color = AppColors.statusSuccess,
-    this.onTap,
-  });
+  const StatusPill({super.key, required this.label, this.color, this.onTap});
 
   final String label;
-  final Color color;
+
+  /// Warna titik status; `null` = hijau sukses dari palet aktif.
+  final Color? color;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final dotColor = color ?? context.palette.statusSuccess;
     final content = Container(
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: AppRadius.pill,
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: context.palette.borderSubtle),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -67,10 +68,10 @@ class StatusPill extends StatelessWidget {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
-          Text(label, style: AppText.caption),
+          Text(label, style: context.text.caption),
         ],
       ),
     );
@@ -114,15 +115,15 @@ class _SoftIconButtonState extends State<SoftIconButton> {
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final background = widget.active
-        ? AppColors.accentSoft
+        ? context.palette.primarySoft
         : _hovered && enabled
-        ? AppColors.hoverBg
+        ? context.palette.hoverBg
         : Colors.transparent;
     final color = !enabled
-        ? AppColors.textDisabled
+        ? context.palette.textDisabled
         : widget.active
-        ? AppColors.accentPrimary
-        : AppColors.textSecondary;
+        ? context.palette.primary
+        : context.palette.textSecondary;
 
     return Tooltip(
       message: widget.tooltip,
@@ -168,9 +169,9 @@ class SoftSegmented<T> extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: AppRadius.sm,
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: context.palette.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,
       child: Row(
@@ -178,19 +179,19 @@ class SoftSegmented<T> extends StatelessWidget {
         children: [
           for (var i = 0; i < segments.length; i++) ...[
             if (i > 0)
-              const VerticalDivider(
+              VerticalDivider(
                 width: 1,
                 thickness: 1,
-                color: AppColors.borderSubtle,
+                color: context.palette.borderSubtle,
               ),
-            _segment(segments[i]),
+            _segment(context, segments[i]),
           ],
         ],
       ),
     );
   }
 
-  Widget _segment(SoftSegment<T> segment) {
+  Widget _segment(BuildContext context, SoftSegment<T> segment) {
     final active = segment.value == selected;
     return GestureDetector(
       onTap: () => onChanged(segment.value),
@@ -199,7 +200,7 @@ class SoftSegmented<T> extends StatelessWidget {
         child: Container(
           height: height,
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          color: active ? AppColors.accentSoft : Colors.transparent,
+          color: active ? context.palette.primarySoft : Colors.transparent,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -208,17 +209,17 @@ class SoftSegmented<T> extends StatelessWidget {
                   segment.icon,
                   size: 15,
                   color: active
-                      ? AppColors.accentPrimary
-                      : AppColors.textSecondary,
+                      ? context.palette.primary
+                      : context.palette.textSecondary,
                 ),
                 const SizedBox(width: 6),
               ],
               Text(
                 segment.label,
-                style: AppText.button.copyWith(
+                style: context.text.button.copyWith(
                   color: active
-                      ? AppColors.accentPrimary
-                      : AppColors.textSecondary,
+                      ? context.palette.primary
+                      : context.palette.textSecondary,
                 ),
               ),
             ],
@@ -254,16 +255,18 @@ class AppTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.textPrimary : AppColors.textSecondary;
+    final color = active
+        ? context.palette.textPrimary
+        : context.palette.textSecondary;
     return InkWell(
       onTap: onTap,
       child: Container(
-        height: AppColors.toolbarHeight,
+        height: AppMetrics.toolbarHeight,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: active ? AppColors.accentPrimary : Colors.transparent,
+              color: active ? context.palette.primary : Colors.transparent,
               width: 2,
             ),
           ),
@@ -277,7 +280,7 @@ class AppTab extends StatelessWidget {
             ],
             Text(
               label,
-              style: AppText.button.copyWith(
+              style: context.text.button.copyWith(
                 color: color,
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
               ),

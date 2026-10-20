@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../config/app_palette.dart';
 import '../config/theme.dart';
 import '../l10n/l10n.dart';
 
@@ -71,10 +72,12 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
       onPanStart: (_) => _safe(windowManager.startDragging),
       onDoubleTap: _toggleMaximize,
       child: Container(
-        height: AppColors.titleBarHeight,
-        decoration: const BoxDecoration(
-          color: AppColors.bgSurface,
-          border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+        height: AppMetrics.titleBarHeight,
+        decoration: BoxDecoration(
+          color: context.palette.bgSurface,
+          border: Border(
+            bottom: BorderSide(color: context.palette.borderSubtle),
+          ),
         ),
         child: Row(
           children: [
@@ -82,8 +85,8 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
             Container(
               width: 20,
               height: 20,
-              decoration: const BoxDecoration(
-                color: AppColors.textPrimary,
+              decoration: BoxDecoration(
+                color: context.palette.textPrimary,
                 borderRadius: BorderRadius.all(Radius.circular(6)),
               ),
               alignment: Alignment.center,
@@ -100,8 +103,8 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
             const SizedBox(width: 10),
             Text(
               widget.title,
-              style: AppText.label.copyWith(
-                color: AppColors.textPrimary,
+              style: context.text.label.copyWith(
+                color: context.palette.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 1,
@@ -178,8 +181,8 @@ class _WindowButtonState extends State<_WindowButton> {
   @override
   Widget build(BuildContext context) {
     final hoverColor = widget.isClose
-        ? AppColors.statusError
-        : AppColors.hoverBg;
+        ? context.palette.statusError
+        : context.palette.hoverBg;
 
     return Semantics(
       label: widget.tooltip,
@@ -192,7 +195,7 @@ class _WindowButtonState extends State<_WindowButton> {
           onTap: widget.onTap,
           child: Container(
             width: 46,
-            height: AppColors.titleBarHeight,
+            height: AppMetrics.titleBarHeight,
             alignment: Alignment.center,
             color: _hovered ? hoverColor : Colors.transparent,
             child: Icon(
@@ -200,7 +203,7 @@ class _WindowButtonState extends State<_WindowButton> {
               size: 14,
               color: _hovered && widget.isClose
                   ? Colors.white
-                  : AppColors.textSecondary,
+                  : context.palette.textSecondary,
             ),
           ),
         ),

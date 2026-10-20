@@ -1,3 +1,4 @@
+import 'package:centauri/app/config/app_palette.dart';
 import 'package:centauri/app/config/theme.dart';
 import 'package:centauri/features/code_exporter/presentation/code_export_view.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +8,7 @@ import 'helpers/pump_app.dart';
 
 Widget _wrap(String html) {
   return testApp(
-    theme: AppTheme.lightTheme,
+    theme: AppTheme.light(AppPalette.lightDefault),
     home: Scaffold(
       body: SizedBox(
         width: 420,

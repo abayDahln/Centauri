@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 
 /// Skeleton block yang berdenyut halus untuk menggantikan spinner generik
@@ -46,7 +47,11 @@ class _SkeletonBoxState extends State<SkeletonBox>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: Color.lerp(AppColors.bgSunken, AppColors.borderSubtle, t),
+            color: Color.lerp(
+              context.palette.bgSunken,
+              context.palette.borderSubtle,
+              t,
+            ),
             borderRadius: widget.radius,
           ),
         );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../provider_catalog_view_model.dart';
 
@@ -42,13 +43,15 @@ class _ProviderCardState extends State<ProviderCard> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.accentSoft
-                : (_hovered ? AppColors.hoverBg : AppColors.bgSurface),
+                ? context.palette.primarySoft
+                : (_hovered
+                      ? context.palette.hoverBg
+                      : context.palette.bgSurface),
             borderRadius: AppRadius.md,
             border: Border.all(
               color: selected
-                  ? AppColors.accentPrimary
-                  : AppColors.borderSubtle,
+                  ? context.palette.primary
+                  : context.palette.borderSubtle,
             ),
           ),
           child: Row(
@@ -67,10 +70,10 @@ class _ProviderCardState extends State<ProviderCard> {
                             data.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+                              color: context.palette.textPrimary,
                             ),
                           ),
                         ),
@@ -81,19 +84,19 @@ class _ProviderCardState extends State<ProviderCard> {
                       data.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: context.palette.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
                 size: 18,
-                color: AppColors.textDisabled,
+                color: context.palette.textDisabled,
               ),
             ],
           ),
@@ -113,11 +116,12 @@ class ProviderLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assetPath = logo.assetPath;
+    final logoColor = logo.color ?? context.palette.textSecondary;
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: logo.color.withValues(alpha: 0.10),
+        color: logoColor.withValues(alpha: 0.10),
         borderRadius: AppRadius.md,
       ),
       alignment: Alignment.center,
@@ -129,22 +133,22 @@ class ProviderLogo extends StatelessWidget {
                 width: 28,
                 height: 28,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _fallbackText(),
+                errorBuilder: (_, _, _) => _fallbackText(context),
               ),
             )
           : logo.brandIcon != null
-          ? Icon(logo.brandIcon, size: 22, color: logo.color)
-          : _fallbackText(),
+          ? Icon(logo.brandIcon, size: 22, color: logoColor)
+          : _fallbackText(context),
     );
   }
 
-  Widget _fallbackText() {
+  Widget _fallbackText(BuildContext context) {
     return Text(
       logo.textIcon,
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: logo.color,
+        color: logo.color ?? context.palette.textSecondary,
       ),
     );
   }

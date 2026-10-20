@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/config/theme.dart';
+import '../../../../app/config/app_palette.dart';
 import '../provider/workspace_provider.dart';
 
 /// Indikator live status AI (ala Claude/Gemini/ChatGPT): label status yang
@@ -45,13 +45,13 @@ class _AiStatusIndicatorState extends ConsumerState<AiStatusIndicator>
             SizedBox(
               width: widget.compact ? 14 : 16,
               height: widget.compact ? 14 : 16,
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: AppColors.accentPrimary,
+                color: context.palette.secondary,
               ),
             ),
             SizedBox(width: widget.compact ? 8 : 10),
-            _Dots(animation: _shimmer, color: AppColors.accentPrimary),
+            _Dots(animation: _shimmer, color: context.palette.secondary),
           ],
         );
       },

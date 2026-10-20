@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 
@@ -9,37 +10,36 @@ import '../../../../app/l10n/l10n.dart';
 ///
 /// Dipakai untuk bubble chat. User bisa menyeleksi teks.
 class MarkdownMessage extends StatelessWidget {
-  const MarkdownMessage({
-    super.key,
-    required this.text,
-    this.baseColor = AppColors.textPrimary,
-  });
+  const MarkdownMessage({super.key, required this.text, this.baseColor});
 
   final String text;
-  final Color baseColor;
+
+  /// Warna dasar teks; `null` = warna teks utama palet aktif.
+  final Color? baseColor;
 
   @override
   Widget build(BuildContext context) {
+    final base = baseColor ?? context.palette.textPrimary;
     final style = MarkdownStyleSheet(
       p: TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
         fontSize: 14,
         height: 1.55,
-        color: baseColor,
+        color: base,
       ),
       strong: TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
         fontSize: 14,
         fontWeight: FontWeight.w700,
-        color: baseColor,
+        color: base,
       ),
       em: TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
         fontStyle: FontStyle.italic,
-        color: baseColor,
+        color: base,
       ),
       h1: TextStyle(
         fontFamily: AppFonts.uiFamily,
@@ -47,7 +47,7 @@ class MarkdownMessage extends StatelessWidget {
         fontSize: 19,
         fontWeight: FontWeight.w700,
         height: 1.4,
-        color: baseColor,
+        color: base,
       ),
       h2: TextStyle(
         fontFamily: AppFonts.uiFamily,
@@ -55,7 +55,7 @@ class MarkdownMessage extends StatelessWidget {
         fontSize: 16.5,
         fontWeight: FontWeight.w700,
         height: 1.4,
-        color: baseColor,
+        color: base,
       ),
       h3: TextStyle(
         fontFamily: AppFonts.uiFamily,
@@ -63,21 +63,21 @@ class MarkdownMessage extends StatelessWidget {
         fontSize: 14.5,
         fontWeight: FontWeight.w700,
         height: 1.4,
-        color: baseColor,
+        color: base,
       ),
       listBullet: TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
         fontSize: 14,
         height: 1.55,
-        color: baseColor,
+        color: base,
       ),
       code: TextStyle(
         fontFamily: AppFonts.monoFamily,
         fontFamilyFallback: AppFonts.monoFallback,
         fontSize: 12.5,
-        color: AppColors.textPrimary,
-        backgroundColor: AppColors.hoverBg,
+        color: context.palette.textPrimary,
+        backgroundColor: context.palette.hoverBg,
       ),
       codeblockDecoration: const BoxDecoration(
         color: Color(0xFF16181D),
@@ -85,23 +85,23 @@ class MarkdownMessage extends StatelessWidget {
       ),
       codeblockPadding: const EdgeInsets.all(12),
       blockquoteDecoration: BoxDecoration(
-        color: AppColors.bgSunken,
-        border: const Border(
-          left: BorderSide(color: AppColors.accentPrimary, width: 3),
+        color: context.palette.bgSunken,
+        border: Border(
+          left: BorderSide(color: context.palette.primary, width: 3),
         ),
         borderRadius: AppRadius.sm,
       ),
       blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      a: const TextStyle(
+      a: TextStyle(
         fontFamily: AppFonts.uiFamily,
         fontFamilyFallback: AppFonts.uiFallback,
         fontSize: 14,
-        color: AppColors.link,
+        color: context.palette.link,
         decoration: TextDecoration.underline,
-        decorationColor: AppColors.link,
+        decorationColor: context.palette.link,
       ),
-      horizontalRuleDecoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.borderStrong)),
+      horizontalRuleDecoration: BoxDecoration(
+        border: Border(top: BorderSide(color: context.palette.borderStrong)),
       ),
       pPadding: const EdgeInsets.only(bottom: 6),
       h1Padding: const EdgeInsets.only(top: 4, bottom: 6),

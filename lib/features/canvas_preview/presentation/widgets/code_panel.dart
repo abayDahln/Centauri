@@ -3,6 +3,7 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/error_messages.dart';
 import '../../../../app/l10n/l10n.dart';
@@ -64,7 +65,7 @@ class _CodePanelState extends ConsumerState<CodePanel> {
     final hasCode = html != null && html.trim().isNotEmpty;
 
     return ColoredBox(
-      color: AppColors.bgSurface,
+      color: context.palette.bgSurface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -99,25 +100,25 @@ class _CodeBreadcrumb extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Container(
-      height: AppColors.toolbarHeight,
+      height: AppMetrics.toolbarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: const BoxDecoration(
-        color: AppColors.bgSurface,
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+      decoration: BoxDecoration(
+        color: context.palette.bgSurface,
+        border: Border(bottom: BorderSide(color: context.palette.borderSubtle)),
       ),
       child: Row(
         children: [
           const Icon(Icons.description_outlined, size: 13),
           const SizedBox(width: 6),
-          const Text('canvas', style: AppText.monoSmall),
-          const Text('  ›  ', style: AppText.monoSmall),
-          const Text(
+          Text('canvas', style: context.text.monoSmall),
+          Text('  ›  ', style: context.text.monoSmall),
+          Text(
             'index.html',
             style: TextStyle(
               fontFamily: AppFonts.monoFamily,
               fontFamilyFallback: AppFonts.monoFallback,
               fontSize: 11,
-              color: AppColors.textPrimary,
+              color: context.palette.textPrimary,
             ),
           ),
           const Spacer(),
@@ -159,7 +160,7 @@ class _BarIcon extends StatelessWidget {
         tooltip: tooltip,
         splashRadius: 13,
         padding: EdgeInsets.zero,
-        color: AppColors.textSecondary,
+        color: context.palette.textSecondary,
         onPressed: onPressed,
       ),
     );
@@ -257,12 +258,12 @@ class _LineGutter extends StatelessWidget {
               child: Text(
                 '${index + 1}',
                 textAlign: TextAlign.right,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AppFonts.monoFamily,
                   fontFamilyFallback: AppFonts.monoFallback,
                   fontSize: 12,
                   height: 1.6,
-                  color: AppColors.textDisabled,
+                  color: context.palette.textDisabled,
                 ),
               ),
             ),
@@ -284,7 +285,7 @@ class _CodeEmptyState extends StatelessWidget {
         child: Text(
           context.l10n.codePanelEmpty,
           textAlign: TextAlign.center,
-          style: AppText.caption,
+          style: context.text.caption,
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../presentation/history_provider.dart';
@@ -62,7 +63,7 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             context.l10n.historyRecent,
-            style: AppText.caption.copyWith(fontWeight: FontWeight.w600),
+            style: context.text.caption.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
         const SizedBox(height: 4),
@@ -131,10 +132,10 @@ class _NewChatButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.bgSurface,
-      shape: const RoundedRectangleBorder(
+      color: context.palette.bgSurface,
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadius.sm,
-        side: BorderSide(color: AppColors.borderSubtle),
+        side: BorderSide(color: context.palette.borderSubtle),
       ),
       child: InkWell(
         onTap: onTap,
@@ -145,9 +146,9 @@ class _NewChatButton extends StatelessWidget {
           alignment: AlignmentDirectional.centerStart,
           child: Row(
             children: [
-              const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
+              Icon(Icons.add, size: 16, color: context.palette.textPrimary),
               const SizedBox(width: 8),
-              Text(context.l10n.historyNewChat, style: AppText.button),
+              Text(context.l10n.historyNewChat, style: context.text.button),
             ],
           ),
         ),
@@ -167,35 +168,35 @@ class _SearchField extends StatelessWidget {
     return Container(
       height: 36,
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: AppRadius.sm,
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: context.palette.borderSubtle),
       ),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: AppFonts.uiFamily,
           fontFamilyFallback: AppFonts.uiFallback,
           fontSize: 13,
-          color: AppColors.textPrimary,
+          color: context.palette.textPrimary,
         ),
         decoration: InputDecoration(
           filled: false,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.search,
             size: 16,
-            color: AppColors.textSecondary,
+            color: context.palette.textSecondary,
           ),
           hintText: context.l10n.historySearchHint,
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             fontFamily: AppFonts.uiFamily,
             fontFamilyFallback: AppFonts.uiFallback,
             fontSize: 13,
-            color: AppColors.textDisabled,
+            color: context.palette.textDisabled,
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
@@ -229,13 +230,13 @@ class _ProjectTileState extends State<_ProjectTile> {
   @override
   Widget build(BuildContext context) {
     final background = widget.active
-        ? AppColors.accentSoft
+        ? context.palette.primarySoft
         : _hovered
-        ? AppColors.hoverBg
+        ? context.palette.hoverBg
         : Colors.transparent;
     final foreground = widget.active
-        ? AppColors.accentPrimary
-        : AppColors.textPrimary;
+        ? context.palette.primary
+        : context.palette.textPrimary;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -311,7 +312,7 @@ class _TileAction extends StatelessWidget {
         borderRadius: AppRadius.sm,
         child: Padding(
           padding: const EdgeInsets.all(4),
-          child: Icon(icon, size: 15, color: AppColors.textSecondary),
+          child: Icon(icon, size: 15, color: context.palette.textSecondary),
         ),
       ),
     );
@@ -331,14 +332,14 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.history, size: 26, color: AppColors.textDisabled),
+            Icon(Icons.history, size: 26, color: context.palette.textDisabled),
             const SizedBox(height: 10),
             Text(
               searching
                   ? context.l10n.historyEmptySearch
                   : context.l10n.historyEmptyList,
               textAlign: TextAlign.center,
-              style: AppText.caption,
+              style: context.text.caption,
             ),
           ],
         ),

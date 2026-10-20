@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/config/routes.dart';
+import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/l10n.dart';
 import '../../../app/widgets/stitch_widgets.dart';
@@ -51,16 +52,16 @@ class ProviderListPage extends ConsumerWidget {
               children: [
                 Text(
                   l10n.providerListHeading,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     height: 30 / 24,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
-                    color: AppColors.textPrimary,
+                    color: context.palette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(l10n.providerListSubtitle, style: AppText.uiSmall),
+                Text(l10n.providerListSubtitle, style: context.text.uiSmall),
                 const SizedBox(height: 28),
                 _buildList(
                   context,
@@ -114,20 +115,23 @@ class ProviderListPage extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: Border.all(
-            color: AppColors.statusError.withValues(alpha: 0.32),
+            color: context.palette.statusError.withValues(alpha: 0.32),
           ),
           borderRadius: AppRadius.md,
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.error_outline,
               size: 16,
-              color: AppColors.statusError,
+              color: context.palette.statusError,
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(l10n.providerListLoadFailed, style: AppText.uiSmall),
+              child: Text(
+                l10n.providerListLoadFailed,
+                style: context.text.uiSmall,
+              ),
             ),
             TextButton(
               onPressed: () => ref.refresh(providerConfigProvider.future),
@@ -143,23 +147,23 @@ class ProviderListPage extends ConsumerWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.borderSubtle),
+          border: Border.all(color: context.palette.borderSubtle),
           borderRadius: AppRadius.md,
-          color: AppColors.bgSurface,
+          color: context.palette.bgSurface,
         ),
         child: Column(
           children: [
-            const Icon(
+            Icon(
               Icons.key_outlined,
               size: 24,
-              color: AppColors.textDisabled,
+              color: context.palette.textDisabled,
             ),
             const SizedBox(height: 12),
-            Text(l10n.providerListEmptyTitle, style: AppText.panelTitle),
+            Text(l10n.providerListEmptyTitle, style: context.text.panelTitle),
             const SizedBox(height: 4),
             Text(
               l10n.providerListEmptyBody,
-              style: AppText.caption,
+              style: context.text.caption,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -175,15 +179,15 @@ class ProviderListPage extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.bgSurface,
+        color: context.palette.bgSurface,
         borderRadius: AppRadius.md,
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: context.palette.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           for (var i = 0; i < providers.length; i++) ...[
-            if (i > 0) const Divider(height: 1, color: AppColors.borderSubtle),
+            if (i > 0) Divider(height: 1, color: context.palette.borderSubtle),
             _ProviderRow(
               provider: providers[i],
               isActive: providers[i].id == activeProviderId,
@@ -251,7 +255,7 @@ class _ProviderRowState extends State<_ProviderRow> {
         onTap: widget.onOpen,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          color: _hovered ? AppColors.hoverBg : AppColors.bgSurface,
+          color: _hovered ? context.palette.hoverBg : context.palette.bgSurface,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
@@ -266,7 +270,7 @@ class _ProviderRowState extends State<_ProviderRow> {
                             provider.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppText.ui.copyWith(
+                            style: context.text.ui.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -275,8 +279,8 @@ class _ProviderRowState extends State<_ProviderRow> {
                           const SizedBox(width: 8),
                           Text(
                             provider.providerName,
-                            style: AppText.monoSmall.copyWith(
-                              color: AppColors.textDisabled,
+                            style: context.text.monoSmall.copyWith(
+                              color: context.palette.textDisabled,
                             ),
                           ),
                         ],
@@ -292,8 +296,8 @@ class _ProviderRowState extends State<_ProviderRow> {
                         ].where((v) => v.isNotEmpty).join('  ·  '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.monoSmall.copyWith(
-                          color: AppColors.textSecondary,
+                        style: context.text.monoSmall.copyWith(
+                          color: context.palette.textSecondary,
                         ),
                       ),
                     ],

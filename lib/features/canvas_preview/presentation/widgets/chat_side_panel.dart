@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
@@ -54,10 +55,12 @@ class ChatSidePanel extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          height: AppColors.toolbarHeight,
+          height: AppMetrics.toolbarHeight,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: context.palette.borderSubtle),
+            ),
           ),
           child: Row(
             children: [

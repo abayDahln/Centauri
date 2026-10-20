@@ -251,6 +251,29 @@ class LocalStorageService {
   Future<void> setAppLocale(String code) async =>
       _metaBox?.put(AppConstants.appLocaleKey, code);
 
+  // ------------------------------------------------------------------ tema --
+
+  /// Mode tema pilihan pengguna (`system`, `light`, `dark`). `null` = belum
+  /// pernah memilih; aplikasi memakai mode terang seperti sebelum fitur tema.
+  String? get appThemeMode => _metaBox?.get(AppConstants.appThemeModeKey);
+
+  Future<void> setAppThemeMode(String mode) async =>
+      _metaBox?.put(AppConstants.appThemeModeKey, mode);
+
+  /// Id preset aksen utama (`blue`, `violet`, …). `null` = biru.
+  String? get appAccentPrimary =>
+      _metaBox?.get(AppConstants.appAccentPrimaryKey);
+
+  Future<void> setAppAccentPrimary(String id) async =>
+      _metaBox?.put(AppConstants.appAccentPrimaryKey, id);
+
+  /// Id preset aksen AI. `null` = mengikuti aksen utama (biru).
+  String? get appAccentSecondary =>
+      _metaBox?.get(AppConstants.appAccentSecondaryKey);
+
+  Future<void> setAppAccentSecondary(String id) async =>
+      _metaBox?.put(AppConstants.appAccentSecondaryKey, id);
+
   /// Kotak proyek siap dibaca (terbuka dan belum ditutup). Dipakai migrator
   /// agar flag sekali-jalan tidak tertulis padahal daftar proyek tak terbaca.
   bool get projectsBoxHealthy => _projectsBox != null && _projectsBox!.isOpen;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/config/theme.dart';
+import '../../../app/config/app_palette.dart';
 import 'prompt_chat_panel.dart';
 
 /// Screen standalone Prompt Editor — pada desktop/mobile chat terintegrasi
@@ -10,8 +10,8 @@ class PromptEditorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: AppColors.bgBase,
+    return Scaffold(
+      backgroundColor: context.palette.bgBase,
       body: SafeArea(child: PromptChatPanel()),
     );
   }
