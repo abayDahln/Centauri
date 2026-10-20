@@ -214,6 +214,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get canvasShowHistory => '기록 보기';
 
   @override
+  String get canvasHideChat => '채팅 숨기기';
+
+  @override
+  String get canvasShowChat => '채팅 보기';
+
+  @override
   String get canvasHidePreview => '미리보기 숨기기';
 
   @override
@@ -240,6 +246,12 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get canvasModeCode => '코드';
+
+  @override
+  String get canvasShowCode => '코드 보기';
+
+  @override
+  String get canvasHideCode => '코드 숨기기';
 
   @override
   String get canvasServiceSettings => '서비스 설정';

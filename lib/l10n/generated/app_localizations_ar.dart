@@ -216,6 +216,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get canvasShowHistory => 'عرض السجل';
 
   @override
+  String get canvasHideChat => 'إخفاء المحادثة';
+
+  @override
+  String get canvasShowChat => 'عرض المحادثة';
+
+  @override
   String get canvasHidePreview => 'إخفاء المعاينة';
 
   @override
@@ -245,6 +251,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get canvasModeCode => 'كود';
+
+  @override
+  String get canvasShowCode => 'عرض الكود';
+
+  @override
+  String get canvasHideCode => 'إخفاء الكود';
 
   @override
   String get canvasServiceSettings => 'إعدادات الخدمة';

@@ -197,82 +197,94 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   }) {
     switch (message.role) {
       case ChatRole.user:
-        return Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: context.palette.textPrimary,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(10),
-                bottomLeft: Radius.circular(10),
-                bottomRight: Radius.circular(2),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (message.attachments.isNotEmpty) ...[
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: message.attachments
-                        .map(
-                          (a) => GestureDetector(
-                            onTap: () => showAttachmentPreview(context, a),
-                            child: ClipRRect(
-                              borderRadius: AppRadius.sm,
-                              child: a.isText
-                                  ? Container(
-                                      width: 72,
-                                      height: 52,
-                                      color: Colors.white24,
-                                      alignment: Alignment.center,
-                                      child: const Icon(
-                                        Icons.description_outlined,
-                                        size: 20,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : Image.memory(
-                                      a.bytes,
-                                      width: 72,
-                                      height: 52,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Container(
-                                        width: 72,
-                                        height: 52,
-                                        color: Colors.white24,
-                                        alignment: Alignment.center,
-                                        child: const Icon(
-                                          Icons.broken_image_outlined,
-                                          size: 20,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 6),
-                ],
-                Text(
-                  message.shownText,
-                  style: const TextStyle(
-                    fontFamily: AppFonts.uiFamily,
-                    fontFamilyFallback: AppFonts.uiFallback,
-                    fontSize: 13.5,
-                    height: 1.5,
-                    color: Colors.white,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Lebar bubble mengikuti isi teks, maksimal 3/4 kolom percakapan.
+            return Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.75,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: context.palette.primary,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    topRight: Radius.circular(10),
+                    bottomLeft: Radius.circular(10),
+                    bottomRight: Radius.circular(2),
                   ),
                 ),
-              ],
-            ),
-          ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (message.attachments.isNotEmpty) ...[
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: message.attachments
+                            .map(
+                              (a) => GestureDetector(
+                                onTap: () => showAttachmentPreview(context, a),
+                                child: ClipRRect(
+                                  borderRadius: AppRadius.sm,
+                                  child: a.isText
+                                      ? Container(
+                                          width: 72,
+                                          height: 52,
+                                          color: context.palette.onPrimary
+                                              .withValues(alpha: 0.18),
+                                          alignment: Alignment.center,
+                                          child: Icon(
+                                            Icons.description_outlined,
+                                            size: 20,
+                                            color: context.palette.onPrimary,
+                                          ),
+                                        )
+                                      : Image.memory(
+                                          a.bytes,
+                                          width: 72,
+                                          height: 52,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, _, _) => Container(
+                                            width: 72,
+                                            height: 52,
+                                            color: context.palette.onPrimary
+                                                .withValues(alpha: 0.18),
+                                            alignment: Alignment.center,
+                                            child: Icon(
+                                              Icons.broken_image_outlined,
+                                              size: 20,
+                                              color: context.palette.onPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    Text(
+                      message.shownText,
+                      style: TextStyle(
+                        fontFamily: AppFonts.uiFamily,
+                        fontFamilyFallback: AppFonts.uiFallback,
+                        fontSize: 13.5,
+                        height: 1.5,
+                        color: context.palette.onPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       case ChatRole.assistant:
         if (message.kind == ChatMessageKind.chat) {
@@ -356,8 +368,8 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   Widget _buildChatBubble(String text) {
     return Align(
       alignment: AlignmentDirectional.centerStart,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 340),
+      child: SizedBox(
+        width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

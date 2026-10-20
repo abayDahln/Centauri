@@ -76,9 +76,12 @@ class ProviderListPage extends ConsumerWidget {
                   activeProviderId,
                   asyncState,
                 ),
-                const SizedBox(height: 32),
                 // MCP bridge agar agent eksternal bisa membaca/mengubah canvas.
-                const McpStatusSection(),
+                // Mobile tidak mendukung MCP, jadi kartunya tidak ditampilkan.
+                if (McpStatusSection.isSupported) ...[
+                  const SizedBox(height: 32),
+                  const McpStatusSection(),
+                ],
                 const SizedBox(height: 24),
               ],
             ),
@@ -171,12 +174,6 @@ class ProviderListPage extends ConsumerWidget {
               l10n.providerListEmptyBody,
               style: context.text.caption,
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => context.push(AppRoutes.providerNew),
-              icon: const Icon(Icons.add, size: 16),
-              label: Text(l10n.providerListAddProvider),
             ),
           ],
         ),

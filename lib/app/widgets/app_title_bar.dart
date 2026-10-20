@@ -9,12 +9,10 @@ import '../l10n/l10n.dart';
 
 /// Title bar kustom untuk shell desktop (Windows).
 ///
-/// Latar panel putih, garis bawah 1 px, logo gelap, dan tombol window
-/// minimalis. Mengikuti Centauri Design System.
+/// Latar panel putih, garis bawah 1 px, dan tombol window minimalis tanpa
+/// logo atau nama aplikasi. Mengikuti Centauri Design System.
 class AppTitleBar extends StatefulWidget {
-  const AppTitleBar({super.key, this.title = 'Centauri'});
-
-  final String title;
+  const AppTitleBar({super.key});
 
   static bool get isSupported => Platform.isWindows || Platform.isLinux;
 
@@ -82,34 +80,6 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
         child: Row(
           children: [
             const SizedBox(width: 12),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: context.palette.textPrimary,
-                borderRadius: BorderRadius.all(Radius.circular(6)),
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                'C',
-                style: TextStyle(
-                  fontFamily: AppFonts.uiFamily,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              widget.title,
-              style: context.text.label.copyWith(
-                color: context.palette.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
             const Spacer(),
             _WindowButton(
               icon: Icons.remove,

@@ -220,6 +220,12 @@ class AppLocalizationsFil extends AppLocalizations {
   String get canvasShowHistory => 'Ipakita ang history';
 
   @override
+  String get canvasHideChat => 'Itago ang chat';
+
+  @override
+  String get canvasShowChat => 'Ipakita ang chat';
+
+  @override
   String get canvasHidePreview => 'Itago ang preview';
 
   @override
@@ -247,6 +253,12 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get canvasModeCode => 'Code';
+
+  @override
+  String get canvasShowCode => 'Ipakita ang code';
+
+  @override
+  String get canvasHideCode => 'Itago ang code';
 
   @override
   String get canvasServiceSettings => 'Mga setting ng serbisyo';

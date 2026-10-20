@@ -548,17 +548,17 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           controller: _baseUrlController,
           enabled: _isCustom,
           onChanged: (_) => setState(() {}),
-          style: const TextStyle(
+          // Latar field tidak dibedakan saat nonaktif; hanya warna teksnya.
+          style: TextStyle(
             fontFamily: AppFonts.monoFamily,
             fontFamilyFallback: AppFonts.monoFallback,
             fontSize: 13,
+            color: _isCustom
+                ? context.palette.textPrimary
+                : context.palette.textDisabled,
           ),
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             hintText: 'https://api.openai.com/v1',
-            // Nonaktif = tenggelam, sama seperti field pilihan yang terkunci.
-            fillColor: _isCustom
-                ? context.palette.inputBg
-                : context.palette.bgSunken,
           ),
           validator: (value) {
             final text = value?.trim() ?? '';
@@ -618,17 +618,17 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                   obscureText: true,
                   // Helper di bawah field ikut berubah saat key baru diketik.
                   onChanged: (_) => setState(() {}),
-                  style: const TextStyle(
+                  // Latar field tetap sama saat terkunci; hanya teksnya redup.
+                  style: TextStyle(
                     fontFamily: AppFonts.monoFamily,
                     fontFamilyFallback: AppFonts.monoFallback,
                     fontSize: 13,
+                    color: _apiKeyLocked
+                        ? context.palette.textDisabled
+                        : context.palette.textPrimary,
                   ),
                   decoration: InputDecoration(
                     hintText: _apiKeyLocked ? '••••••••' : 'sk-...',
-                    // Terkunci = tenggelam, sejalan dengan field nonaktif lain.
-                    fillColor: _apiKeyLocked
-                        ? context.palette.bgSunken
-                        : context.palette.inputBg,
                   ),
                 ),
               ),

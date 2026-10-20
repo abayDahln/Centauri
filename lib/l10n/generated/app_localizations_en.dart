@@ -218,6 +218,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasShowHistory => 'Show history';
 
   @override
+  String get canvasHideChat => 'Hide chat';
+
+  @override
+  String get canvasShowChat => 'Show chat';
+
+  @override
   String get canvasHidePreview => 'Hide preview';
 
   @override
@@ -245,6 +251,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get canvasModeCode => 'Code';
+
+  @override
+  String get canvasShowCode => 'Show code';
+
+  @override
+  String get canvasHideCode => 'Hide code';
 
   @override
   String get canvasServiceSettings => 'Service settings';

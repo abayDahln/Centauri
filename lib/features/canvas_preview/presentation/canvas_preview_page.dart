@@ -308,12 +308,29 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
               final next = !canvasVisible;
               ref.read(canvasVisibleProvider.notifier).set(next);
               // Saat kanvas dibuka lagi, panel chat tetap terlihat.
-              if (!next) ref.read(panelVisibleProvider.notifier).show();
+              if (!next) {
+                ref.read(panelVisibleProvider.notifier).show();
+                // Mode fokus chat tidak menampilkan panel kode.
+                ref
+                    .read(workspaceProvider.notifier)
+                    .setOutputMode(OutputMode.design);
+              }
             },
             onToggleHistory: () {
               if (width >= _historyInlineWidth) {
+                final opening = !historyVisible;
+                // Panel kode dan sidebar tidak tampil bersamaan agar kanvas
+                // tetap lega.
+                if (opening) {
+                  ref
+                      .read(workspaceProvider.notifier)
+                      .setOutputMode(OutputMode.design);
+                }
                 ref.read(historyVisibleProvider.notifier).toggle();
               } else {
+                ref
+                    .read(workspaceProvider.notifier)
+                    .setOutputMode(OutputMode.design);
                 _openHistoryDialog(context);
               }
             },
@@ -540,6 +557,7 @@ class _TopBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(workspaceProvider);
     final history = ref.watch(historyProvider);
+    final chatVisible = ref.watch(panelVisibleProvider);
     final notifier = ref.read(workspaceProvider.notifier);
     final l10n = context.l10n;
 
@@ -573,6 +591,18 @@ class _TopBar extends ConsumerWidget {
                   active: historyVisible,
                   onPressed: onToggleHistory,
                 ),
+                if (workspaceActive && canvasVisible)
+                  SoftIconButton(
+                    icon: chatVisible
+                        ? Icons.chat_bubble
+                        : Icons.chat_bubble_outline,
+                    tooltip: chatVisible
+                        ? l10n.canvasHideChat
+                        : l10n.canvasShowChat,
+                    active: chatVisible,
+                    onPressed: () =>
+                        ref.read(panelVisibleProvider.notifier).toggle(),
+                  ),
                 SoftIconButton(
                   icon: canvasVisible
                       ? Icons.close_fullscreen_outlined
@@ -617,20 +647,7 @@ class _TopBar extends ConsumerWidget {
               ],
             ),
           ),
-          // Tengah: mode Desain / Kode (hanya saat kanvas terbuka).
-          if (workspaceActive && canvasVisible)
-            SoftSegmented<OutputMode>(
-              selected: state.outputMode,
-              onChanged: notifier.setOutputMode,
-              segments: [
-                SoftSegment(
-                  value: OutputMode.design,
-                  label: l10n.canvasModeDesign,
-                ),
-                SoftSegment(value: OutputMode.dev, label: l10n.canvasModeCode),
-              ],
-            ),
-          // Kanan: ekspor halaman (bila ada) dan pengaturan.
+          // Kanan: ekspor halaman, tombol kode, dan pengaturan.
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -638,6 +655,27 @@ class _TopBar extends ConsumerWidget {
                 if (workspaceActive) ...[
                   PageExportButton(primary: true),
                   const SizedBox(width: 8),
+                  if (canvasVisible) ...[
+                    SoftIconButton(
+                      icon: Icons.code_outlined,
+                      tooltip: state.outputMode == OutputMode.dev
+                          ? l10n.canvasHideCode
+                          : l10n.canvasShowCode,
+                      active: state.outputMode == OutputMode.dev,
+                      onPressed: () {
+                        final opening = state.outputMode != OutputMode.dev;
+                        // Panel kode dan sidebar tidak tampil bersamaan agar
+                        // kanvas tetap lega.
+                        if (opening && historyVisible) {
+                          ref.read(historyVisibleProvider.notifier).set(false);
+                        }
+                        notifier.setOutputMode(
+                          opening ? OutputMode.dev : OutputMode.design,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                 ],
                 const AppearanceMenuButton(),
                 const SizedBox(width: 2),
@@ -762,7 +800,6 @@ class _PreviewFrame extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
-        borderRadius: AppRadius.xl,
         border: Border.all(color: context.palette.borderSubtle),
         boxShadow: context.palette.shadowSoft,
       ),
@@ -925,52 +962,49 @@ class _EmptyPreviewHint extends StatelessWidget {
 
 enum _MobileMenuAction { history, settings, appearance, language }
 
-class _MobileShell extends ConsumerWidget {
+class _MobileShell extends ConsumerStatefulWidget {
   const _MobileShell();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MobileShell> createState() => _MobileShellState();
+}
+
+class _MobileShellState extends ConsumerState<_MobileShell> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  Widget build(BuildContext context) {
     final hasUi = ref.watch(
       workspaceProvider.select((s) => s.hasRenderedPage || s.pages.isNotEmpty),
     );
     final l10n = context.l10n;
+    final width = MediaQuery.sizeOf(context).width;
     // Prompt bar mengambang: sisakan ruang untuk gesture bar / navigasi bawah.
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: context.palette.bgBase,
+      // Chat & History tampil sebagai sidebar yang digeser dari kiri,
+      // bukan bottom sheet. Posisinya sejajar dengan panel chat di desktop.
+      drawer: Drawer(
+        width: math.min(width * 0.88, 380),
+        backgroundColor: context.palette.bgSurface,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(),
+        child: const SafeArea(child: ChatSidePanel()),
+      ),
       appBar: AppBar(
-        titleSpacing: 12,
-        title: Row(
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: context.palette.textPrimary,
-                borderRadius: AppRadius.sm,
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                'C',
-                style: TextStyle(
-                  fontFamily: AppFonts.uiFamily,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                hasUi ? l10n.canvasPrototypeTitle : 'Centauri',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: context.text.panelTitle.copyWith(fontSize: 15),
-              ),
-            ),
-          ],
+        titleSpacing: 0,
+        automaticallyImplyLeading: false,
+        leadingWidth: 48,
+        // Tombol chat di kiri, mengikuti posisi panel di desktop.
+        leading: Center(
+          child: SoftIconButton(
+            icon: Icons.forum_outlined,
+            tooltip: l10n.canvasChatPanelTooltip,
+            onPressed: _openSidebar,
+          ),
         ),
         actions: [
           if (hasUi) ...[
@@ -982,17 +1016,12 @@ class _MobileShell extends ConsumerWidget {
                   _openSheet(context, const CodePanel(), heightFactor: 0.9),
             ),
           ],
-          SoftIconButton(
-            icon: Icons.forum_outlined,
-            tooltip: l10n.canvasChatPanelTooltip,
-            onPressed: () => _openChatSheet(context),
-          ),
           // Sisa aksi masuk menu agar app bar tidak sesak di layar sempit.
           PopupMenuButton<_MobileMenuAction>(
             icon: const Icon(Icons.more_vert, size: 20),
             padding: EdgeInsets.zero,
             position: PopupMenuPosition.under,
-            onSelected: (action) => _onMenuSelected(context, action),
+            onSelected: _onMenuSelected,
             itemBuilder: (context) => [
               _menuItem(
                 _MobileMenuAction.history,
@@ -1097,10 +1126,10 @@ class _MobileShell extends ConsumerWidget {
     );
   }
 
-  static void _onMenuSelected(BuildContext context, _MobileMenuAction action) {
+  void _onMenuSelected(_MobileMenuAction action) {
     switch (action) {
       case _MobileMenuAction.history:
-        _openChatSheet(context, tab: PanelTab.history);
+        _openSidebar(tab: PanelTab.history);
       case _MobileMenuAction.settings:
         context.push(AppRoutes.providers);
       case _MobileMenuAction.appearance:
@@ -1110,16 +1139,10 @@ class _MobileShell extends ConsumerWidget {
     }
   }
 
-  /// Panel chat dibuka di tab yang diminta (Chat atau History).
-  static void _openChatSheet(
-    BuildContext context, {
-    PanelTab tab = PanelTab.chat,
-  }) {
-    ProviderScope.containerOf(
-      context,
-      listen: false,
-    ).read(panelTabProvider.notifier).select(tab);
-    _openSheet(context, const ChatSidePanel());
+  /// Buka sidebar di tab yang diminta (Chat atau History).
+  void _openSidebar({PanelTab tab = PanelTab.chat}) {
+    ref.read(panelTabProvider.notifier).select(tab);
+    _scaffoldKey.currentState?.openDrawer();
   }
 
   /// Sheet dengan tinggi mengikuti jendela, bukan angka tetap, supaya tetap

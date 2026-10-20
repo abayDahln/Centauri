@@ -213,6 +213,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasShowHistory => '显示历史';
 
   @override
+  String get canvasHideChat => '隐藏聊天';
+
+  @override
+  String get canvasShowChat => '显示聊天';
+
+  @override
   String get canvasHidePreview => '隐藏预览';
 
   @override
@@ -239,6 +245,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get canvasModeCode => '代码';
+
+  @override
+  String get canvasShowCode => '显示代码';
+
+  @override
+  String get canvasHideCode => '隐藏代码';
 
   @override
   String get canvasServiceSettings => '服务设置';

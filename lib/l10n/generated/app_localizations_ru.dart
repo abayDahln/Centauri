@@ -219,6 +219,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get canvasShowHistory => 'Показать историю';
 
   @override
+  String get canvasHideChat => 'Скрыть чат';
+
+  @override
+  String get canvasShowChat => 'Показать чат';
+
+  @override
   String get canvasHidePreview => 'Скрыть предпросмотр';
 
   @override
@@ -248,6 +254,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get canvasModeCode => 'Код';
+
+  @override
+  String get canvasShowCode => 'Показать код';
+
+  @override
+  String get canvasHideCode => 'Скрыть код';
 
   @override
   String get canvasServiceSettings => 'Настройки сервиса';

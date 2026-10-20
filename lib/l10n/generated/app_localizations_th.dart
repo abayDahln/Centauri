@@ -217,6 +217,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String get canvasShowHistory => 'แสดงประวัติ';
 
   @override
+  String get canvasHideChat => 'ซ่อนแชต';
+
+  @override
+  String get canvasShowChat => 'แสดงแชต';
+
+  @override
   String get canvasHidePreview => 'ซ่อนตัวอย่าง';
 
   @override
@@ -243,6 +249,12 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get canvasModeCode => 'โค้ด';
+
+  @override
+  String get canvasShowCode => 'แสดงโค้ด';
+
+  @override
+  String get canvasHideCode => 'ซ่อนโค้ด';
 
   @override
   String get canvasServiceSettings => 'ตั้งค่าบริการ';

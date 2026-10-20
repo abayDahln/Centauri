@@ -218,6 +218,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get canvasShowHistory => 'Tampilkan riwayat';
 
   @override
+  String get canvasHideChat => 'Sembunyikan chat';
+
+  @override
+  String get canvasShowChat => 'Tampilkan chat';
+
+  @override
   String get canvasHidePreview => 'Sembunyikan pratinjau';
 
   @override
@@ -244,6 +250,12 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get canvasModeCode => 'Kode';
+
+  @override
+  String get canvasShowCode => 'Tampilkan kode';
+
+  @override
+  String get canvasHideCode => 'Sembunyikan kode';
 
   @override
   String get canvasServiceSettings => 'Pengaturan layanan';

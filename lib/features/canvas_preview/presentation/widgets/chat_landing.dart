@@ -23,7 +23,6 @@ class ChatLanding extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
-        borderRadius: AppRadius.lg,
         border: Border.all(color: context.palette.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,

@@ -326,7 +326,7 @@ packages:
     source: hosted
     version: "18.0.2"
   highlight:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: highlight
       sha256: "5353a83ffe3e3eca7df0abfb72dcf3fa66cc56b953728e7113ad4ad88497cf21"
@@ -973,10 +973,11 @@ packages:
   webview_windows:
     dependency: "direct main"
     description:
-      name: webview_windows
-      sha256: "47fcad5875a45db29dbb5c9e6709bf5c88dcc429049872701343f91ed7255730"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: "5e156e4d616ab901ef5b386f01b4a57f03449634"
+      resolved-ref: "5e156e4d616ab901ef5b386f01b4a57f03449634"
+      url: "https://github.com/jnschulze/flutter-webview-windows.git"
+    source: git
     version: "0.4.0"
   win32:
     dependency: transitive

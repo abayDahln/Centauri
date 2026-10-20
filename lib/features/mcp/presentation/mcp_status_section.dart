@@ -18,15 +18,16 @@ import '../data/mcp_server.dart';
 class McpStatusSection extends ConsumerStatefulWidget {
   const McpStatusSection({super.key});
 
+  /// MCP server hanya berjalan di desktop (Windows/Linux/macOS).
+  static bool get isSupported =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
   @override
   ConsumerState<McpStatusSection> createState() => _McpStatusSectionState();
 }
 
 class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
   bool _starting = false;
-
-  static bool get _supported =>
-      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   Future<void> _start() async {
     setState(() => _starting = true);
@@ -41,29 +42,8 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    if (!_supported) {
-      return _McpCard(
-        children: [
-          Text(
-            l10n.mcpDesktopTitle,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: context.palette.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.mcpDesktopOnlyDesc,
-            style: TextStyle(
-              color: context.palette.textSecondary,
-              fontSize: 13,
-              height: 1.5,
-            ),
-          ),
-        ],
-      );
-    }
+    // Mobile tidak mendukung MCP: kartu tidak ditampilkan sama sekali.
+    if (!McpStatusSection.isSupported) return const SizedBox.shrink();
 
     final server = ref.watch(mcpServerProvider);
     final running = server.isRunning;

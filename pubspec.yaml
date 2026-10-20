@@ -45,8 +45,14 @@ dependencies:
   hive_flutter: ^1.1.0
   uuid: ^4.6.0
   webview_flutter: ^4.14.1
-  webview_windows: ^0.4.0
+  # 0.4.0 belum memuat perbaikan trackpad dua jari (upstream PR #302).
+  # Pin ke commit perbaikannya sampai versi baru dirilis di pub.dev.
+  webview_windows:
+    git:
+      url: https://github.com/jnschulze/flutter-webview-windows.git
+      ref: 5e156e4d616ab901ef5b386f01b4a57f03449634
   flutter_highlight: ^0.7.0
+  highlight: ^0.7.0
   file_picker: ^11.0.3
   html: ^0.15.7
   window_manager: ^0.5.2

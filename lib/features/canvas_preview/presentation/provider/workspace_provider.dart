@@ -695,7 +695,11 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       );
     } on ApiConnectionException catch (e) {
       if (e.code == AppErrorCode.cancelled) {
-        _cancelGeneration(promptWasDiscarded: true);
+        // Cancel dari tombol Stop sudah menutup state; jangan tambah pesan
+        // "Generation stopped." untuk kedua kalinya.
+        if (state.isGenerating) {
+          _cancelGeneration(promptWasDiscarded: true);
+        }
         return;
       }
       // Detail teknis (URL, status HTTP, pesan provider) hanya masuk log.
@@ -788,10 +792,11 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     );
     if (promptWasDiscarded) {
       _appendMessage(
-        CanvasMessage(
+        const CanvasMessage(
           role: ChatRole.assistant,
           kind: ChatMessageKind.chat,
-          text: l10nOf(ref).canvasGenerationStopped,
+          // Sengaja bahasa Inggris: pesan ini bukan bagian dari UI multi-bahasa.
+          text: 'Generation stopped.',
         ),
       );
     }

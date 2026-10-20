@@ -508,6 +508,18 @@ abstract class AppLocalizations {
   /// **'Show history'**
   String get canvasShowHistory;
 
+  /// No description provided for @canvasHideChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide chat'**
+  String get canvasHideChat;
+
+  /// No description provided for @canvasShowChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Show chat'**
+  String get canvasShowChat;
+
   /// No description provided for @canvasHidePreview.
   ///
   /// In en, this message translates to:
@@ -549,6 +561,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Code'**
   String get canvasModeCode;
+
+  /// No description provided for @canvasShowCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Show code'**
+  String get canvasShowCode;
+
+  /// No description provided for @canvasHideCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide code'**
+  String get canvasHideCode;
 
   /// No description provided for @canvasServiceSettings.
   ///

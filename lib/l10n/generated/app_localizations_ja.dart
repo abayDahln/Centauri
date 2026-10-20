@@ -214,6 +214,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get canvasShowHistory => '履歴を表示';
 
   @override
+  String get canvasHideChat => 'チャットを隠す';
+
+  @override
+  String get canvasShowChat => 'チャットを表示';
+
+  @override
   String get canvasHidePreview => 'プレビューを隠す';
 
   @override
@@ -240,6 +246,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get canvasModeCode => 'コード';
+
+  @override
+  String get canvasShowCode => 'コードを表示';
+
+  @override
+  String get canvasHideCode => 'コードを隠す';
 
   @override
   String get canvasServiceSettings => 'サービス設定';
