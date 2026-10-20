@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -250,6 +251,11 @@ class _AutoSaveDebouncer {
 
 // ---------------------------------------------------------------- desktop --
 
+/// Lebar minimum jendela agar panel samping muat sebagai kolom tetap. Di bawah
+/// ini panel mengambang supaya area pratinjau tetap lega.
+const double _historyInlineWidth = 1240;
+const double _codeInlineWidth = 1120;
+
 class _DesktopShell extends ConsumerStatefulWidget {
   const _DesktopShell();
 
@@ -270,6 +276,14 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
     final hasUi = ref.watch(
       workspaceProvider.select((s) => s.hasRenderedPage || s.pages.isNotEmpty),
     );
+    final width = MediaQuery.sizeOf(context).width;
+
+    // Lebar panel mengikuti jendela. Di bawah ambang ini panel samping
+    // mengambang di atas kanvas supaya pratinjau tidak terhimpit.
+    final historyInline = historyVisible && width >= _historyInlineWidth;
+    final chatWidth = (width * 0.30).clamp(280.0, AppMetrics.sideBarWidth);
+    final codeWidth = (width * 0.36).clamp(320.0, 420.0);
+    final historyWidth = (width * 0.20).clamp(220.0, 280.0);
 
     if (hasUi && !_autoShownChat) {
       _autoShownChat = true;
@@ -280,6 +294,7 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
 
     // Mode Kode (dev) membuka panel kode; mode Desain menyembunyikannya.
     final showCode = canvasVisible && hasUi && mode == OutputMode.dev;
+    final codeInline = showCode && width >= _codeInlineWidth;
 
     return Scaffold(
       backgroundColor: context.palette.bgBase,
@@ -288,91 +303,116 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
           _TopBar(
             workspaceActive: hasUi,
             canvasVisible: canvasVisible,
-            historyVisible: historyVisible,
+            historyVisible: historyInline,
             onToggleCanvas: () {
               final next = !canvasVisible;
               ref.read(canvasVisibleProvider.notifier).set(next);
               // Saat kanvas dibuka lagi, panel chat tetap terlihat.
               if (!next) ref.read(panelVisibleProvider.notifier).show();
             },
-            onToggleHistory: () =>
-                ref.read(historyVisibleProvider.notifier).toggle(),
+            onToggleHistory: () {
+              if (width >= _historyInlineWidth) {
+                ref.read(historyVisibleProvider.notifier).toggle();
+              } else {
+                _openHistoryDialog(context);
+              }
+            },
           ),
           const StorageBanner(),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Stack(
               children: [
-                if (historyVisible) const _HistorySidebar(),
-                if (!canvasVisible)
-                  // Mode fokus chat: kanvas dan panel kode ditutup.
-                  const Expanded(child: _ChatOnlyPane())
-                else ...[
-                  if (showChat) ...[
-                    SizedBox(
-                      width: AppMetrics.sideBarWidth,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: context.palette.bgSurface,
-                          border: Border(
-                            right: BorderSide(
-                              color: context.palette.borderSubtle,
-                            ),
-                          ),
-                        ),
-                        child: PromptChatPanel(),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (historyInline)
+                      SizedBox(
+                        width: historyWidth,
+                        child: const _HistorySidebar(),
                       ),
-                    ),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (hasUi) const _PreviewToolbar(),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              if (hasUi)
-                                const _CanvasSurface(child: _PreviewFrame())
-                              else if (!showChat)
-                                const ChatLanding()
-                              else
-                                const _EmptyPreviewHint(),
-                              if (hasUi)
-                                const Positioned(
-                                  left: 24,
-                                  top: 24,
-                                  child: _AiStatusPill(),
+                    if (!canvasVisible)
+                      // Mode fokus chat: kanvas dan panel kode ditutup.
+                      const Expanded(child: _ChatOnlyPane())
+                    else ...[
+                      if (showChat) ...[
+                        SizedBox(
+                          width: chatWidth,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: context.palette.bgSurface,
+                              border: Border(
+                                right: BorderSide(
+                                  color: context.palette.borderSubtle,
                                 ),
-                              const Positioned(
-                                left: 24,
-                                right: 24,
-                                bottom: 24,
-                                child: PromptBar(),
                               ),
-                            ],
+                            ),
+                            child: PromptChatPanel(),
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  if (showCode) ...[
-                    SizedBox(
-                      width: 420,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: context.palette.bgSurface,
-                          border: Border(
-                            left: BorderSide(
-                              color: context.palette.borderSubtle,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (hasUi) const _PreviewToolbar(),
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  if (hasUi)
+                                    const _CanvasSurface(child: _PreviewFrame())
+                                  else if (!showChat)
+                                    const ChatLanding()
+                                  else
+                                    const _EmptyPreviewHint(),
+                                  if (hasUi)
+                                    const Positioned(
+                                      left: 24,
+                                      top: 24,
+                                      child: _AiStatusPill(),
+                                    ),
+                                  const Positioned(
+                                    left: 24,
+                                    right: 24,
+                                    bottom: 24,
+                                    child: PromptBar(),
+                                  ),
+                                ],
+                              ),
                             ),
+                          ],
+                        ),
+                      ),
+                      if (codeInline) ...[
+                        SizedBox(
+                          width: codeWidth,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: context.palette.bgSurface,
+                              border: Border(
+                                left: BorderSide(
+                                  color: context.palette.borderSubtle,
+                                ),
+                              ),
+                            ),
+                            child: const CodePanel(),
                           ),
                         ),
-                        child: CodePanel(),
-                      ),
-                    ),
+                      ],
+                    ],
                   ],
-                ],
+                ),
+                // Jendela sempit: panel kode mengambang agar kanvas tidak
+                // terhimpit jadi beberapa puluh piksel.
+                if (showCode && !codeInline)
+                  PositionedDirectional(
+                    end: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: _FloatingPanel(
+                      width: codeWidth,
+                      child: const CodePanel(),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -380,31 +420,75 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
       ),
     );
   }
+
+  /// Riwayat sebagai dialog saat jendela tidak cukup lebar untuk kolom tetap.
+  void _openHistoryDialog(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: context.palette.bgSurface,
+        insetPadding: const EdgeInsets.all(24),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.xl,
+          side: BorderSide(color: context.palette.borderSubtle),
+        ),
+        child: SizedBox(
+          width: 380,
+          height: math.min(560, height - 96),
+          child: _HistorySidebar(
+            onOpen: () => Navigator.of(dialogContext).pop(),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-/// Sidebar kiri: daftar percakapan tersimpan. Selalu tampil di desktop,
-/// terpisah dari panel chat.
+/// Sidebar kiri: daftar percakapan tersimpan, terpisah dari panel chat.
+/// Lebarnya diatur pemanggil supaya ikut ukuran jendela.
 class _HistorySidebar extends ConsumerWidget {
-  const _HistorySidebar();
+  const _HistorySidebar({this.onOpen});
 
-  static const double width = 260;
+  /// Dipanggil setelah proyek dibuka (mis. menutup dialog riwayat).
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SizedBox(
-      width: width,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: context.palette.bgSurface,
-          border: Border(
-            right: BorderSide(color: context.palette.borderSubtle),
-          ),
-        ),
-        child: HistoryPanel(
-          // Buka proyek dari sidebar: pastikan percakapannya terlihat.
-          onOpenProject: () => ref.read(panelVisibleProvider.notifier).show(),
-        ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.palette.bgSurface,
+        border: Border(right: BorderSide(color: context.palette.borderSubtle)),
       ),
+      child: HistoryPanel(
+        // Buka proyek dari sidebar: pastikan percakapannya terlihat.
+        onOpenProject: () {
+          ref.read(panelVisibleProvider.notifier).show();
+          onOpen?.call();
+        },
+      ),
+    );
+  }
+}
+
+/// Panel samping mengambang untuk jendela yang tidak cukup lebar untuk
+/// menampilkan kolom tetap.
+class _FloatingPanel extends StatelessWidget {
+  const _FloatingPanel({required this.width, required this.child});
+
+  final double width;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      decoration: BoxDecoration(
+        color: context.palette.bgSurface,
+        border: Border.all(color: context.palette.borderSubtle),
+        boxShadow: context.palette.shadowRaised,
+      ),
+      child: child,
     );
   }
 }
@@ -839,6 +923,8 @@ class _EmptyPreviewHint extends StatelessWidget {
 
 // ------------------------------------------------------------------ mobile --
 
+enum _MobileMenuAction { history, settings, appearance, language }
+
 class _MobileShell extends ConsumerWidget {
   const _MobileShell();
 
@@ -848,6 +934,8 @@ class _MobileShell extends ConsumerWidget {
       workspaceProvider.select((s) => s.hasRenderedPage || s.pages.isNotEmpty),
     );
     final l10n = context.l10n;
+    // Prompt bar mengambang: sisakan ruang untuk gesture bar / navigasi bawah.
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return Scaffold(
       backgroundColor: context.palette.bgBase,
@@ -885,28 +973,50 @@ class _MobileShell extends ConsumerWidget {
           ],
         ),
         actions: [
-          SoftIconButton(
-            icon: Icons.view_sidebar_outlined,
-            tooltip: l10n.canvasChatPanelTooltip,
-            onPressed: () =>
-                _openSheet(context, const ChatSidePanel(), heightFactor: 0.75),
-          ),
-          SoftIconButton(
-            icon: Icons.settings_outlined,
-            tooltip: l10n.canvasServiceSettings,
-            onPressed: () => context.push(AppRoutes.providers),
-          ),
-          const LanguageMenuButton(),
           if (hasUi) ...[
+            const PageExportButton(compact: true),
             SoftIconButton(
               icon: Icons.code_outlined,
               tooltip: l10n.canvasModeCode,
               onPressed: () =>
-                  _openSheet(context, const CodePanel(), heightFactor: 0.8),
+                  _openSheet(context, const CodePanel(), heightFactor: 0.9),
             ),
-            const PageExportButton(compact: true),
           ],
-          const SizedBox(width: 6),
+          SoftIconButton(
+            icon: Icons.forum_outlined,
+            tooltip: l10n.canvasChatPanelTooltip,
+            onPressed: () => _openChatSheet(context),
+          ),
+          // Sisa aksi masuk menu agar app bar tidak sesak di layar sempit.
+          PopupMenuButton<_MobileMenuAction>(
+            icon: const Icon(Icons.more_vert, size: 20),
+            padding: EdgeInsets.zero,
+            position: PopupMenuPosition.under,
+            onSelected: (action) => _onMenuSelected(context, action),
+            itemBuilder: (context) => [
+              _menuItem(
+                _MobileMenuAction.history,
+                Icons.history,
+                l10n.chatTabHistory,
+              ),
+              _menuItem(
+                _MobileMenuAction.settings,
+                Icons.settings_outlined,
+                l10n.canvasServiceSettings,
+              ),
+              _menuItem(
+                _MobileMenuAction.appearance,
+                Icons.palette_outlined,
+                l10n.appearanceTooltip,
+              ),
+              _menuItem(
+                _MobileMenuAction.language,
+                Icons.language,
+                l10n.languageTooltip,
+              ),
+            ],
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Column(
@@ -926,7 +1036,12 @@ class _MobileShell extends ConsumerWidget {
                     children: [
                       if (hasUi)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 92),
+                          padding: EdgeInsets.fromLTRB(
+                            12,
+                            12,
+                            12,
+                            92 + bottomInset,
+                          ),
                           child: Container(
                             decoration: BoxDecoration(
                               color: context.palette.bgSurface,
@@ -941,11 +1056,11 @@ class _MobileShell extends ConsumerWidget {
                         )
                       else
                         const ChatLanding(),
-                      const Positioned(
+                      Positioned(
                         left: 12,
                         right: 12,
-                        bottom: 12,
-                        child: PromptBar(),
+                        bottom: 12 + bottomInset,
+                        child: const PromptBar(),
                       ),
                     ],
                   ),
@@ -958,20 +1073,73 @@ class _MobileShell extends ConsumerWidget {
     );
   }
 
+  static PopupMenuItem<_MobileMenuAction> _menuItem(
+    _MobileMenuAction value,
+    IconData icon,
+    String label,
+  ) {
+    return PopupMenuItem<_MobileMenuAction>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _onMenuSelected(BuildContext context, _MobileMenuAction action) {
+    switch (action) {
+      case _MobileMenuAction.history:
+        _openChatSheet(context, tab: PanelTab.history);
+      case _MobileMenuAction.settings:
+        context.push(AppRoutes.providers);
+      case _MobileMenuAction.appearance:
+        showAppearanceDialog(context);
+      case _MobileMenuAction.language:
+        showLanguageDialog(context);
+    }
+  }
+
+  /// Panel chat dibuka di tab yang diminta (Chat atau History).
+  static void _openChatSheet(
+    BuildContext context, {
+    PanelTab tab = PanelTab.chat,
+  }) {
+    ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(panelTabProvider.notifier).select(tab);
+    _openSheet(context, const ChatSidePanel());
+  }
+
+  /// Sheet dengan tinggi mengikuti jendela, bukan angka tetap, supaya tetap
+  /// muat di layar pendek.
   static void _openSheet(
     BuildContext context,
     Widget child, {
-    required double heightFactor,
+    double heightFactor = 0.85,
   }) {
-    showModalBottomSheet(
+    final size = MediaQuery.sizeOf(context);
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: context.palette.bgSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => SizedBox(
-        height: MediaQuery.sizeOf(context).height * heightFactor,
+        height: math.min(size.height * heightFactor, size.height - 48),
         child: child,
       ),
     );

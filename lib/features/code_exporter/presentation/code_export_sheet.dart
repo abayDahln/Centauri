@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../app/config/app_palette.dart';
@@ -6,7 +8,8 @@ import 'code_export_view.dart';
 
 /// Launcher adaptif: dialog di desktop (>=960px), bottom sheet di mobile.
 void showCodeExportSheet(BuildContext context, String htmlSource) {
-  final isWide = MediaQuery.sizeOf(context).width >= 960;
+  final size = MediaQuery.sizeOf(context);
+  final isWide = size.width >= 960;
 
   if (isWide) {
     showDialog(
@@ -19,8 +22,8 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
           side: BorderSide(color: context.palette.borderSubtle),
         ),
         child: SizedBox(
-          width: 760,
-          height: 560,
+          width: math.min(760, size.width - 96),
+          height: math.min(560, size.height - 96),
           child: CodeExportView(htmlSource: htmlSource),
         ),
       ),
@@ -31,12 +34,15 @@ void showCodeExportSheet(BuildContext context, String htmlSource) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     backgroundColor: context.palette.bgSurface,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
       side: BorderSide(color: context.palette.borderSubtle),
     ),
-    builder: (_) =>
-        SizedBox(height: 640, child: CodeExportView(htmlSource: htmlSource)),
+    builder: (_) => SizedBox(
+      height: size.height * 0.9,
+      child: CodeExportView(htmlSource: htmlSource),
+    ),
   );
 }

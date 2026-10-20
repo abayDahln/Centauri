@@ -23,6 +23,8 @@ class ProviderListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    // Layar sempit: rapatkan margin supaya isi tidak terhimpit.
+    final compact = MediaQuery.sizeOf(context).width < 600;
     final asyncState = ref.watch(providerConfigProvider);
     final providers = asyncState.value?.providers ?? const <ApiProvider>[];
     final activeProviderId = asyncState.value?.activeProvider?.id;
@@ -44,7 +46,10 @@ class ProviderListPage extends ConsumerWidget {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 16 : 32,
+          vertical: compact ? 20 : 32,
+        ),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 920),
@@ -54,7 +59,7 @@ class ProviderListPage extends ConsumerWidget {
                 Text(
                   l10n.providerListHeading,
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: compact ? 20 : 24,
                     height: 30 / 24,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
@@ -276,10 +281,14 @@ class _ProviderRowState extends State<_ProviderRow> {
                         ),
                         if (provider.providerName.trim().isNotEmpty) ...[
                           const SizedBox(width: 8),
-                          Text(
-                            provider.providerName,
-                            style: context.text.monoSmall.copyWith(
-                              color: context.palette.textDisabled,
+                          Flexible(
+                            child: Text(
+                              provider.providerName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.text.monoSmall.copyWith(
+                                color: context.palette.textDisabled,
+                              ),
                             ),
                           ),
                         ],

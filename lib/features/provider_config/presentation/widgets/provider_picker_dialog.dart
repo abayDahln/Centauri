@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../app/l10n/l10n.dart';
@@ -29,7 +31,8 @@ class _ProviderPickerDialog extends StatelessWidget {
       title: Text(context.l10n.providerPickerTitle),
       contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       content: SizedBox(
-        width: 420,
+        // Di HP dialog tidak boleh lebih lebar dari layar minus inset.
+        width: math.min(420, MediaQuery.sizeOf(context).width - 80),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 460),
           child: SingleChildScrollView(

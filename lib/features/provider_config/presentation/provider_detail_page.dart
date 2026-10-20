@@ -403,6 +403,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final editing = _editingProviderId != null;
+    final compact = MediaQuery.sizeOf(context).width < 600;
 
     return Scaffold(
       appBar: AppBar(
@@ -420,7 +421,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 16 : 32,
+          vertical: compact ? 20 : 32,
+        ),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
@@ -433,9 +437,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   Widget _buildCard() {
     final l10n = context.l10n;
+    final compact = MediaQuery.sizeOf(context).width < 600;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compact ? 16 : 24),
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
         border: Border.all(color: context.palette.borderSubtle),

@@ -130,8 +130,10 @@ class _CodeExportViewState extends State<CodeExportView> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SizedBox(
-            height: 32,
+          // Empat format bisa lebih lebar dari layar HP: biarkan digulir
+          // horizontal daripada memaksa ukuran tombol mengecil.
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             child: SegmentedButton<CodeFormat>(
               segments: CodeFormat.values
                   .map(

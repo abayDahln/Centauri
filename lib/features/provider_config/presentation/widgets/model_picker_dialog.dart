@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../app/config/app_palette.dart';
@@ -144,7 +146,8 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
       title: Text(l10n.modelPickerTitle),
       contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       content: SizedBox(
-        width: 420,
+        // Di HP dialog tidak boleh lebih lebar dari layar minus inset.
+        width: math.min(420, MediaQuery.sizeOf(context).width - 80),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 460),
           child: SingleChildScrollView(

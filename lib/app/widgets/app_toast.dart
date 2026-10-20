@@ -116,9 +116,13 @@ class _AppToastViewState extends State<_AppToastView>
   Widget build(BuildContext context) {
     final palette = context.palette;
     final media = MediaQuery.of(context);
-    // Maksimal setengah lebar layar; di layar lebar dibatasi lagi agar pesan
+    // Di HP setengah lebar terlalu sempit untuk pesan, jadi pakai lebar layar
+    // minus margin. Di layar lebar batasi setengah lebar (maks 420) agar pesan
     // pendek tidak melebar tanpa guna.
-    final maxWidth = math.min(media.size.width * 0.5, 420.0);
+    final compact = media.size.width < 600;
+    final maxWidth = compact
+        ? media.size.width - 32
+        : math.min(media.size.width * 0.5, 420.0);
 
     final (icon, accent) = switch (widget.kind) {
       AppToastKind.success => (
@@ -130,7 +134,8 @@ class _AppToastViewState extends State<_AppToastView>
     };
 
     return Positioned(
-      top: media.padding.top + 16,
+      // Di HP beri ruang untuk AppBar agar pesan tidak menutupi judul.
+      top: media.padding.top + (compact ? kToolbarHeight + 8 : 16),
       left: 0,
       right: 0,
       child: IgnorePointer(
@@ -142,7 +147,6 @@ class _AppToastViewState extends State<_AppToastView>
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxWidth),
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 10,
