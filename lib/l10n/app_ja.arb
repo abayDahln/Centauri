@@ -186,6 +186,7 @@
   "mcpAutoStartNote": "アプリを開くとサーバーが自動で起動します。",
   "mcpCopyAddress": "コピー",
   "mcpAddressCopied": "アドレスをコピーしました。",
+  "mcpToolsList": "Tools: {tools}",
 
   "chatProcessing": "処理中…",
   "chatUiReady": "UI の準備完了",

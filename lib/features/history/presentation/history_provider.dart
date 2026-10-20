@@ -78,6 +78,13 @@ class HistoryNotifier extends Notifier<HistoryState> {
     state = state.copyWith(query: query);
   }
 
+  /// Muat ulang daftar sesi dari penyimpanan tanpa menyentuh workspace
+  /// (dipakai bridge MCP setelah mutasi eksternal agar daftar langsung naik).
+  void refresh() {
+    final repo = ref.read(projectRepositoryProvider);
+    state = state.copyWith(projects: _sorted(repo.getAll()));
+  }
+
   /// Mulai sesi baru yang kosong (belum disimpan sampai ada aktivitas).
   void startNew() {
     state = state.copyWith(clearActive: true);

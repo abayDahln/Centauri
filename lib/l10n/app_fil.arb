@@ -186,6 +186,7 @@
   "mcpAutoStartNote": "Awtomatikong nagsisimula ang server kapag binuksan ang app.",
   "mcpCopyAddress": "Kopyahin",
   "mcpAddressCopied": "Nakopya ang address.",
+  "mcpToolsList": "Tools: {tools}",
 
   "chatProcessing": "Pinoproseso…",
   "chatUiReady": "Handa na ang UI",

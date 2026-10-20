@@ -186,6 +186,7 @@
   "mcpAutoStartNote": "打开应用后服务器会自动启动。",
   "mcpCopyAddress": "复制",
   "mcpAddressCopied": "地址已复制。",
+  "mcpToolsList": "Tools: {tools}",
 
   "chatProcessing": "处理中…",
   "chatUiReady": "UI 已就绪",

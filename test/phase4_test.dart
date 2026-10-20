@@ -80,33 +80,38 @@ void main() {
   });
 
   group('McpServer.toolSchemas (Fase 4d)', () {
-    test('exposes the 7 documented tools', () {
+    test('exposes the 6 session-level tools', () {
       final names = McpServer.toolSchemas()
           .map((t) => t['name'] as String)
           .toSet();
       expect(
         names,
         containsAll([
-          'get_canvas_structure',
-          'get_selected_node',
-          'get_node_html',
-          'add_node',
-          'update_node',
-          'delete_node',
-          'rearrange_layout',
+          'list_sessions',
+          'get_session',
+          'get_page_html',
+          'write_page',
+          'delete_page',
+          'post_to_chat',
         ]),
       );
+      expect(names.length, 6);
     });
 
-    test('node tools address pages via pageId', () {
+    test('session tools require sessionId', () {
       final schemas = {
         for (final t in McpServer.toolSchemas()) t['name'] as String: t,
       };
-      final addNode = schemas['add_node']!;
-      final props =
-          (addNode['inputSchema'] as Map<String, dynamic>)['properties']
-              as Map<String, dynamic>;
+      final writePage = schemas['write_page']!;
+      final schema = writePage['inputSchema'] as Map<String, dynamic>;
+      final props = schema['properties'] as Map<String, dynamic>;
+      final required = schema['required'] as List<dynamic>;
       expect(props.keys, contains('pageId'));
+      expect(required, contains('sessionId'));
+      expect(
+        schemas['list_sessions']!['inputSchema'],
+        isNot(contains('required')),
+      );
     });
   });
 

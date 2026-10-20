@@ -308,6 +308,10 @@
   "mcpAutoStartNote": "Server menyala otomatis saat aplikasi dibuka.",
   "mcpCopyAddress": "Salin",
   "mcpAddressCopied": "Alamat disalin.",
+  "mcpToolsList": "Tools: {tools}",
+  "@mcpToolsList": {
+    "placeholders": { "tools": { "type": "String" } }
+  },
 
   "chatProcessing": "Memproses…",
   "chatUiReady": "UI siap",

@@ -186,6 +186,7 @@
   "mcpAutoStartNote": "يبدأ الخادم تلقائيًا عند فتح التطبيق.",
   "mcpCopyAddress": "نسخ",
   "mcpAddressCopied": "تم نسخ العنوان.",
+  "mcpToolsList": "Tools: {tools}",
 
   "chatProcessing": "جارٍ المعالجة…",
   "chatUiReady": "الواجهة جاهزة",

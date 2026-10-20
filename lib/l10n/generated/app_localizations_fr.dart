@@ -560,6 +560,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get mcpAddressCopied => 'Adresse copiée.';
 
   @override
+  String mcpToolsList(String tools) {
+    return 'Tools: $tools';
+  }
+
+  @override
   String get chatProcessing => 'Traitement…';
 
   @override

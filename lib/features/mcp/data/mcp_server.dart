@@ -10,12 +10,17 @@ import 'mcp_bridge.dart';
 /// Embedded MCP server lokal (Fase 4: Desktop Full).
 /// Berjalan di background versi Desktop, di `127.0.0.1` (coba 8765 → 8774).
 ///
-/// - `GET /status` — info server + ringkasan canvas (tanpa auth, localhost saja).
+/// - `GET /status` — info server + ringkasan workspace (tanpa auth, localhost saja).
 /// - `POST /mcp` — JSON-RPC 2.0: `initialize`, `tools/list`, `tools/call`, `ping`.
 /// - `GET /events` — Server-Sent Events: event `state` setiap ada perubahan
-///   board (live sync; agent fetch ulang via tools, tanpa refresh aplikasi).
+///   (live sync; agent fetch ulang via tools, tanpa refresh aplikasi).
 ///
-/// Semua tulis melewati [McpBridge] (jalur inspector/overlay yang sama).
+/// Tool bekerja di level sesi (bukan node) dan hemat token: agen mulai dari
+/// `list_sessions` (metadata saja), lalu `get_session` (chat + indeks
+/// halaman), lalu `get_page_html` per halaman yang dibutuhkan. Tulis via
+/// `write_page` / `delete_page` / `post_to_chat`, berlaku ke SEMUA sesi.
+/// Semua mutasi melewati [McpBridge] (file sesi = sumber kebenaran,
+/// workspace di-sync bila sesinya sedang aktif).
 final mcpServerProvider = Provider<McpServer>((ref) => McpServer());
 
 class McpServer {
@@ -147,6 +152,9 @@ class McpServer {
       ..set('Cache-Control', 'no-cache')
       ..set('Connection', 'keep-alive');
     response.statusCode = HttpStatus.ok;
+    // Frame SSE harus keluar seketika; tanpa ini greeting awal tertahan di
+    // buffer Dart dan klien baru melihat header saja.
+    response.bufferOutput = false;
 
     final client = _SseClient(response);
     _sseClients.add(client);
@@ -155,6 +163,7 @@ class McpServer {
       'stateVersion': _stateVersion,
       if (_bridge?.snapshot() case final snapshot?) ...snapshot,
     });
+    response.flush().catchError((Object _) => true);
 
     // Tetap buka sampai klien pergi; jangan close di sini.
     response.done.then((_) => _sseClients.remove(client)).catchError((
@@ -246,73 +255,65 @@ class McpServer {
   Future<Map<String, dynamic>> _callTool(dynamic name, dynamic args) async {
     final bridge = _bridge;
     if (bridge == null) {
-      throw McpException('Bridge belum siap. Buka halaman board dulu.');
+      throw McpException('Server MCP belum siap. Buka board dulu.');
     }
     final arguments = args is Map<String, dynamic> ? args : <String, dynamic>{};
     if (name is! String) {
       throw McpException('Nama tool harus string.', code: -32602);
     }
 
+    String requiredSessionId() {
+      final sessionId = arguments['sessionId'];
+      if (sessionId is! String || sessionId.isEmpty) {
+        throw McpException('Argumen "sessionId" wajib.', code: -32602);
+      }
+      return sessionId;
+    }
+
     switch (name) {
-      case 'get_canvas_structure':
-        return bridge.getStructure();
-      case 'get_selected_node':
-        return bridge.getSelected();
-      case 'get_node_html':
-        final nodeId = arguments['nodeId'];
-        if (nodeId is! String || nodeId.isEmpty) {
-          throw McpException('Argumen "nodeId" wajib.', code: -32602);
+      case 'list_sessions':
+        return bridge.listSessions();
+      case 'get_session':
+        return bridge.getSession(
+          requiredSessionId(),
+          limit: _optInt(arguments['limit']) ?? 50,
+          offset: _optInt(arguments['offset']) ?? 0,
+        );
+      case 'get_page_html':
+        final pageId = arguments['pageId'];
+        if (pageId is! String || pageId.isEmpty) {
+          throw McpException('Argumen "pageId" wajib.', code: -32602);
         }
-        return bridge.getNodeHtml(nodeId);
-      case 'add_node':
+        return bridge.getPageHtml(requiredSessionId(), pageId);
+      case 'write_page':
         final html = arguments['html'];
         if (html is! String || html.trim().isEmpty) {
           throw McpException('Argumen "html" wajib.', code: -32602);
         }
-        return bridge.addNode(
-          pageId: _optString(arguments['pageId'] ?? arguments['frameId']),
-          parentId: _optString(arguments['parentId']),
+        final result = await bridge.writePage(
+          sessionId: requiredSessionId(),
+          pageId: _optString(arguments['pageId']),
+          name: _optString(arguments['name']),
           html: html,
-          position: _optString(arguments['position']),
         );
-      case 'update_node':
-        final nodeId = arguments['nodeId'];
-        if (nodeId is! String || nodeId.isEmpty) {
-          throw McpException('Argumen "nodeId" wajib.', code: -32602);
+        notifyState();
+        return result;
+      case 'delete_page':
+        final pageId = arguments['pageId'];
+        if (pageId is! String || pageId.isEmpty) {
+          throw McpException('Argumen "pageId" wajib.', code: -32602);
         }
-        final rawStyles = arguments['styles'];
-        Map<String, String>? styles;
-        if (rawStyles is Map) {
-          styles = {
-            for (final e in rawStyles.entries)
-              if (e.key is String && e.value != null)
-                e.key as String: e.value.toString(),
-          };
+        final result = bridge.deletePage(requiredSessionId(), pageId);
+        notifyState();
+        return result;
+      case 'post_to_chat':
+        final text = arguments['text'];
+        if (text is! String || text.trim().isEmpty) {
+          throw McpException('Argumen "text" wajib.', code: -32602);
         }
-        return bridge.updateNode(
-          pageId: _optString(arguments['pageId'] ?? arguments['frameId']),
-          nodeId: nodeId,
-          text: _optString(arguments['text']),
-          styles: styles,
-        );
-      case 'delete_node':
-        final nodeId = arguments['nodeId'];
-        if (nodeId is! String || nodeId.isEmpty) {
-          throw McpException('Argumen "nodeId" wajib.', code: -32602);
-        }
-        return bridge.deleteNode(
-          pageId: _optString(arguments['pageId'] ?? arguments['frameId']),
-          nodeId: nodeId,
-        );
-      case 'rearrange_layout':
-        return bridge.rearrangeLayout(
-          pageId: _optString(arguments['pageId'] ?? arguments['frameId']),
-          id: _optString(arguments['id'] ?? arguments['nodeId']),
-          dx: _optDouble(arguments['dx']),
-          dy: _optDouble(arguments['dy']),
-          width: _optDouble(arguments['width']),
-          height: _optDouble(arguments['height']),
-        );
+        final result = bridge.postToChat(requiredSessionId(), text);
+        notifyState();
+        return result;
       default:
         throw McpException('Tool tidak dikenal: $name', code: -32601);
     }
@@ -323,107 +324,102 @@ class McpServer {
   static String? _optString(dynamic v) =>
       v is String && v.isNotEmpty ? v : null;
 
-  static double? _optDouble(dynamic v) =>
-      v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '');
+  static int? _optInt(dynamic v) =>
+      v is num ? v.toInt() : int.tryParse(v?.toString() ?? '');
 
-  /// Skema 7 tools MCP (publik agar bisa diuji + didokumentasikan).
-  /// `frameId` masih diterima sebagai alias legacy untuk `pageId`.
+  /// Skema 6 tools MCP (publik agar bisa diuji + didokumentasikan).
+  /// Dirancang hemat token: listing hanya metadata, konten besar diminta
+  /// per halaman. Deskripsi berbahasa Inggris karena dikonsumsi agen,
+  /// bukan pengguna aplikasi.
   static List<Map<String, dynamic>> toolSchemas() => [
     {
-      'name': 'get_canvas_structure',
-      'description': 'Baca struktur workspace: daftar halaman + layers tree DOM halaman aktif.',
-      'inputSchema': {'type': 'object', 'properties': {}},
-    },
-    {
-      'name': 'get_selected_node',
+      'name': 'list_sessions',
       'description':
-          'Baca node terpilih: tag, bounding box, dan computed styles.',
+          'List all chat sessions with metadata only (id, title, timestamps, '
+          'message/page counts). Always start here; never fetch full session '
+          'content unless needed.',
       'inputSchema': {'type': 'object', 'properties': {}},
     },
     {
-      'name': 'get_node_html',
-      'description': 'Ambil HTML satu node berdasarkan id-nya.',
+      'name': 'get_session',
+      'description':
+          'Read one session: paginated chat messages (each text capped at '
+          '800 chars; "ui" messages are page generations) plus a design-page '
+          'index (id/name/slug) WITHOUT html. Use get_page_html per page for '
+          'full HTML.',
       'inputSchema': {
         'type': 'object',
         'properties': {
-          'nodeId': {'type': 'string'},
+          'sessionId': {'type': 'string'},
+          'limit': {'type': 'integer', 'description': 'Default 50.'},
+          'offset': {'type': 'integer', 'description': 'Default 0.'},
         },
-        'required': ['nodeId'],
+        'required': ['sessionId'],
       },
     },
     {
-      'name': 'add_node',
-      'description': 'Tambah elemen HTML ke halaman aktif (atau pageId). parentId opsional (default body).',
+      'name': 'get_page_html',
+      'description':
+          'Read the full self-contained HTML of one design page. Fetch only '
+          'the pages you actually need.',
       'inputSchema': {
         'type': 'object',
         'properties': {
+          'sessionId': {'type': 'string'},
+          'pageId': {'type': 'string'},
+        },
+        'required': ['sessionId', 'pageId'],
+      },
+    },
+    {
+      'name': 'write_page',
+      'description':
+          'Create (pass "name") or replace (pass "pageId") a design page in '
+          'ANY session; the app UI updates live when that session is open. '
+          'html must be ONE self-contained, fluid-responsive document: inline '
+          'CSS/JS only, no CDN, no fixed widths, viewport meta included.',
+      'inputSchema': {
+        'type': 'object',
+        'properties': {
+          'sessionId': {'type': 'string'},
+          'pageId': {
+            'type': 'string',
+            'description': 'Existing page to replace.',
+          },
+          'name': {
+            'type': 'string',
+            'description': 'Title for a new page (omit when replacing).',
+          },
           'html': {'type': 'string'},
-          'parentId': {'type': 'string'},
-          'pageId': {'type': 'string'},
-          'frameId': {
-            'type': 'string',
-            'description': 'Deprecated: pakai pageId.',
-          },
-          'position': {
-            'type': 'string',
-            'enum': ['beforeend', 'afterbegin', 'beforebegin', 'afterend'],
-          },
         },
-        'required': ['html'],
+        'required': ['sessionId', 'html'],
       },
     },
     {
-      'name': 'update_node',
+      'name': 'delete_page',
+      'description': 'Delete a design page from a session.',
+      'inputSchema': {
+        'type': 'object',
+        'properties': {
+          'sessionId': {'type': 'string'},
+          'pageId': {'type': 'string'},
+        },
+        'required': ['sessionId', 'pageId'],
+      },
+    },
+    {
+      'name': 'post_to_chat',
       'description':
-          'Ubah teks dan/atau inline styles satu node (tulis balik ke DOM).',
+          'Post an explanation message into a session chat; it appears as a '
+          'normal assistant reply. Use after design changes so the user sees '
+          'what you did.',
       'inputSchema': {
         'type': 'object',
         'properties': {
-          'nodeId': {'type': 'string'},
+          'sessionId': {'type': 'string'},
           'text': {'type': 'string'},
-          'styles': {'type': 'object'},
-          'pageId': {'type': 'string'},
-          'frameId': {
-            'type': 'string',
-            'description': 'Deprecated: pakai pageId.',
-          },
         },
-        'required': ['nodeId'],
-      },
-    },
-    {
-      'name': 'delete_node',
-      'description': 'Hapus satu node dari halaman.',
-      'inputSchema': {
-        'type': 'object',
-        'properties': {
-          'nodeId': {'type': 'string'},
-          'pageId': {'type': 'string'},
-          'frameId': {
-            'type': 'string',
-            'description': 'Deprecated: pakai pageId.',
-          },
-        },
-        'required': ['nodeId'],
-      },
-    },
-    {
-      'name': 'rearrange_layout',
-      'description': 'Geser/ubah ukuran satu node (dx/dy delta CSS, width/height absolut).',
-      'inputSchema': {
-        'type': 'object',
-        'properties': {
-          'id': {'type': 'string'},
-          'pageId': {'type': 'string'},
-          'frameId': {
-            'type': 'string',
-            'description': 'Deprecated: pakai pageId.',
-          },
-          'dx': {'type': 'number'},
-          'dy': {'type': 'number'},
-          'width': {'type': 'number'},
-          'height': {'type': 'number'},
-        },
+        'required': ['sessionId', 'text'],
       },
     },
   ];

@@ -186,6 +186,7 @@
   "mcpAutoStartNote": "เซิร์ฟเวอร์เริ่มอัตโนมัติเมื่อเปิดแอป",
   "mcpCopyAddress": "คัดลอก",
   "mcpAddressCopied": "คัดลอกที่อยู่แล้ว",
+  "mcpToolsList": "Tools: {tools}",
 
   "chatProcessing": "กำลังประมวลผล…",
   "chatUiReady": "UI พร้อม",

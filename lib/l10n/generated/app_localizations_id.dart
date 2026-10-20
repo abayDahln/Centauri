@@ -553,6 +553,11 @@ class AppLocalizationsId extends AppLocalizations {
   String get mcpAddressCopied => 'Alamat disalin.';
 
   @override
+  String mcpToolsList(String tools) {
+    return 'Tools: $tools';
+  }
+
+  @override
   String get chatProcessing => 'Memproses…';
 
   @override

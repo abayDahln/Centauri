@@ -555,6 +555,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get mcpAddressCopied => 'تم نسخ العنوان.';
 
   @override
+  String mcpToolsList(String tools) {
+    return 'Tools: $tools';
+  }
+
+  @override
   String get chatProcessing => 'جارٍ المعالجة…';
 
   @override

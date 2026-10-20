@@ -186,6 +186,7 @@
   "mcpAutoStartNote": "Сервер запускается сам при открытии приложения.",
   "mcpCopyAddress": "Копировать",
   "mcpAddressCopied": "Адрес скопирован.",
+  "mcpToolsList": "Tools: {tools}",
 
   "chatProcessing": "Обработка…",
   "chatUiReady": "UI готов",

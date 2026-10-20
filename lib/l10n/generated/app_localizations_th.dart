@@ -550,6 +550,11 @@ class AppLocalizationsTh extends AppLocalizations {
   String get mcpAddressCopied => 'คัดลอกที่อยู่แล้ว';
 
   @override
+  String mcpToolsList(String tools) {
+    return 'Tools: $tools';
+  }
+
+  @override
   String get chatProcessing => 'กำลังประมวลผล…';
 
   @override

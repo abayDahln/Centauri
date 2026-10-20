@@ -543,6 +543,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpAddressCopied => '地址已复制。';
 
   @override
+  String mcpToolsList(String tools) {
+    return 'Tools: $tools';
+  }
+
+  @override
   String get chatProcessing => '处理中…';
 
   @override

@@ -186,6 +186,7 @@
   "mcpAutoStartNote": "앱을 열면 서버가 자동으로 시작돼요.",
   "mcpCopyAddress": "복사",
   "mcpAddressCopied": "주소를 복사했어요.",
+  "mcpToolsList": "Tools: {tools}",
 
   "chatProcessing": "처리 중…",
   "chatUiReady": "UI 준비 완료",

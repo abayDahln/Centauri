@@ -66,6 +66,10 @@ class ProjectRepository {
     SessionMigrator(_storage, store).migrateHiveProjects();
   }
 
+  /// Muat satu sesi utuh (manifest + HTML tiap halaman) langsung dari
+  /// foldernya; `null` bila folder tidak ada, rusak, atau root unavailable.
+  Project? loadSession(String id) => _sessionStore?.load(id);
+
   /// Lihat `SessionFolderStore.save`: tulis manifest + file HTML + pointer.
   void save(Project project) {
     final store = _sessionStore;

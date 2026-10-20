@@ -547,6 +547,11 @@ class AppLocalizationsKo extends AppLocalizations {
   String get mcpAddressCopied => '주소를 복사했어요.';
 
   @override
+  String mcpToolsList(String tools) {
+    return 'Tools: $tools';
+  }
+
+  @override
   String get chatProcessing => '처리 중…';
 
   @override

@@ -416,6 +416,23 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     );
   }
 
+  /// Sisipkan/perbarui satu halaman dari sumber eksternal (MCP bridge).
+  /// Pencocokan tetap per slug lewat [_upsertPages]; [makeActive] langsung
+  /// menampilkannya di preview.
+  void upsertExternalPage({required AppPage page, bool makeActive = false}) {
+    final merged = _upsertPages(state.pages, [page]);
+    final nextActive = makeActive ? merged.firstId : state.activePageId;
+    state = state.copyWith(
+      pages: merged.pages,
+      activePageId: nextActive,
+      clearActivePage: nextActive == null,
+    );
+  }
+
+  /// Tambah pesan chat dari sumber eksternal (MCP bridge) — tampil live di
+  /// panel chat seperti pesan assistant biasa.
+  void appendExternalMessage(CanvasMessage message) => _appendMessage(message);
+
   /// Muat ulang halaman & percakapan dari data proyek tersimpan.
   Future<void> loadSession({
     required List<CanvasMessage> messages,

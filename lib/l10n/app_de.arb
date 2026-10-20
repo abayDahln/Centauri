@@ -186,6 +186,7 @@
   "mcpAutoStartNote": "Der Server startet automatisch beim Öffnen der App.",
   "mcpCopyAddress": "Kopieren",
   "mcpAddressCopied": "Adresse kopiert.",
+  "mcpToolsList": "Tools: {tools}",
 
   "chatProcessing": "Wird verarbeitet…",
   "chatUiReady": "UI bereit",

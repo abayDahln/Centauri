@@ -1090,6 +1090,12 @@ abstract class AppLocalizations {
   /// **'Address copied.'**
   String get mcpAddressCopied;
 
+  /// No description provided for @mcpToolsList.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools: {tools}'**
+  String mcpToolsList(String tools);
+
   /// No description provided for @chatProcessing.
   ///
   /// In en, this message translates to:

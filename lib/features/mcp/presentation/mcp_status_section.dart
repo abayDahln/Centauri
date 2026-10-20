@@ -115,8 +115,11 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tools: get_canvas_structure, get_selected_node, get_node_html, '
-            'add_node, update_node, delete_node, rearrange_layout.',
+            l10n.mcpToolsList(
+              McpServer.toolSchemas()
+                  .map((t) => t['name'] as String)
+                  .join(', '),
+            ),
             style: TextStyle(
               fontFamily: AppFonts.monoFamily,
               fontFamilyFallback: AppFonts.monoFallback,

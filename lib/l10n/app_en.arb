@@ -308,6 +308,10 @@
   "mcpAutoStartNote": "Server starts automatically when opening the app.",
   "mcpCopyAddress": "Copy",
   "mcpAddressCopied": "Address copied.",
+  "mcpToolsList": "Tools: {tools}",
+  "@mcpToolsList": {
+    "placeholders": { "tools": { "type": "String" } }
+  },
 
   "chatProcessing": "Processing…",
   "chatUiReady": "UI ready",

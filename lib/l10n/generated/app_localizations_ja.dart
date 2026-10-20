@@ -547,6 +547,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mcpAddressCopied => 'アドレスをコピーしました。';
 
   @override
+  String mcpToolsList(String tools) {
+    return 'Tools: $tools';
+  }
+
+  @override
   String get chatProcessing => '処理中…';
 
   @override

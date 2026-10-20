@@ -1,12 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
-import '../../canvas_preview/data/services/canvas_service_registry.dart';
-import '../../canvas_preview/data/services/canvas_webview_service.dart';
 import '../../canvas_preview/domain/dom_tree.dart';
 import '../../canvas_preview/domain/page.dart';
+import '../../canvas_preview/domain/page_slug.dart';
 import '../../canvas_preview/presentation/provider/workspace_provider.dart';
+import '../../history/data/project_repository.dart';
+import '../../history/domain/project.dart';
+import '../../history/presentation/history_provider.dart';
 
 class McpException implements Exception {
   McpException(this.message, {this.code = -32603});
@@ -17,92 +18,65 @@ class McpException implements Exception {
   String toString() => message;
 }
 
-/// Jembatan antara MCP server dan state aplikasi.
-/// Baca: langsung dari [workspaceProvider].
-/// Tulis: SELALU via jalur yang sama seperti seleksi/overlay —
-/// inject JS → minta HTML penuh → rebuild tree → [WorkspaceNotifier.updatePageHtml].
-/// HTML di WebView tetap source of truth; tidak ada state ganda.
+/// Jembatan antara MCP server dan state aplikasi (level sesi, bukan node).
+///
+/// Baca hemat token: listing hanya metadata sesi, detail per halaman diminta
+/// terpisah. Tulis: folder sesi (`ProjectRepository`) selalu sumber kebenaran;
+/// bila sesi terdampak sedang aktif di board, perubahan juga didorong ke
+/// [workspaceProvider] agar WebView/chat/history naik tanpa refresh aplikasi.
+/// Urutan tiap mutasi: simpan file → sinkron workspace (bila aktif) →
+/// refresh daftar riwayat. Auto-save debounce men-snapshot workspace yang
+/// sudah memuat perubahan, jadi tidak ada penimpaan basi.
 class McpBridge {
   McpBridge(this._container);
 
   final ProviderContainer _container;
 
+  /// Batas panjang teks pesan pada respons `get_session` — pesan `ui`
+  /// memuat HTML penuh dan akan memboroskan token agen.
+  static const int _messageTextLimit = 800;
+
   WorkspaceState get _state => _container.read(workspaceProvider);
   WorkspaceNotifier get _notifier =>
       _container.read(workspaceProvider.notifier);
+  ProjectRepository get _repo => _container.read(projectRepositoryProvider);
 
-  AppPage _resolvePage(String? pageId) {
-    final state = _state;
-    if (pageId != null) {
-      for (final p in state.pages) {
-        if (p.id == pageId) return p;
-      }
-      throw McpException('Page "$pageId" tidak ditemukan.', code: -32602);
-    }
-    final active = state.activePage;
-    if (active == null) {
-      throw McpException(
-        'Belum ada halaman aktif. Generate UI dulu atau sertakan pageId.',
-        code: -32602,
-      );
-    }
-    return active;
-  }
+  bool _isActiveSession(String sessionId) =>
+      _container.read(historyProvider).activeProjectId == sessionId;
 
-  CanvasWebviewService _serviceFor(String pageId) {
-    final service = CanvasServiceRegistry.forFrame(pageId);
-    if (service == null) {
-      throw McpException(
-        'WebView halaman "$pageId" belum siap. Tunggu sebentar lalu coba lagi.',
-      );
-    }
-    return service;
-  }
-
-  /// Tunggu SATU event bertipe [types] dari halaman, dengan timeout.
-  Future<CanvasSelectEvent> _awaitEvent(
-    CanvasWebviewService service,
-    Set<String> types, {
-    Duration timeout = const Duration(seconds: 12),
-  }) {
-    return service.selectionEvents
-        .firstWhere((e) => types.contains(e.type))
-        .timeout(
-          timeout,
-          onTimeout: () => throw McpException(
-            'Timeout menunggu WebView (kemungkinan halaman sibuk). Coba lagi.',
-          ),
+  Project _loadSession(String sessionId) {
+    final project = _repo.loadSession(sessionId);
+    if (project == null) {
+      if (!_repo.isPersisting) {
+        throw McpException(
+          'Penyimpanan sesi tidak tersedia di perangkat ini.',
+          code: -32603,
         );
+      }
+      throw McpException('Sesi "$sessionId" tidak ditemukan.', code: -32602);
+    }
+    return project;
   }
 
-  /// Terapkan mutasi JS lalu sinkronkan HTML + tree ke Dart.
-  Future<Map<String, dynamic>> _mutateAndSync({
-    required AppPage page,
-    required Future<void> Function(CanvasWebviewService service) mutate,
-  }) async {
-    final service = _serviceFor(page.id);
-    final htmlFuture = _awaitEvent(service, {'html'});
-    await mutate(service);
-    await service.requestHtml();
-    final event = await htmlFuture;
-    final html = event.html;
-    if (html == null || html.trim().isEmpty) {
-      throw McpException('Sinkronisasi HTML gagal (dokumen kosong).');
+  ProjectPage _findPage(Project project, String pageId) {
+    for (final p in project.pages) {
+      if (p.id == pageId) return p;
     }
-    final tree = await buildDomTreeInIsolate(html);
-    _notifier.updatePageHtml(
-      pageId: page.id,
-      stampedHtml: tree.stampedHtml,
-      tree: tree,
+    throw McpException(
+      'Halaman "$pageId" tidak ditemukan di sesi "${project.id}".',
+      code: -32602,
     );
-    return {'ok': true, 'pageId': page.id, 'nodeCount': tree.nodeCount};
   }
+
+  void _refreshHistoryList() =>
+      _container.read(historyProvider.notifier).refresh();
 
   // ---------------------------------------------------------------- baca --
 
   Map<String, dynamic> snapshot() {
     final state = _state;
     return {
+      'activeSessionId': _container.read(historyProvider).activeProjectId,
       'pages': [
         for (final p in state.pages)
           {
@@ -117,157 +91,209 @@ class McpBridge {
     };
   }
 
-  Map<String, dynamic> getStructure() => {
-    'ok': true,
-    ...snapshot(),
-    'layers': _state.activePage?.domTree?.root.toJson(),
-  };
-
-  Map<String, dynamic> getSelected() {
-    final state = _state;
-    final id = state.selectedNodeId;
-    final geometry = state.selectedNodeGeometry;
-    if (id == null || geometry == null) {
-      return {'ok': true, 'selected': null};
-    }
+  /// Daftar sesi hanya dengan metadata — tanpa isi chat maupun HTML.
+  Map<String, dynamic> listSessions() {
+    final activeId = _container.read(historyProvider).activeProjectId;
     return {
       'ok': true,
-      'selected': {
-        'pageId': state.activePageId,
-        'nodeId': id,
-        'tag': geometry.tag,
-        'rect': {
-          'x': geometry.x,
-          'y': geometry.y,
-          'width': geometry.width,
-          'height': geometry.height,
-        },
-        'styles': geometry.styles,
-      },
+      'sessions': [
+        for (final p in _repo.getAll())
+          {
+            'id': p.id,
+            'title': p.title,
+            'createdAt': p.createdAt.toIso8601String(),
+            'updatedAt': p.updatedAt.toIso8601String(),
+            'messageCount': p.messages.length,
+            'pageCount': p.pages.length,
+            'activePageId': p.activePageId,
+            'isActive': p.id == activeId,
+          },
+      ],
     };
   }
 
-  Future<Map<String, dynamic>> getNodeHtml(String nodeId) async {
-    final page = _resolvePage(null);
-    final service = _serviceFor(page.id);
-    final future = _awaitEvent(service, {'outerHtml', 'outerHtmlError'});
-    await service.requestOuterHtml(nodeId);
-    final event = await future;
-    if (event.type != 'outerHtml' || event.html == null) {
-      throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
-    }
+  /// Detail satu sesi: pesan (ter-paginate + ter-truncate) dan indeks
+  /// halaman tanpa html — ambil konten per halaman via [getPageHtml].
+  Map<String, dynamic> getSession(
+    String sessionId, {
+    int limit = 50,
+    int offset = 0,
+  }) {
+    final project = _loadSession(sessionId);
+    final total = project.messages.length;
+    final start = offset.clamp(0, total);
+    final end = (start + limit).clamp(0, total);
+    return {
+      'ok': true,
+      'session': {
+        'id': project.id,
+        'title': project.title,
+        'createdAt': project.createdAt.toIso8601String(),
+        'updatedAt': project.updatedAt.toIso8601String(),
+        'activePageId': project.activePageId,
+      },
+      'messages': [
+        for (final m in project.messages.sublist(start, end))
+          {
+            'role': m.role,
+            'kind': m.kind,
+            'text': _clip(m.displayText ?? m.text),
+          },
+      ],
+      'messageTotal': total,
+      'nextOffset': end < total ? end : null,
+      'pages': [
+        for (final p in project.pages)
+          {'id': p.id, 'name': p.name, 'slug': p.slug},
+      ],
+    };
+  }
+
+  static String _clip(String text) => text.length > _messageTextLimit
+      ? '${text.substring(0, _messageTextLimit)}…'
+      : text;
+
+  Map<String, dynamic> getPageHtml(String sessionId, String pageId) {
+    final project = _loadSession(sessionId);
+    final page = _findPage(project, pageId);
     return {
       'ok': true,
       'pageId': page.id,
-      'nodeId': nodeId,
-      'html': event.html,
+      'name': page.name,
+      'slug': page.slug,
+      'html': page.html,
     };
   }
 
   // --------------------------------------------------------------- tulis --
 
-  Future<Map<String, dynamic>> addNode({
+  /// Buat halaman baru (perlu [name]) atau ganti HTML halaman [pageId] pada
+  /// sesi mana pun. HTML di-stamp agar id node konsisten dengan app.
+  Future<Map<String, dynamic>> writePage({
+    required String sessionId,
     String? pageId,
-    String? parentId,
+    String? name,
     required String html,
-    String? position,
   }) async {
-    final page = _resolvePage(pageId);
-    const allowed = {'beforeend', 'afterbegin', 'beforebegin', 'afterend'};
-    final pos = (position ?? 'beforeend').trim();
-    if (!allowed.contains(pos)) {
+    if (html.trim().isEmpty || !html.contains('<')) {
+      throw McpException('"html" harus dokumen HTML yang valid.', code: -32602);
+    }
+    final cleanedName = name?.trim() ?? '';
+    if (pageId == null && cleanedName.isEmpty) {
       throw McpException(
-        'position harus salah satu: ${allowed.join(', ')}.',
+        'Sertakan "pageId" (ganti halaman) atau "name" (halaman baru).',
         code: -32602,
       );
     }
-    if (html.trim().isEmpty) {
-      throw McpException('html tidak boleh kosong.', code: -32602);
+    final project = _loadSession(sessionId);
+    final tree = await buildDomTreeInIsolate(html);
+
+    ProjectPage page;
+    final created = pageId == null;
+    if (!created) {
+      final existing = _findPage(project, pageId);
+      page = ProjectPage(
+        id: existing.id,
+        name: cleanedName.isEmpty ? existing.name : cleanedName,
+        slug: existing.slug,
+        html: tree.stampedHtml,
+      );
+    } else {
+      page = ProjectPage(
+        id: const Uuid().v4(),
+        name: cleanedName,
+        slug: uniqueSlug(
+          slugify(cleanedName),
+          project.pages.map((p) => p.slug),
+        ),
+        html: tree.stampedHtml,
+      );
     }
-    if (parentId != null) {
-      final tree = page.domTree;
-      if (tree == null || tree.findById(parentId) == null) {
-        throw McpException(
-          'parentId "$parentId" tidak ditemukan.',
-          code: -32602,
+
+    final pages = <ProjectPage>[
+      for (final p in project.pages)
+        if (p.id == page.id) page else p,
+      if (created) page,
+    ];
+    _repo.save(project.copyWith(pages: pages, updatedAt: DateTime.now()));
+
+    if (_isActiveSession(sessionId)) {
+      final appPage = AppPage(
+        id: page.id,
+        name: page.name,
+        slug: page.slug,
+        html: tree.stampedHtml,
+        domTree: tree,
+      );
+      if (created) {
+        _notifier.upsertExternalPage(page: appPage, makeActive: true);
+      } else {
+        _notifier.updatePageHtml(
+          pageId: page.id,
+          stampedHtml: tree.stampedHtml,
+          tree: tree,
         );
       }
     }
-    return _mutateAndSync(
-      page: page,
-      mutate: (service) =>
-          service.addNode(parentId, html.trim(), position: pos),
-    );
+    _refreshHistoryList();
+    return {
+      'ok': true,
+      'pageId': page.id,
+      'slug': page.slug,
+      'created': created,
+    };
   }
 
-  Future<Map<String, dynamic>> updateNode({
-    String? pageId,
-    required String nodeId,
-    String? text,
-    Map<String, String>? styles,
-  }) async {
-    final page = _resolvePage(pageId);
-    final tree = page.domTree;
-    if (tree == null || tree.findById(nodeId) == null) {
-      throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
+  Map<String, dynamic> deletePage(String sessionId, String pageId) {
+    final project = _loadSession(sessionId);
+    final page = _findPage(project, pageId);
+    final remaining = project.pages.where((p) => p.id != pageId).toList();
+    var activePageId = project.activePageId;
+    if (activePageId == pageId) {
+      activePageId = remaining.isEmpty ? null : remaining.first.id;
     }
-    if (text == null && (styles == null || styles.isEmpty)) {
-      throw McpException('Sertakan "text" dan/atau "styles".', code: -32602);
-    }
-    return _mutateAndSync(
-      page: page,
-      mutate: (service) async {
-        if (text != null) await service.setNodeText(nodeId, text);
-        if (styles != null && styles.isNotEmpty) {
-          await service.applyNodeStyle(nodeId, styles);
-        }
-      },
-    );
-  }
-
-  Future<Map<String, dynamic>> deleteNode({
-    String? pageId,
-    required String nodeId,
-  }) async {
-    final page = _resolvePage(pageId);
-    final tree = page.domTree;
-    if (tree == null || tree.findById(nodeId) == null) {
-      throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
-    }
-    return _mutateAndSync(
-      page: page,
-      mutate: (service) => service.deleteNode(nodeId),
-    );
-  }
-
-  /// Pindah/ubah ukuran satu node (satu-satunya tool layout sekarang).
-  /// Delta CSS via inline style.
-  Future<Map<String, dynamic>> rearrangeLayout({
-    String? pageId,
-    String? id,
-    double? dx,
-    double? dy,
-    double? width,
-    double? height,
-  }) async {
-    final nodeId = id;
-    if (nodeId == null) {
-      throw McpException('Sertakan "id" node.', code: -32602);
-    }
-    final page = _resolvePage(pageId);
-    final tree = page.domTree;
-    if (tree == null || tree.findById(nodeId) == null) {
-      throw McpException('Node "$nodeId" tidak ditemukan.', code: -32602);
-    }
-    return _mutateAndSync(
-      page: page,
-      mutate: (service) => service.moveResizeNode(
-        nodeId,
-        dx: dx,
-        dy: dy,
-        width: width,
-        height: height,
+    _repo.save(
+      project.copyWith(
+        pages: remaining,
+        activePageId: activePageId,
+        clearActivePage: activePageId == null,
+        updatedAt: DateTime.now(),
       ),
     );
+    if (_isActiveSession(sessionId)) {
+      _notifier.deletePage(pageId);
+    }
+    _refreshHistoryList();
+    return {
+      'ok': true,
+      'pageId': pageId,
+      'name': page.name,
+      'activePageId': activePageId,
+    };
+  }
+
+  /// Kirim teks agen ke chat sesi — tampil sebagai pesan assistant biasa.
+  Map<String, dynamic> postToChat(String sessionId, String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      throw McpException('"text" tidak boleh kosong.', code: -32602);
+    }
+    final project = _loadSession(sessionId);
+    final messages = [
+      ...project.messages,
+      ProjectMessage(role: 'assistant', text: trimmed, kind: 'chat'),
+    ];
+    _repo.save(project.copyWith(messages: messages, updatedAt: DateTime.now()));
+    if (_isActiveSession(sessionId)) {
+      _notifier.appendExternalMessage(
+        CanvasMessage(
+          role: ChatRole.assistant,
+          kind: ChatMessageKind.chat,
+          text: trimmed,
+        ),
+      );
+    }
+    _refreshHistoryList();
+    return {'ok': true, 'messageCount': messages.length};
   }
 }
