@@ -129,27 +129,36 @@ class _SoftIconButtonState extends State<SoftIconButton> {
         ? context.palette.primary
         : context.palette.textSecondary;
 
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        onEnter: enabled ? (_) => setState(() => _hovered = true) : null,
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onPressed,
-          child: AnimatedContainer(
-            // Keluar langsung, masuk tetap halus. Dengan begitu tombol
-            // sebelumnya tidak ikut terlihat hover saat kursor pindah.
-            duration: hovered
-                ? const Duration(milliseconds: 120)
-                : Duration.zero,
-            width: widget.size,
-            height: widget.size,
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: AppRadius.sm,
+    // Label aksesibilitas dipasang di tombol, bukan di overlay Tooltip.
+    // Overlay Tooltip yang ikut masuk pohon semantik bisa memicu error AXTree
+    // di Windows saat tombol muncul/hilang atau berpindah posisi.
+    return Semantics(
+      label: widget.tooltip,
+      button: true,
+      enabled: enabled,
+      child: Tooltip(
+        message: widget.tooltip,
+        excludeFromSemantics: true,
+        child: MouseRegion(
+          cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+          onEnter: enabled ? (_) => setState(() => _hovered = true) : null,
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            onTap: widget.onPressed,
+            child: AnimatedContainer(
+              // Keluar langsung, masuk tetap halus. Dengan begitu tombol
+              // sebelumnya tidak ikut terlihat hover saat kursor pindah.
+              duration: hovered
+                  ? const Duration(milliseconds: 120)
+                  : Duration.zero,
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: AppRadius.sm,
+              ),
+              child: Icon(widget.icon, size: widget.iconSize, color: color),
             ),
-            child: Icon(widget.icon, size: widget.iconSize, color: color),
           ),
         ),
       ),

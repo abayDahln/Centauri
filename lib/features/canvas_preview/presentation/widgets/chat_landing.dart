@@ -8,6 +8,7 @@ import '../../../prompt_editor/domain/attachment.dart';
 import '../provider/workspace_provider.dart';
 import 'ai_status_indicator.dart';
 import 'attachment_preview_dialog.dart';
+import 'chat_error_card.dart';
 import 'markdown_message.dart';
 
 /// Tampilan awal saat belum ada UI di board: percakapan biasa seperti chatbot.
@@ -19,6 +20,7 @@ class ChatLanding extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(workspaceProvider);
     final messages = state.messages;
+    final canRetry = messages.any((m) => m.role == ChatRole.user);
 
     return Container(
       decoration: BoxDecoration(
@@ -27,7 +29,8 @@ class ChatLanding extends ConsumerWidget {
       ),
       clipBehavior: Clip.antiAlias,
       // SelectionArea memungkinkan seleksi teks lintas pesan/blok sekaligus.
-      // Warna highlight amber eksplisit agar jelas terlihat di atas bubble biru.
+      // Warna highlight amber eksplisit agar jelas terlihat di atas bubble
+      // primary.
       child: SelectionArea(
         selectionControls: materialTextSelectionControls,
         child: messages.isEmpty && !state.isGenerating
@@ -45,7 +48,11 @@ class ChatLanding extends ConsumerWidget {
                       child: AiStatusIndicator(),
                     );
                   }
-                  return _Bubble(message: messages[index]);
+                  return _Bubble(
+                    message: messages[index],
+                    canRetry: canRetry,
+                    busy: state.isGenerating,
+                  );
                 },
               ),
       ),
@@ -96,14 +103,34 @@ class _Welcome extends StatelessWidget {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message});
+  const _Bubble({
+    required this.message,
+    required this.canRetry,
+    required this.busy,
+  });
 
   final CanvasMessage message;
+  final bool canRetry;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == ChatRole.user;
     final isError = message.role == ChatRole.error;
+
+    if (isError) {
+      return Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: ChatErrorCard(
+            text: message.text,
+            canRetry: canRetry,
+            busy: busy,
+          ),
+        ),
+      );
+    }
 
     return Align(
       alignment: isUser
@@ -117,11 +144,7 @@ class _Bubble extends StatelessWidget {
             vertical: isUser ? 10 : 0,
           ),
           decoration: BoxDecoration(
-            color: isUser
-                ? context.palette.textPrimary
-                : isError
-                ? context.palette.statusError.withValues(alpha: 0.05)
-                : Colors.transparent,
+            color: isUser ? context.palette.primary : Colors.transparent,
             borderRadius: isUser
                 ? const BorderRadius.only(
                     topLeft: Radius.circular(10),
@@ -130,11 +153,6 @@ class _Bubble extends StatelessWidget {
                     bottomRight: Radius.circular(2),
                   )
                 : AppRadius.md,
-            border: isError
-                ? Border.all(
-                    color: context.palette.statusError.withValues(alpha: 0.32),
-                  )
-                : null,
           ),
           // Lampiran (gambar) di atas teks; tap untuk pratinjau.
           child: Column(
@@ -143,41 +161,41 @@ class _Bubble extends StatelessWidget {
               if (message.attachments.isNotEmpty) ...[
                 _MessageAttachments(
                   attachments: message.attachments,
-                  onDark: isUser,
+                  onAccent: isUser,
                 ),
                 const SizedBox(height: 8),
               ] else if (message.attachmentNames.isNotEmpty) ...[
-                _AttachmentNameChips(names: message.attachmentNames),
+                _AttachmentNameChips(
+                  names: message.attachmentNames,
+                  onAccent: isUser,
+                ),
                 const SizedBox(height: 8),
               ],
-              // Pesan AI dirender sebagai markdown; user/error sebagai teks.
+              // Pesan AI dirender sebagai markdown; user sebagai teks.
               if (isUser)
                 Text(
                   message.shownText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AppFonts.uiFamily,
                     fontFamilyFallback: AppFonts.uiFallback,
                     fontSize: 13.5,
                     height: 1.55,
-                    color: Colors.white,
+                    color: context.palette.onPrimary,
                   ),
                 )
               else ...[
-                if (!isError)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      'Alpha',
-                      style: context.text.label.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    'Alpha',
+                    style: context.text.label.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
+                ),
                 MarkdownMessage(
                   text: message.text,
-                  baseColor: isError
-                      ? context.palette.statusError
-                      : context.palette.textPrimary,
+                  baseColor: context.palette.textPrimary,
                 ),
               ],
             ],
@@ -190,10 +208,13 @@ class _Bubble extends StatelessWidget {
 
 /// Deretan thumbnail lampiran di dalam bubble pesan user.
 class _MessageAttachments extends StatelessWidget {
-  const _MessageAttachments({required this.attachments, required this.onDark});
+  const _MessageAttachments({
+    required this.attachments,
+    required this.onAccent,
+  });
 
   final List<Attachment> attachments;
-  final bool onDark;
+  final bool onAccent;
 
   @override
   Widget build(BuildContext context) {
@@ -233,18 +254,19 @@ class _MessageAttachments extends StatelessWidget {
         : attachment.mimeType.contains('css')
         ? Icons.css
         : Icons.description_outlined;
+    final foreground = onAccent
+        ? context.palette.onPrimary
+        : context.palette.textSecondary;
     return Container(
       width: 120,
       height: 84,
-      color: onDark ? Colors.white24 : context.palette.bgSurface,
+      color: onAccent
+          ? context.palette.onPrimary.withValues(alpha: 0.18)
+          : context.palette.bgSurface,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 24,
-            color: onDark ? Colors.white : context.palette.textSecondary,
-          ),
+          Icon(icon, size: 24, color: foreground),
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -256,7 +278,7 @@ class _MessageAttachments extends StatelessWidget {
                 fontFamily: AppFonts.uiFamily,
                 fontFamilyFallback: AppFonts.uiFallback,
                 fontSize: 9,
-                color: onDark ? Colors.white : context.palette.textSecondary,
+                color: foreground,
               ),
             ),
           ),
@@ -268,12 +290,16 @@ class _MessageAttachments extends StatelessWidget {
 
 /// Chip nama lampiran (untuk pesan lama yang gambarnya tidak tersimpan di memori).
 class _AttachmentNameChips extends StatelessWidget {
-  const _AttachmentNameChips({required this.names});
+  const _AttachmentNameChips({required this.names, required this.onAccent});
 
   final List<String> names;
+  final bool onAccent;
 
   @override
   Widget build(BuildContext context) {
+    final foreground = onAccent
+        ? context.palette.onPrimary
+        : context.palette.textSecondary;
     return Wrap(
       spacing: 6,
       runSpacing: 6,
@@ -282,21 +308,23 @@ class _AttachmentNameChips extends StatelessWidget {
             (name) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: onAccent
+                    ? context.palette.onPrimary.withValues(alpha: 0.18)
+                    : context.palette.bgBase,
                 borderRadius: AppRadius.pill,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.attach_file, size: 11, color: Colors.white),
+                  Icon(Icons.attach_file, size: 11, color: foreground),
                   const SizedBox(width: 4),
                   Text(
                     name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppFonts.uiFamily,
                       fontFamilyFallback: AppFonts.uiFallback,
                       fontSize: 10,
-                      color: Colors.white,
+                      color: foreground,
                     ),
                   ),
                 ],

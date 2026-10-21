@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/l10n.dart';
-import '../../history/presentation/history_provider.dart';
 import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import '../../canvas_preview/presentation/widgets/ai_status_indicator.dart';
 import '../../canvas_preview/presentation/widgets/attachment_preview_dialog.dart';
+import '../../canvas_preview/presentation/widgets/chat_error_card.dart';
 import '../../canvas_preview/presentation/widgets/markdown_message.dart';
 
 /// Panel riwayat percakapan (read-only). Hanya menampilkan pesan user dan AI.
@@ -294,71 +294,10 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
       case ChatRole.error:
         return Align(
           alignment: AlignmentDirectional.centerStart,
-          child: Container(
-            decoration: BoxDecoration(
-              color: context.palette.statusError.withValues(alpha: 0.05),
-              border: Border.all(
-                color: context.palette.statusError.withValues(alpha: 0.32),
-              ),
-              borderRadius: AppRadius.md,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 14,
-                      color: context.palette.statusError,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        message.text,
-                        style: TextStyle(
-                          fontFamily: AppFonts.uiFamily,
-                          fontFamilyFallback: AppFonts.uiFallback,
-                          fontSize: 11.5,
-                          height: 1.5,
-                          color: context.palette.statusError,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                // Kirim ulang prompt terakhir tanpa mengetik ulang.
-                if (canRetry) ...[
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: busy
-                        ? null
-                        : () async {
-                            await ref
-                                .read(workspaceProvider.notifier)
-                                .retryLastPrompt();
-                            ref.read(historyProvider.notifier).persistCurrent();
-                          },
-                    icon: const Icon(Icons.refresh, size: 14),
-                    label: Text(context.l10n.commonRetry),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: context.palette.statusError,
-                      side: BorderSide(color: context.palette.statusError),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      textStyle: const TextStyle(
-                        fontFamily: AppFonts.uiFamily,
-                        fontFamilyFallback: AppFonts.uiFallback,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          child: ChatErrorCard(
+            text: message.text,
+            canRetry: canRetry,
+            busy: busy,
           ),
         );
     }

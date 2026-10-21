@@ -170,6 +170,11 @@ class _PrimaryExportButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = enabled && !busy;
+    // Warna di atas aksen dipilih palet (onPrimary) supaya kontras tetap
+    // terbaca untuk aksen terang maupun gelap.
+    final onAccent = active
+        ? context.palette.onPrimary
+        : context.palette.textDisabled;
     return Container(
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -181,26 +186,17 @@ class _PrimaryExportButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (busy)
-            const SizedBox(
+            SizedBox(
               width: 14,
               height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
+              child: CircularProgressIndicator(strokeWidth: 2, color: onAccent),
             )
           else
-            Icon(
-              Icons.download_outlined,
-              size: 16,
-              color: active ? Colors.white : context.palette.textDisabled,
-            ),
+            Icon(Icons.download_outlined, size: 16, color: onAccent),
           const SizedBox(width: 8),
           Text(
             context.l10n.exportAction,
-            style: context.text.button.copyWith(
-              color: active ? Colors.white : context.palette.textDisabled,
-            ),
+            style: context.text.button.copyWith(color: onAccent),
           ),
         ],
       ),

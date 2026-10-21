@@ -163,7 +163,7 @@ class _CodeExportViewState extends State<CodeExportView> {
                 }),
                 foregroundColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
-                    return Colors.white;
+                    return context.palette.onPrimary;
                   }
                   return context.palette.textSecondary;
                 }),
@@ -231,12 +231,12 @@ class _CodeExportViewState extends State<CodeExportView> {
                 child: ElevatedButton.icon(
                   onPressed: code == null || _isSaving ? null : _save,
                   icon: _isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 14,
                           width: 14,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: context.palette.onPrimary,
                           ),
                         )
                       : const Icon(Icons.download_outlined, size: 15),
