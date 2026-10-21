@@ -9,8 +9,8 @@ import 'package:centauri/features/prompt_editor/presentation/prompt_chat_panel.d
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
 
+import 'helpers/hive_teardown.dart';
 import 'helpers/pump_app.dart';
 
 /// Workspace berisi percakapan, agar daftar pesan benar-benar dirender.
@@ -44,9 +44,7 @@ void main() {
     );
   });
 
-  tearDownAll(() async {
-    await Hive.close();
-  });
+  tearDownAll(closeHiveForTests);
 
   testWidgets('Mode fokus chat: scrollbar di tepi kanan, isi tetap di tengah', (
     tester,
@@ -82,7 +80,7 @@ void main() {
       ),
     );
     expect(list.right, 1440);
-    expect(list.left, 260); // lebar sidebar riwayat
+    expect(list.left, 280); // 20% dari 1440, dibatasi maksimum 280
 
     // Isi percakapan tidak ikut membentang: kolomnya dipusatkan.
     final bubble = tester.getRect(

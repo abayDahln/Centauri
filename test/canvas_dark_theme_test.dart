@@ -18,9 +18,7 @@ class _BusyWorkspaceNotifier extends WorkspaceNotifier {
 void main() {
   testWidgets('indikator AI memakai aksen primary', (tester) async {
     _busyStatus = const WorkspaceState(status: AiStatus.thinking);
-    final palette = AppPalette.dark(
-      primary: AppAccentPreset.violet.seedColor,
-    );
+    final palette = AppPalette.dark(primary: AppAccentPreset.violet.seedColor);
 
     await tester.pumpWidget(
       testApp(

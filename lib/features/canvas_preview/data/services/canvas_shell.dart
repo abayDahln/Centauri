@@ -1446,6 +1446,10 @@ const String canvasBridgeScript = r'''
 ///
 /// Script diberi id [_bridgeScriptId] agar bisa dibuang saat ekspor/sinkron.
 String injectBridge(String html) {
+  // Idempoten: dokumen yang sudah membawa bridge (mis. hasil render ulang)
+  // dikembalikan apa adanya supaya listener tidak terpasang dua kali.
+  if (html.contains('<script id="$_bridgeScriptId">')) return html;
+
   final injection =
       '<script id="$_bridgeScriptId">\n$canvasBridgeScript\n</script>\n';
 

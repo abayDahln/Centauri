@@ -6,8 +6,8 @@ import 'package:centauri/core/storage/local_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
 
+import 'helpers/hive_teardown.dart';
 import 'helpers/pump_app.dart';
 
 /// Regresi: halaman konfigurasi provider tidak boleh menjadi jalan buntu —
@@ -18,9 +18,7 @@ void main() {
     await LocalStorageService().init(path: dir.path);
   });
 
-  tearDownAll(() async {
-    await Hive.close();
-  });
+  tearDownAll(closeHiveForTests);
 
   testWidgets('Provider settings bisa dibuka lalu ditutup', (tester) async {
     tester.view

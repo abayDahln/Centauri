@@ -38,10 +38,7 @@ class AppThemeSelection {
     AppThemeMode.dark => ThemeMode.dark,
   };
 
-  AppThemeSelection copyWith({
-    AppThemeMode? mode,
-    AppAccentPreset? primary,
-  }) {
+  AppThemeSelection copyWith({AppThemeMode? mode, AppAccentPreset? primary}) {
     return AppThemeSelection(
       mode: mode ?? this.mode,
       primary: primary ?? this.primary,

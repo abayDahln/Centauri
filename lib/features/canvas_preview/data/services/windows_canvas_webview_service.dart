@@ -237,10 +237,10 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   }) async {
     if (!_ready || _disposed) return;
     final box = <String, Object?>{
-      if (dx != null) 'dx': dx,
-      if (dy != null) 'dy': dy,
-      if (width != null) 'w': width,
-      if (height != null) 'h': height,
+      'dx': ?dx,
+      'dy': ?dy,
+      'w': ?width,
+      'h': ?height,
     };
     await _safeExecute(
       'window.centauriMoveResize(${jsonEncode(id)}, ${jsonEncode(box)})',

@@ -7,8 +7,8 @@ import 'package:centauri/features/history/presentation/history_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
 
+import 'helpers/hive_teardown.dart';
 import 'helpers/pump_app.dart';
 
 /// Layar ponsel: lebar logis 400 px (< ambang desktop 900 px).
@@ -39,39 +39,42 @@ void main() {
     );
   });
 
-  tearDownAll(() async {
-    await Hive.close();
-  });
+  tearDownAll(closeHiveForTests);
 
-  testWidgets('Mobile: tanpa logo/nama app, tombol chat di kiri', (tester) async {
+  testWidgets('Mobile: tanpa logo/nama app, tombol riwayat di kiri', (
+    tester,
+  ) async {
     _usePonsel(tester);
     await _pumpApp(tester);
 
     // Branding "C" dan "Centauri" tidak lagi tampil di app bar.
     expect(find.text('Centauri'), findsNothing);
 
-    // Tombol chat ada di sisi kiri app bar, bukan di deretan aksi kanan.
-    final chatButton = find.byIcon(Icons.forum_outlined);
-    expect(chatButton, findsOneWidget);
-    expect(tester.getCenter(chatButton).dx, lessThan(200));
+    // Tanpa UI, chat sudah menjadi layar utama, jadi tombol kiri membuka
+    // riwayat — bukan chat.
+    final historyButton = find.byIcon(Icons.history);
+    expect(historyButton, findsOneWidget);
+    expect(tester.getCenter(historyButton).dx, lessThan(200));
   });
 
-  testWidgets('Mobile: chat dibuka sebagai sidebar, bukan bottom sheet', (
+  testWidgets('Mobile: riwayat dibuka sebagai sidebar, bukan bottom sheet', (
     tester,
   ) async {
     _usePonsel(tester);
     await _pumpApp(tester);
 
-    await tester.tap(find.byIcon(Icons.forum_outlined));
+    await tester.tap(find.byIcon(Icons.history));
     await tester.pumpAndSettle();
 
     final drawer = find.byType(Drawer);
     expect(drawer, findsOneWidget);
     // Menempel di tepi kiri layar seperti panel chat desktop.
     expect(tester.getRect(drawer).left, 0);
-    // Tab Chat dan History hidup di dalam sidebar.
-    expect(find.text('Chat'), findsWidgets);
-    expect(find.text('Riwayat'), findsWidgets);
+    // Tanpa halaman, drawer berisi riwayat saja (chat sudah jadi layar utama).
+    expect(
+      find.descendant(of: drawer, matching: find.byType(HistoryPanel)),
+      findsOneWidget,
+    );
     expect(find.byType(BottomSheet), findsNothing);
   });
 

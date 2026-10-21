@@ -63,9 +63,7 @@ void main() {
   });
 
   test('satu aksen dipakai untuk primary dan secondary Material', () {
-    final palette = AppPalette.light(
-      primary: AppAccentPreset.violet.seedColor,
-    );
+    final palette = AppPalette.light(primary: AppAccentPreset.violet.seedColor);
     final theme = AppTheme.light(palette);
     expect(theme.colorScheme.primary, AppAccentPreset.violet.seedColor);
     expect(theme.colorScheme.secondary, AppAccentPreset.violet.seedColor);

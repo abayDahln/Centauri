@@ -75,7 +75,7 @@ class McpServer {
     final snapshot = _bridge?.snapshot();
     _broadcast(
       event: 'state',
-      data: {'stateVersion': _stateVersion, if (snapshot != null) ...snapshot},
+      data: {'stateVersion': _stateVersion, ...?snapshot},
     );
   }
 
@@ -161,7 +161,7 @@ class McpServer {
     // Sapaan awal agar agent langsung tahu versi state.
     client.send('state', {
       'stateVersion': _stateVersion,
-      if (_bridge?.snapshot() case final snapshot?) ...snapshot,
+      ...?_bridge?.snapshot(),
     });
     response.flush().catchError((Object _) => true);
 

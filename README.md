@@ -152,6 +152,36 @@ Folder [`figma-plugin/`](figma-plugin/) berisi plugin companion untuk mengimpor 
 - **Pseudo-element** sederhana (bingkai/lingkaran dekoratif) ikut disintesis jadi shape; sisanya perlu ditambah manual.
 - **Lebar**: ekspor Figma merender ulang halaman pada lebar desktop (minimal 1440 px), jadi hasilnya tidak ikut sempit saat pratinjau sedang Split View.
 
+## Build & Rilis
+
+Rilis dibuat manual. Workflow **Build installers** hanya menghasilkan artifact
+(tidak membuat GitHub Release): jalankan dari tab Actions (**Run workflow**) atau
+push tag `v*`, lalu unduh dari bagian **Artifacts** pada run tersebut.
+
+- `centauri-android` → `Centauri-<versi>.apk`
+- `centauri-windows` → `Centauri-Setup-<versi>.exe`
+
+Membuat installer Windows secara lokal:
+
+```powershell
+flutter build windows --release
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+  "/DAppVersion=1.0.0" "windows\installer\centauri.iss"
+# build\windows\installer\Centauri-Setup-1.0.0.exe
+```
+
+Membuat APK secara lokal:
+
+```bash
+flutter build apk --release
+# build/app/outputs/flutter-apk/app-release.apk
+```
+
+Ganti `1.0.0` dengan versi di `pubspec.yaml`. Installer Windows bersifat
+per-user (tanpa UAC), untuk Windows 10+ x64, dan belum ditandatangani. APK
+memakai debug signing: bisa dipasang lewat "install dari sumber tidak dikenal",
+tetapi belum layak untuk Play Store.
+
 ## Roadmap
 
 | Versi | Target |

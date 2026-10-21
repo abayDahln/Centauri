@@ -2,13 +2,40 @@ import 'dart:io';
 
 import 'package:centauri/app/app.dart';
 import 'package:centauri/app/l10n/app_language.dart';
+import 'package:centauri/app/widgets/animated_side_panel.dart';
 import 'package:centauri/core/storage/local_storage_service.dart';
+import 'package:centauri/features/prompt_editor/presentation/prompt_chat_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
 
+import 'helpers/hive_teardown.dart';
 import 'helpers/pump_app.dart';
+
+/// Panel chat desktop (kolom yang lebarnya dianimasikan).
+Finder _chatPanel() => find
+    .ancestor(
+      of: find.byType(PromptChatPanel),
+      matching: find.byType(AnimatedContainer),
+    )
+    .first;
+
+/// Lebar panel chat yang benar-benar tampil; 0 berarti tersembunyi.
+///
+/// Panel tetap ter-mount saat disembunyikan (lebarnya dianimasikan ke nol),
+/// jadi `find.text` saja tidak cukup untuk memeriksa visibilitas.
+double _chatPanelWidth(WidgetTester tester) =>
+    tester.getSize(_chatPanel()).width;
+
+double _historyPanelWidth(WidgetTester tester) => tester
+    .getSize(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is AnimatedSidePanel &&
+            widget.alignment == AlignmentDirectional.centerStart,
+      ),
+    )
+    .width;
 
 void main() {
   setUpAll(() async {
@@ -16,9 +43,7 @@ void main() {
     await LocalStorageService().init(path: dir.path);
   });
 
-  tearDownAll(() async {
-    await Hive.close();
-  });
+  tearDownAll(closeHiveForTests);
   testWidgets('Empty workspace shows chat landing (not a preview)', (
     tester,
   ) async {
@@ -84,17 +109,27 @@ void main() {
     );
     await tester.pump();
 
-    // Kanvas terbuka: tombol tutup pratinjau ada, panel chat masih tertutup.
+    // Kanvas terbuka: tombol tutup pratinjau ada, panel chat tersembunyi.
     expect(find.byIcon(Icons.close_fullscreen_outlined), findsOneWidget);
-    expect(find.text('Belum ada percakapan'), findsNothing);
+    expect(_chatPanelWidth(tester), 0);
 
     await tester.tap(find.byIcon(Icons.close_fullscreen_outlined));
     await tester.pumpAndSettle();
 
-    // Mode fokus chat: percakapan tampil penuh, tombol berubah jadi buka.
+    // Mode fokus chat: percakapan mengisi sisa lebar jendela, tombol berubah
+    // jadi buka.
     expect(find.byIcon(Icons.open_in_full_outlined), findsOneWidget);
     expect(find.text('Belum ada percakapan'), findsOneWidget);
-    expect(find.text('Tulis pesan…'), findsOneWidget);
+    // Kolom pesan di dalam panel chat (bukan prompt bar pratinjau yang tetap
+    // ter-mount walau kanvas disembunyikan).
+    expect(
+      find.descendant(of: _chatPanel(), matching: find.text('Tulis pesan…')),
+      findsOneWidget,
+    );
+    expect(
+      _chatPanelWidth(tester),
+      closeTo(1440 - _historyPanelWidth(tester), 0.5),
+    );
     // Sidebar riwayat tetap ada; tombol riwayat tetap di top bar walau kanvas
     // sedang disembunyikan.
     expect(find.text('Chat baru'), findsOneWidget);
@@ -106,6 +141,7 @@ void main() {
     // Kanvas kembali, panel chat tetap terbuka.
     expect(find.byIcon(Icons.view_sidebar_outlined), findsOneWidget);
     expect(find.text('Belum ada percakapan'), findsOneWidget);
+    expect(_chatPanelWidth(tester), greaterThan(0));
 
     addTearDown(() async => tester.binding.setSurfaceSize(null));
   });
@@ -149,15 +185,17 @@ void main() {
     // Riwayat tampil di sidebar kiri.
     expect(find.text('Chat baru'), findsOneWidget);
     expect(find.text('Riwayat'), findsNothing);
+    expect(_historyPanelWidth(tester), greaterThan(0));
 
-    // Sembunyikan riwayat.
+    // Sembunyikan riwayat. Panel tetap ter-mount, jadi lebarnya yang diperiksa.
     await tester.tap(find.byIcon(Icons.view_sidebar_outlined));
     await tester.pumpAndSettle();
-    expect(find.text('Chat baru'), findsNothing);
+    expect(_historyPanelWidth(tester), 0);
 
     // Tampilkan kembali.
     await tester.tap(find.byIcon(Icons.view_sidebar_outlined));
     await tester.pumpAndSettle();
+    expect(_historyPanelWidth(tester), greaterThan(0));
     expect(find.text('Chat baru'), findsOneWidget);
 
     addTearDown(() async => tester.binding.setSurfaceSize(null));

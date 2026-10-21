@@ -4,7 +4,20 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('AppLanguage.all memuat 12 bahasa dengan kode unik', () {
     final codes = AppLanguage.all.map((l) => l.code).toList();
-    expect(codes, ['en', 'id', 'zh', 'ja', 'ko', 'ru', 'de', 'ar', 'fr', 'pt', 'th', 'fil']);
+    expect(codes, [
+      'en',
+      'id',
+      'zh',
+      'ja',
+      'ko',
+      'ru',
+      'de',
+      'ar',
+      'fr',
+      'pt',
+      'th',
+      'fil',
+    ]);
     expect(codes.toSet().length, codes.length);
   });
 
@@ -23,8 +36,11 @@ void main() {
   test('supportedLocales hanya berisi bahasa yang punya ARB', () {
     final codes = AppLanguage.supportedLocales.map((l) => l.languageCode);
     for (final language in AppLanguage.all) {
-      expect(codes.contains(language.code), isTrue,
-          reason: 'ARB untuk ${language.code} belum ada atau belum di-generate');
+      expect(
+        codes.contains(language.code),
+        isTrue,
+        reason: 'ARB untuk ${language.code} belum ada atau belum di-generate',
+      );
     }
   });
 }

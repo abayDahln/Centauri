@@ -90,30 +90,34 @@ void main() {
 
     test('list_sessions hanya metadata, tanpa html maupun teks pesan', () {
       final result = bridge.listSessions();
-      final session =
-          (result['sessions'] as List<Map<String, dynamic>>).single;
-      expect(session.keys, unorderedEquals([
-        'id',
-        'title',
-        'createdAt',
-        'updatedAt',
-        'messageCount',
-        'pageCount',
-        'activePageId',
-        'isActive',
-      ]));
+      final session = (result['sessions'] as List<Map<String, dynamic>>).single;
+      expect(
+        session.keys,
+        unorderedEquals([
+          'id',
+          'title',
+          'createdAt',
+          'updatedAt',
+          'messageCount',
+          'pageCount',
+          'activePageId',
+          'isActive',
+        ]),
+      );
       expect(session['isActive'], true);
     });
 
     test('get_session memotong teks panjang dan mempaginate pesan', () {
       final long = 'x' * 2000;
       repo.save(
-        store.load('s1')!.copyWith(
-          messages: [
-            const ProjectMessage(role: 'user', text: 'hai', kind: 'chat'),
-            ProjectMessage(role: 'assistant', text: long, kind: 'ui'),
-          ],
-        ),
+        store
+            .load('s1')!
+            .copyWith(
+              messages: [
+                const ProjectMessage(role: 'user', text: 'hai', kind: 'chat'),
+                ProjectMessage(role: 'assistant', text: long, kind: 'ui'),
+              ],
+            ),
       );
       final result = bridge.getSession('s1', limit: 1);
       expect(result['messageTotal'], 2);
@@ -127,35 +131,41 @@ void main() {
       expect((second['pages'] as List).length, 1);
     });
 
-    test('write_page mengganti halaman sesi aktif: file + workspace naik', () async {
-      final result = await bridge.writePage(
-        sessionId: 's1',
-        pageId: 'p1',
-        html: '<html><body><h1>Revisi</h1></body></html>',
-      );
-      expect(result['created'], false);
-      final page = container
-          .read(workspaceProvider)
-          .pages
-          .firstWhere((p) => p.id == 'p1');
-      expect(page.html, contains('Revisi'));
-      expect(page.html, contains('data-centauri-id'));
-      expect(store.load('s1')!.pages.single.html, contains('Revisi'));
-    });
+    test(
+      'write_page mengganti halaman sesi aktif: file + workspace naik',
+      () async {
+        final result = await bridge.writePage(
+          sessionId: 's1',
+          pageId: 'p1',
+          html: '<html><body><h1>Revisi</h1></body></html>',
+        );
+        expect(result['created'], false);
+        final page = container
+            .read(workspaceProvider)
+            .pages
+            .firstWhere((p) => p.id == 'p1');
+        expect(page.html, contains('Revisi'));
+        expect(page.html, contains('data-centauri-id'));
+        expect(store.load('s1')!.pages.single.html, contains('Revisi'));
+      },
+    );
 
-    test('write_page membuat halaman baru dan langsung menampilkannya', () async {
-      final result = await bridge.writePage(
-        sessionId: 's1',
-        name: 'Kontak',
-        html: '<html><body><h1>Kontak</h1></body></html>',
-      );
-      expect(result['created'], true);
-      expect(result['slug'], 'kontak.html');
-      final state = container.read(workspaceProvider);
-      expect(state.pages.length, 2);
-      expect(state.activePageId, result['pageId']);
-      expect(store.load('s1')!.pages.length, 2);
-    });
+    test(
+      'write_page membuat halaman baru dan langsung menampilkannya',
+      () async {
+        final result = await bridge.writePage(
+          sessionId: 's1',
+          name: 'Kontak',
+          html: '<html><body><h1>Kontak</h1></body></html>',
+        );
+        expect(result['created'], true);
+        expect(result['slug'], 'kontak.html');
+        final state = container.read(workspaceProvider);
+        expect(state.pages.length, 2);
+        expect(state.activePageId, result['pageId']);
+        expect(store.load('s1')!.pages.length, 2);
+      },
+    );
 
     test('delete_page menghapus dari file dan workspace', () {
       final result = bridge.deletePage('s1', 'p1');
@@ -179,33 +189,32 @@ void main() {
       expect(saved.kind, 'chat');
     });
 
-    test('mutasi sesi non-aktif mengubah file tanpa menyentuh workspace', () async {
-      container.read(historyProvider.notifier).startNew();
-      expect(container.read(workspaceProvider).pages, isEmpty);
-      final result = await bridge.writePage(
-        sessionId: 's1',
-        name: 'Tentang',
-        html: '<html><body><h1>Tentang</h1></body></html>',
-      );
-      expect(result['ok'], true);
-      expect(store.load('s1')!.pages.length, 2);
-      // Workspace (sesi baru yang kosong) tidak boleh ikut berubah.
-      expect(container.read(workspaceProvider).pages, isEmpty);
-      expect(container.read(historyProvider).projects.length, 1);
-    });
+    test(
+      'mutasi sesi non-aktif mengubah file tanpa menyentuh workspace',
+      () async {
+        container.read(historyProvider.notifier).startNew();
+        expect(container.read(workspaceProvider).pages, isEmpty);
+        final result = await bridge.writePage(
+          sessionId: 's1',
+          name: 'Tentang',
+          html: '<html><body><h1>Tentang</h1></body></html>',
+        );
+        expect(result['ok'], true);
+        expect(store.load('s1')!.pages.length, 2);
+        // Workspace (sesi baru yang kosong) tidak boleh ikut berubah.
+        expect(container.read(workspaceProvider).pages, isEmpty);
+        expect(container.read(historyProvider).projects.length, 1);
+      },
+    );
 
     test('id/pageId tak dikenal melempar McpException -32602', () {
       expect(
         () => bridge.deletePage('nope', 'p1'),
-        throwsA(
-          isA<McpException>().having((e) => e.code, 'code', -32602),
-        ),
+        throwsA(isA<McpException>().having((e) => e.code, 'code', -32602)),
       );
       expect(
         () => bridge.getPageHtml('s1', 'nope'),
-        throwsA(
-          isA<McpException>().having((e) => e.code, 'code', -32602),
-        ),
+        throwsA(isA<McpException>().having((e) => e.code, 'code', -32602)),
       );
     });
   });

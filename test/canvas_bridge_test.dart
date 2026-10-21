@@ -25,7 +25,14 @@ void main() {
 
     test('injects exactly once', () {
       final out = injectBridge(html);
-      expect('id="centauri-bridge"'.allMatches(out).length, 1);
+      // Tag pembuka bridge selalu diikuti newline; literal di dalam JS bridge
+      // tidak, jadi hitungan ini tidak ikut menghitung isi script.
+      expect('<script id="centauri-bridge">\n'.allMatches(out).length, 1);
+    });
+
+    test('does not inject a second bridge', () {
+      final once = injectBridge(html);
+      expect(injectBridge(once), once);
     });
 
     test('exposes the window API used by Dart', () {

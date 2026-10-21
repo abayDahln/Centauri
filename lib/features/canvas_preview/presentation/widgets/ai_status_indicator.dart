@@ -22,7 +22,21 @@ class _AiStatusIndicatorState extends ConsumerState<AiStatusIndicator>
   late final AnimationController _shimmer = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
-  )..repeat();
+  );
+
+  /// Animasi hanya hidup saat AI benar-benar bekerja.
+  ///
+  /// Controller yang selalu `repeat()` menjadwalkan frame tanpa henti —
+  /// `pumpAndSettle()` di widget test tidak akan pernah selesai, dan aplikasi
+  /// tetap menggambar walau tidak ada yang berubah.
+  void _syncShimmer(AiStatus status) {
+    final shouldAnimate = status != AiStatus.idle;
+    if (shouldAnimate && !_shimmer.isAnimating) {
+      _shimmer.repeat();
+    } else if (!shouldAnimate && _shimmer.isAnimating) {
+      _shimmer.stop();
+    }
+  }
 
   @override
   void dispose() {
@@ -33,6 +47,7 @@ class _AiStatusIndicatorState extends ConsumerState<AiStatusIndicator>
   @override
   Widget build(BuildContext context) {
     final status = ref.watch(workspaceProvider.select((s) => s.status));
+    _syncShimmer(status);
 
     if (status == AiStatus.idle) return const SizedBox.shrink();
 
