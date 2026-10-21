@@ -392,6 +392,15 @@
   "errorTransformNoCode": "This page has no code yet.",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma (plugin)",
+  "exportFigmaCopiedWidth": "Copied at {width} px. Paste into Figma.",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "Free Tier",
   "catalogSectionApiKey": "API Key",
 

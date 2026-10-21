@@ -730,6 +730,14 @@ class AppLocalizationsTh extends AppLocalizations {
   String get exportFigma => 'Figma';
 
   @override
+  String get exportFigmaPlugin => 'Figma (ปลั๊กอิน)';
+
+  @override
+  String exportFigmaCopiedWidth(int width) {
+    return 'คัดลอกที่ $width px วางลงใน Figma';
+  }
+
+  @override
   String get catalogSectionFreeTier => 'แพ็กเกจฟรี';
 
   @override

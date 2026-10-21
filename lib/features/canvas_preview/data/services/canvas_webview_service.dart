@@ -220,7 +220,11 @@ abstract class CanvasWebviewService {
 
   /// Minta JS mengekspor struktur halaman untuk plugin Figma via event
   /// `figma`/`figmaError`.
-  Future<void> requestFigmaPayload();
+  ///
+  /// [width] dan [height] > 0 → halaman dirender ulang di iframe dengan
+  /// ukuran itu supaya hasilnya memakai layout desktop, bukan ukuran
+  /// pratinjau saat ini.
+  Future<void> requestFigmaPayload({int width = 0, int height = 0});
 
   /// Mutasi DOM untuk MCP bridge (Fase 4). Hasil akhir selalu disinkronkan
   /// ulang via [requestHtml] agar HTML tetap source of truth.

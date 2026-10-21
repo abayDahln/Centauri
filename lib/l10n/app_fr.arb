@@ -208,6 +208,15 @@
   "providerNotFound": "Provider introuvable.",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma (plugin)",
+  "exportFigmaCopiedWidth": "Copié à {width} px. Collez dans Figma.",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "Offre gratuite",
   "catalogSectionApiKey": "API Key",
 

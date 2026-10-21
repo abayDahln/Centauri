@@ -208,6 +208,15 @@
   "providerNotFound": "Provider が見つかりません。",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma（プラグイン）",
+  "exportFigmaCopiedWidth": "{width} px でコピーしました。Figma に貼り付けてください。",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "無料枠",
   "catalogSectionApiKey": "API Key",
 

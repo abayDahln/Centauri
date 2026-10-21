@@ -750,6 +750,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get exportFigma => 'Figma';
 
   @override
+  String get exportFigmaPlugin => 'Figma (plugin)';
+
+  @override
+  String exportFigmaCopiedWidth(int width) {
+    return 'Copiado em $width px. Cole no Figma.';
+  }
+
+  @override
   String get catalogSectionFreeTier => 'Plano gratuito';
 
   @override

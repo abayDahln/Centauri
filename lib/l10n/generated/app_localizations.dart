@@ -1402,6 +1402,18 @@ abstract class AppLocalizations {
   /// **'Figma'**
   String get exportFigma;
 
+  /// No description provided for @exportFigmaPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Figma (plugin)'**
+  String get exportFigmaPlugin;
+
+  /// No description provided for @exportFigmaCopiedWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied at {width} px. Paste into Figma.'**
+  String exportFigmaCopiedWidth(int width);
+
   /// No description provided for @catalogSectionFreeTier.
   ///
   /// In en, this message translates to:

@@ -208,6 +208,15 @@
   "providerNotFound": "找不到 Provider。",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma（插件）",
+  "exportFigmaCopiedWidth": "已按 {width} px 复制，粘贴到 Figma。",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "免费额度",
   "catalogSectionApiKey": "API Key",
 

@@ -40,7 +40,7 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 - Design / Dev Mode: beralih antara preview penuh dan split view dengan code panel read-only (nomor baris + syntax highlight) ala VS Code.
 - Code Exporter: ekspor HTML self-contained (seluruh CSS di `<style>`, JS vanilla di `<script>`, tanpa CDN/framework, jalan offline). Tersedia konversi opsional ke React (JSX), Flutter Widget, dan Tailwind.
 - Image/Vector/Document Export: simpan halaman aktif sebagai PNG, SVG, atau PDF.
-- Export to Figma: hasilkan *payload* JSON yang dibaca plugin companion (`figma-plugin/`) untuk merekonstruksi frame/layer yang bisa diedit di Figma.
+- Export to Figma: salin **halaman aktif** sebagai SVG ke clipboard, lalu tempel langsung ke board Figma (Ctrl+V) - tiap elemen jadi group, teks jadi text layer, gambar jadi image layer, dan halaman jadi satu frame. Halaman selalu dirender ulang pada lebar desktop (minimal 1440 px) supaya hasilnya rapi. Payload JSON untuk plugin companion (`figma-plugin/`) tetap tersedia lewat menu "Figma (plugin)".
 - MCP Server (Desktop): server MCP embedded di `127.0.0.1:8765` dengan 6 tool **hemat token** — `list_sessions` (metadata saja), `get_session` (chat ter-paginate + indeks halaman), `get_page_html`, `write_page` / `delete_page` (buat/ubah/hapus design di sesi mana pun), dan `post_to_chat` (agent mengirim penjelasan ke chat). Semua perubahan **langsung tampil** di app (WebView render ulang, history dan chat naik) lewat sinkronisasi state + SSE, tanpa refresh. Dokumentasi lengkap & setup per CLI: [`docs/mcp_server.md`](docs/mcp_server.md).
 
 **Sesi & Penyimpanan**
@@ -143,7 +143,14 @@ Karena menggunakan arsitektur BYOK, konfigurasikan provider AI saat pertama kali
 
 ## Plugin Figma
 
-Folder [`figma-plugin/`](figma-plugin/) berisi plugin companion untuk mengimpor desain Centauri ke Figma. Lihat [`figma-plugin/README.md`](figma-plugin/README.md) untuk instalasi dan skema payload.
+Folder [`figma-plugin/`](figma-plugin/) berisi plugin companion untuk mengimpor desain Centauri ke Figma. Lihat [`figma-plugin/README.md`](figma-plugin/README.md) untuk instalasi dan skema payload. Untuk hasil yang bisa langsung ditempel (tanpa plugin), pakai menu **Ekspor > Figma**: SVG halaman aktif disalin ke clipboard dan Figma mengimpornya sebagai layer yang bisa diedit.
+
+### Catatan hasil tempel ke Figma
+
+- **Font**: teks jadi text layer dengan nama font halaman. Kalau font tidak terpasang di Figma, Figma yang memilih font pengganti - hasilnya bisa terlihat beda dan perlu disetel manual.
+- **Bayangan** (`box-shadow`) tidak ikut: Figma mengabaikan filter SVG.
+- **Pseudo-element** sederhana (bingkai/lingkaran dekoratif) ikut disintesis jadi shape; sisanya perlu ditambah manual.
+- **Lebar**: ekspor Figma merender ulang halaman pada lebar desktop (minimal 1440 px), jadi hasilnya tidak ikut sempit saat pratinjau sedang Split View.
 
 ## Roadmap
 

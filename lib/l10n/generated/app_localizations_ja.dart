@@ -720,6 +720,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exportFigma => 'Figma';
 
   @override
+  String get exportFigmaPlugin => 'Figma（プラグイン）';
+
+  @override
+  String exportFigmaCopiedWidth(int width) {
+    return '$width px でコピーしました。Figma に貼り付けてください。';
+  }
+
+  @override
   String get catalogSectionFreeTier => '無料枠';
 
   @override

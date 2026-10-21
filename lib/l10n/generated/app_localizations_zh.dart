@@ -716,6 +716,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportFigma => 'Figma';
 
   @override
+  String get exportFigmaPlugin => 'Figma（插件）';
+
+  @override
+  String exportFigmaCopiedWidth(int width) {
+    return '已按 $width px 复制，粘贴到 Figma。';
+  }
+
+  @override
   String get catalogSectionFreeTier => '免费额度';
 
   @override

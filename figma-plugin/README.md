@@ -4,10 +4,16 @@ Plugin companion untuk mengimpor desain halaman Centauri menjadi **frame/layer
 yang bisa diedit** di Figma. Centauri menghasilkan *payload* JSON (bbox +
 computed style + teks); plugin ini merekonstruksinya.
 
-## Alur pakai
+> **Butuh plugin?** Tidak untuk hasil akhir. Menu **Ekspor → Figma** menyalin
+> SVG halaman aktif ke clipboard (format `image/svg+xml`), jadi langsung bisa
+> ditempel ke board Figma dengan Ctrl+V - group, text layer, gambar, dan frame
+> ikut terbawa. Plugin di bawah ini tetap berguna bila ingin memakai payload
+> JSON (layer per node) alih-alih hasil render.
+
+## Alur pakai (plugin)
 
 1. Di Centauri, buka halaman yang mau diekspor.
-2. Klik **Ekspor → Figma (payload plugin)**.
+2. Klik **Ekspor → Figma (plugin)**.
    - Payload otomatis **tersalin ke clipboard** dan opsional **disimpan** sebagai
      file `*.centauri-figma.json`.
 3. Buka plugin **Centauri Design Import** di Figma (menu Plugins → Development).

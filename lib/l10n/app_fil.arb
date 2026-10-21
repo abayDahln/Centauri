@@ -208,6 +208,15 @@
   "providerNotFound": "Hindi mahanap ang Provider.",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma (plug-in)",
+  "exportFigmaCopiedWidth": "Nakopya sa {width} px. I-paste sa Figma.",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "Libreng tier",
   "catalogSectionApiKey": "API Key",
 

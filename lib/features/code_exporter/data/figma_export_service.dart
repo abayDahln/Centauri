@@ -4,9 +4,11 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../canvas_preview/data/services/canvas_service_registry.dart';
 import '../../../core/errors/app_error.dart';
+import 'figma_svg_builder.dart';
 
 /// Kegagalan ekspor Figma; membawa kode yang diterjemahkan di UI.
 class FigmaExportException extends AppErrorDetails implements Exception {
@@ -15,6 +17,16 @@ class FigmaExportException extends AppErrorDetails implements Exception {
   @override
   String toString() => debugLabel;
 }
+
+/// Format clipboard untuk SVG.
+///
+/// Windows: format kustom `image/svg+xml` (dipakai Figma/Chromium).
+/// macOS: UTI `public.svg-image`. Linux: MIME `image/svg+xml`.
+const SimpleFileFormat _svgClipboardFormat = SimpleFileFormat(
+  windowsFormats: ['image/svg+xml'],
+  mimeTypes: ['image/svg+xml'],
+  uniformTypeIdentifiers: ['public.svg-image'],
+);
 
 /// Ekspor desain halaman aktif ke **payload Figma** yang dikonsumsi plugin
 /// companion Centauri (`figma-plugin/`).
@@ -29,7 +41,14 @@ class FigmaExportService {
   static const int currentVersion = 1;
 
   /// Ambil payload struktur halaman dari WebView via event `figma`/`figmaError`.
-  Future<Map<String, dynamic>> collectPayload(String pageId) async {
+  ///
+  /// [width] dan [height] > 0 → halaman dirender ulang pada ukuran itu
+  /// (layout desktop), 0 → memakai ukuran pratinjau saat ini.
+  Future<Map<String, dynamic>> collectPayload(
+    String pageId, {
+    int width = 0,
+    int height = 0,
+  }) async {
     final service = CanvasServiceRegistry.forFrame(pageId);
     if (service == null) {
       throw const FigmaExportException(AppErrorCode.exportNotReady);
@@ -42,7 +61,7 @@ class FigmaExportService {
           onTimeout: () =>
               throw const FigmaExportException(AppErrorCode.exportTimeout),
         );
-    await service.requestFigmaPayload();
+    await service.requestFigmaPayload(width: width, height: height);
 
     final event = await future;
     if (event.type == 'figmaError') {
@@ -97,6 +116,42 @@ class FigmaExportService {
       total += walk(node);
     }
     return total;
+  }
+
+  /// Bangun SVG murni dari payload halaman.
+  ///
+  /// SVG ini yang ditempel ke board Figma: tiap elemen jadi group, teks jadi
+  /// text layer, gambar jadi image layer, dan halaman jadi satu frame.
+  String buildPasteableSvg(Map<String, dynamic> payload) {
+    final nodes = payload['nodes'];
+    if (nodes is! List || nodes.isEmpty) {
+      throw const FigmaExportException(AppErrorCode.exportNoElements);
+    }
+    return const FigmaSvgBuilder().build(payload);
+  }
+
+  /// Salin SVG ke clipboard supaya bisa langsung ditempel di Figma.
+  ///
+  /// Ditulis dua format: `image/svg+xml` (dipakai Figma/Chromium) dan teks
+  /// polos (cadangan untuk aplikasi lain). Bila clipboard sistem tidak
+  /// tersedia, jatuh ke clipboard Flutter.
+  Future<void> copySvgToClipboard(String svg) async {
+    final writer = SystemClipboard.instance;
+    if (writer == null) {
+      await Clipboard.setData(ClipboardData(text: svg));
+      return;
+    }
+    try {
+      final item = DataWriterItem();
+      // Format kustom "image/svg+xml" dibaca Figma/Chromium; teks polos
+      // dipakai sebagai cadangan bila aplikasi hanya membaca teks.
+      item.add(_svgClipboardFormat(Uint8List.fromList(utf8.encode(svg))));
+      item.add(Formats.plainText(svg));
+      await writer.write([item]);
+    } catch (_) {
+      // Fallback ke clipboard Flutter bila format SVG ditolak platform.
+      await Clipboard.setData(ClipboardData(text: svg));
+    }
   }
 
   /// Simpan payload sebagai file `.centauri-figma.json`.

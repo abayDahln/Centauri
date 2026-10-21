@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,7 +32,11 @@ class PageExportButton extends ConsumerStatefulWidget {
   ConsumerState<PageExportButton> createState() => _PageExportButtonState();
 }
 
-enum _PageExportKind { png, svg, pdf, figma }
+enum _PageExportKind { png, svg, pdf, figma, figmaPlugin }
+
+/// Lebar minimum render untuk ekspor Figma supaya hasilnya layout desktop,
+/// bukan versi sempit dari pratinjau yang sedang Split View.
+const int _figmaMinWidth = 1440;
 
 class _PageExportButtonState extends ConsumerState<PageExportButton> {
   final PageExportService _service = PageExportService();
@@ -81,6 +87,20 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
             );
             if (path != null) snack(l10n.exportSaved(path));
           case _PageExportKind.figma:
+            // Satu halaman saja, dan selalu dirender pada ukuran desktop
+            // supaya hasilnya rapi walau pratinjau sedang sempit.
+            final size = MediaQuery.sizeOf(context);
+            final width = math.max(_figmaMinWidth, size.width.round());
+            final height = math.max(600, size.height.round());
+            final payload = await _figma.collectPayload(
+              page.id,
+              width: width,
+              height: height,
+            );
+            final svg = _figma.buildPasteableSvg(payload);
+            await _figma.copySvgToClipboard(svg);
+            snack(l10n.exportFigmaCopiedWidth(width));
+          case _PageExportKind.figmaPlugin:
             final payload = await _figma.collectPayload(page.id);
             final json = _figma.buildFigmaJson(payload);
             await _figma.copyToClipboard(json);
@@ -133,7 +153,11 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
           ),
           PopupMenuItem(
             value: _PageExportKind.figma,
-            child: const Text('Figma'),
+            child: Text(l10n.exportFigma),
+          ),
+          PopupMenuItem(
+            value: _PageExportKind.figmaPlugin,
+            child: Text(l10n.exportFigmaPlugin),
           ),
         ],
       );
@@ -147,7 +171,14 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
         PopupMenuItem(value: _PageExportKind.png, child: Text(l10n.exportPng)),
         PopupMenuItem(value: _PageExportKind.svg, child: Text(l10n.exportSvg)),
         PopupMenuItem(value: _PageExportKind.pdf, child: Text(l10n.exportPdf)),
-        PopupMenuItem(value: _PageExportKind.figma, child: const Text('Figma')),
+        PopupMenuItem(
+          value: _PageExportKind.figma,
+          child: Text(l10n.exportFigma),
+        ),
+        PopupMenuItem(
+          value: _PageExportKind.figmaPlugin,
+          child: Text(l10n.exportFigmaPlugin),
+        ),
       ],
       child: widget.primary
           ? _PrimaryExportButton(busy: _busy, enabled: hasPage)

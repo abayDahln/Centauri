@@ -208,6 +208,15 @@
   "providerNotFound": "Provider غير موجود.",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma (إضافة)",
+  "exportFigmaCopiedWidth": "تم النسخ بعرض {width} بكسل. الصق في Figma.",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "الخطة المجانية",
   "catalogSectionApiKey": "API Key",
 

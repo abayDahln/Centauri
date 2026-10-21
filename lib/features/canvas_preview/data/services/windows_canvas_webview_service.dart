@@ -200,9 +200,9 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
-  Future<void> requestFigmaPayload() async {
+  Future<void> requestFigmaPayload({int width = 0, int height = 0}) async {
     if (!_ready || _disposed) return;
-    await _safeExecute('window.centauriExportFigma()');
+    await _safeExecute('window.centauriExportFigma($width, $height)');
   }
 
   @override

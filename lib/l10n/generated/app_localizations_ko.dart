@@ -721,6 +721,14 @@ class AppLocalizationsKo extends AppLocalizations {
   String get exportFigma => 'Figma';
 
   @override
+  String get exportFigmaPlugin => 'Figma(플러그인)';
+
+  @override
+  String exportFigmaCopiedWidth(int width) {
+    return '$width px로 복사했습니다. Figma에 붙여넣으세요.';
+  }
+
+  @override
   String get catalogSectionFreeTier => '무료 요금제';
 
   @override

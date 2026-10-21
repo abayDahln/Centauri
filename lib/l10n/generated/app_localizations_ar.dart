@@ -734,6 +734,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get exportFigma => 'Figma';
 
   @override
+  String get exportFigmaPlugin => 'Figma (إضافة)';
+
+  @override
+  String exportFigmaCopiedWidth(int width) {
+    return 'تم النسخ بعرض $width بكسل. الصق في Figma.';
+  }
+
+  @override
   String get catalogSectionFreeTier => 'الخطة المجانية';
 
   @override

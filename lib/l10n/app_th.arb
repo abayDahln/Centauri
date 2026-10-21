@@ -208,6 +208,15 @@
   "providerNotFound": "ไม่พบ Provider",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma (ปลั๊กอิน)",
+  "exportFigmaCopiedWidth": "คัดลอกที่ {width} px วางลงใน Figma",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "แพ็กเกจฟรี",
   "catalogSectionApiKey": "API Key",
 

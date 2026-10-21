@@ -739,6 +739,14 @@ class AppLocalizationsId extends AppLocalizations {
   String get exportFigma => 'Figma';
 
   @override
+  String get exportFigmaPlugin => 'Figma (plugin)';
+
+  @override
+  String exportFigmaCopiedWidth(int width) {
+    return 'Disalin ($width px). Tempel di Figma.';
+  }
+
+  @override
   String get catalogSectionFreeTier => 'Free Tier';
 
   @override

@@ -208,6 +208,15 @@
   "providerNotFound": "Provider не найден.",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma (плагин)",
+  "exportFigmaCopiedWidth": "Скопировано с шириной {width} px. Вставьте в Figma.",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "Бесплатный тариф",
   "catalogSectionApiKey": "API Key",
 

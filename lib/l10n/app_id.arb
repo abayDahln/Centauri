@@ -371,6 +371,15 @@
   "errorTransformNoCode": "Halaman ini belum punya kode.",
 
   "exportFigma": "Figma",
+  "exportFigmaPlugin": "Figma (plugin)",
+  "exportFigmaCopiedWidth": "Disalin ({width} px). Tempel di Figma.",
+  "@exportFigmaCopiedWidth": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      }
+    }
+  },
   "catalogSectionFreeTier": "Free Tier",
   "catalogSectionApiKey": "API Key",
 

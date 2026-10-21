@@ -747,6 +747,14 @@ class AppLocalizationsFil extends AppLocalizations {
   String get exportFigma => 'Figma';
 
   @override
+  String get exportFigmaPlugin => 'Figma (plug-in)';
+
+  @override
+  String exportFigmaCopiedWidth(int width) {
+    return 'Nakopya sa $width px. I-paste sa Figma.';
+  }
+
+  @override
   String get catalogSectionFreeTier => 'Libreng tier';
 
   @override
