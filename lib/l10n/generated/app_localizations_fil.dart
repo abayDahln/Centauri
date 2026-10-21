@@ -576,6 +576,89 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'Gabay';
+
+  @override
+  String get mcpGuideTitle => 'Gabay sa MCP';
+
+  @override
+  String get mcpGuideSubtitle => 'Ikonekta ang AI agent sa app na ito.';
+
+  @override
+  String get mcpGuideStepStart => 'Simulan ang server';
+
+  @override
+  String get mcpGuideStepStartDesc => 'Tumatakbo habang bukas ang app.';
+
+  @override
+  String get mcpGuideEndpoint => 'Address';
+
+  @override
+  String get mcpGuideStepConnect => 'Ikonekta ang agent';
+
+  @override
+  String get mcpGuideStepConnectDesc =>
+      'Pumili ng agent, pagkatapos kopyahin ang code.';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'File: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'Kopyahin ang code';
+
+  @override
+  String get mcpGuideCopied => 'Nakopya ang code.';
+
+  @override
+  String get mcpGuideStepTest => 'Suriin ang koneksyon';
+
+  @override
+  String get mcpGuideStepTestDesc =>
+      'Ipadala ito, pagkatapos tingnan ang listahan.';
+
+  @override
+  String get mcpGuideStepTools => 'Ano ang kaya ng agent';
+
+  @override
+  String get mcpGuideStepToolsDesc =>
+      'Anim na tool: listahan muna, detalye pagkatapos.';
+
+  @override
+  String get mcpGuideTipTitle => 'Kung ayaw kumonekta';
+
+  @override
+  String get mcpGuideTipAppClosed =>
+      'Iwanang bukas ang app; patay ang server kapag isinara ito.';
+
+  @override
+  String get mcpGuideTipPort =>
+      'Kung ginagamit ang 8765, lilipat ang app sa 8766–8774.';
+
+  @override
+  String get mcpGuideTipLocal =>
+      'Lokal lang. Huwag buksan ang port na ito sa network.';
+
+  @override
+  String get mcpToolListSessions => 'Naglista ng usapan at bilang.';
+
+  @override
+  String get mcpToolGetSession => 'Binabasa ang isang usapan at mga pahina.';
+
+  @override
+  String get mcpToolGetPageHtml => 'Ibinabalik ang buong HTML ng isang pahina.';
+
+  @override
+  String get mcpToolWritePage => 'Gumagawa o pumapalit ng pahina.';
+
+  @override
+  String get mcpToolDeletePage => 'Tinatanggal ang pahina.';
+
+  @override
+  String get mcpToolPostToChat => 'Nagsusulat ng sagot sa chat.';
+
+  @override
   String get chatProcessing => 'Pinoproseso…';
 
   @override

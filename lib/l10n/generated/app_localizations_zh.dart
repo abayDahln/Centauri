@@ -560,6 +560,83 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => '指南';
+
+  @override
+  String get mcpGuideTitle => 'MCP 指南';
+
+  @override
+  String get mcpGuideSubtitle => '将 AI 助手连接到本应用。';
+
+  @override
+  String get mcpGuideStepStart => '启动服务器';
+
+  @override
+  String get mcpGuideStepStartDesc => '应用打开期间自动运行。';
+
+  @override
+  String get mcpGuideEndpoint => '地址';
+
+  @override
+  String get mcpGuideStepConnect => '连接助手';
+
+  @override
+  String get mcpGuideStepConnectDesc => '选择助手，然后复制代码。';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return '文件：$path';
+  }
+
+  @override
+  String get mcpGuideCopy => '复制代码';
+
+  @override
+  String get mcpGuideCopied => '代码已复制。';
+
+  @override
+  String get mcpGuideStepTest => '检查连接';
+
+  @override
+  String get mcpGuideStepTestDesc => '发送此请求，然后查看会话列表。';
+
+  @override
+  String get mcpGuideStepTools => '助手可以做什么';
+
+  @override
+  String get mcpGuideStepToolsDesc => '六个工具：先列表，再取详情。';
+
+  @override
+  String get mcpGuideTipTitle => '如果无法连接';
+
+  @override
+  String get mcpGuideTipAppClosed => '保持应用打开；关闭应用会停止服务器。';
+
+  @override
+  String get mcpGuideTipPort => '如果 8765 被占用，应用会改用 8766–8774。';
+
+  @override
+  String get mcpGuideTipLocal => '仅限本机。不要将此端口开放到网络。';
+
+  @override
+  String get mcpToolListSessions => '列出会话及数量。';
+
+  @override
+  String get mcpToolGetSession => '读取一个会话及其页面列表。';
+
+  @override
+  String get mcpToolGetPageHtml => '返回一个页面的完整 HTML。';
+
+  @override
+  String get mcpToolWritePage => '新建或替换页面。';
+
+  @override
+  String get mcpToolDeletePage => '删除页面。';
+
+  @override
+  String get mcpToolPostToChat => '把回复写入对话。';
+
+  @override
   String get chatProcessing => '处理中…';
 
   @override

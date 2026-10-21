@@ -577,6 +577,87 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'Guia';
+
+  @override
+  String get mcpGuideTitle => 'Guia do MCP';
+
+  @override
+  String get mcpGuideSubtitle => 'Conecte um agente de IA a este app.';
+
+  @override
+  String get mcpGuideStepStart => 'Iniciar servidor';
+
+  @override
+  String get mcpGuideStepStartDesc => 'Funciona enquanto o app estiver aberto.';
+
+  @override
+  String get mcpGuideEndpoint => 'Endereço';
+
+  @override
+  String get mcpGuideStepConnect => 'Conectar agente';
+
+  @override
+  String get mcpGuideStepConnectDesc => 'Escolha o agente e copie o código.';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'Arquivo: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'Copiar código';
+
+  @override
+  String get mcpGuideCopied => 'Código copiado.';
+
+  @override
+  String get mcpGuideStepTest => 'Verificar conexão';
+
+  @override
+  String get mcpGuideStepTestDesc => 'Envie esta solicitação e veja a lista.';
+
+  @override
+  String get mcpGuideStepTools => 'O que o agente pode fazer';
+
+  @override
+  String get mcpGuideStepToolsDesc =>
+      'Seis ferramentas: lista primeiro, detalhes depois.';
+
+  @override
+  String get mcpGuideTipTitle => 'Se não conectar';
+
+  @override
+  String get mcpGuideTipAppClosed =>
+      'Mantenha o app aberto; fechar para o servidor.';
+
+  @override
+  String get mcpGuideTipPort =>
+      'Se a porta 8765 estiver ocupada, o app usa 8766–8774.';
+
+  @override
+  String get mcpGuideTipLocal =>
+      'Somente local. Não abra esta porta para a rede.';
+
+  @override
+  String get mcpToolListSessions => 'Lista conversas com contagens.';
+
+  @override
+  String get mcpToolGetSession => 'Lê uma conversa e suas páginas.';
+
+  @override
+  String get mcpToolGetPageHtml => 'Devolve o HTML completo de uma página.';
+
+  @override
+  String get mcpToolWritePage => 'Cria ou substitui uma página.';
+
+  @override
+  String get mcpToolDeletePage => 'Apaga uma página.';
+
+  @override
+  String get mcpToolPostToChat => 'Escreve uma resposta no chat.';
+
+  @override
   String get chatProcessing => 'Processando…';
 
   @override

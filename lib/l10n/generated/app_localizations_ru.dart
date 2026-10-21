@@ -579,6 +579,87 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'Руководство';
+
+  @override
+  String get mcpGuideTitle => 'Руководство MCP';
+
+  @override
+  String get mcpGuideSubtitle => 'Подключите ИИ-агента к приложению.';
+
+  @override
+  String get mcpGuideStepStart => 'Запустите сервер';
+
+  @override
+  String get mcpGuideStepStartDesc => 'Работает, пока открыто приложение.';
+
+  @override
+  String get mcpGuideEndpoint => 'Адрес';
+
+  @override
+  String get mcpGuideStepConnect => 'Подключите агента';
+
+  @override
+  String get mcpGuideStepConnectDesc => 'Выберите агента и скопируйте код.';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'Файл: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'Копировать код';
+
+  @override
+  String get mcpGuideCopied => 'Код скопирован.';
+
+  @override
+  String get mcpGuideStepTest => 'Проверьте подключение';
+
+  @override
+  String get mcpGuideStepTestDesc =>
+      'Отправьте запрос и посмотрите список бесед.';
+
+  @override
+  String get mcpGuideStepTools => 'Что умеет агент';
+
+  @override
+  String get mcpGuideStepToolsDesc =>
+      'Шесть инструментов: сначала список, потом детали.';
+
+  @override
+  String get mcpGuideTipTitle => 'Если не подключается';
+
+  @override
+  String get mcpGuideTipAppClosed =>
+      'Держите приложение открытым: при закрытии сервер останавливается.';
+
+  @override
+  String get mcpGuideTipPort =>
+      'Если порт 8765 занят, приложение перейдёт на 8766–8774.';
+
+  @override
+  String get mcpGuideTipLocal => 'Только локально. Не открывайте порт в сеть.';
+
+  @override
+  String get mcpToolListSessions => 'Список бесед с количеством.';
+
+  @override
+  String get mcpToolGetSession => 'Читает беседу и список её страниц.';
+
+  @override
+  String get mcpToolGetPageHtml => 'Возвращает полный HTML страницы.';
+
+  @override
+  String get mcpToolWritePage => 'Создаёт или заменяет страницу.';
+
+  @override
+  String get mcpToolDeletePage => 'Удаляет страницу.';
+
+  @override
+  String get mcpToolPostToChat => 'Пишет ответ в чат.';
+
+  @override
   String get chatProcessing => 'Обработка…';
 
   @override

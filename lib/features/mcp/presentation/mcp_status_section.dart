@@ -11,6 +11,7 @@ import '../../../../app/widgets/app_toast.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../data/mcp_bridge.dart';
 import '../data/mcp_server.dart';
+import 'mcp_guide_dialog.dart';
 
 /// Status + info koneksi MCP server lokal (Fase 4: Desktop Full).
 /// Ditampilkan di halaman konfigurasi provider agar agent eksternal
@@ -123,6 +124,15 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
             style: TextStyle(fontSize: 12, color: context.palette.textDisabled),
           ),
         ],
+        const SizedBox(height: 4),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            onPressed: () => showMcpGuide(context, endpoint: endpoint),
+            icon: const Icon(Icons.menu_book_outlined, size: 16),
+            label: Text(l10n.mcpGuideOpen),
+          ),
+        ),
       ],
     );
   }

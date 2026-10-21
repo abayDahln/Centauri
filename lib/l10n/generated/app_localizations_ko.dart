@@ -564,6 +564,83 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => '가이드';
+
+  @override
+  String get mcpGuideTitle => 'MCP 가이드';
+
+  @override
+  String get mcpGuideSubtitle => 'AI 에이전트를 이 앱에 연결합니다.';
+
+  @override
+  String get mcpGuideStepStart => '서버 시작';
+
+  @override
+  String get mcpGuideStepStartDesc => '앱이 열려 있는 동안 실행됩니다.';
+
+  @override
+  String get mcpGuideEndpoint => '주소';
+
+  @override
+  String get mcpGuideStepConnect => '에이전트 연결';
+
+  @override
+  String get mcpGuideStepConnectDesc => '에이전트를 고른 뒤 코드를 복사하세요.';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return '파일: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => '코드 복사';
+
+  @override
+  String get mcpGuideCopied => '코드를 복사했습니다.';
+
+  @override
+  String get mcpGuideStepTest => '연결 확인';
+
+  @override
+  String get mcpGuideStepTestDesc => '이 요청을 보낸 뒤 대화 목록을 확인하세요.';
+
+  @override
+  String get mcpGuideStepTools => '에이전트가 할 수 있는 일';
+
+  @override
+  String get mcpGuideStepToolsDesc => '도구 6개. 목록 먼저, 세부는 나중에.';
+
+  @override
+  String get mcpGuideTipTitle => '연결되지 않을 때';
+
+  @override
+  String get mcpGuideTipAppClosed => '앱을 열어 두세요. 닫으면 서버가 멈춥니다.';
+
+  @override
+  String get mcpGuideTipPort => '8765 포트가 사용 중이면 8766–8774로 옮깁니다.';
+
+  @override
+  String get mcpGuideTipLocal => '로컬 전용입니다. 이 포트를 네트워크에 열지 마세요.';
+
+  @override
+  String get mcpToolListSessions => '대화와 개수를 나열합니다.';
+
+  @override
+  String get mcpToolGetSession => '대화 하나와 페이지 목록을 읽습니다.';
+
+  @override
+  String get mcpToolGetPageHtml => '페이지 하나의 전체 HTML을 반환합니다.';
+
+  @override
+  String get mcpToolWritePage => '페이지를 만들거나 바꿉니다.';
+
+  @override
+  String get mcpToolDeletePage => '페이지를 삭제합니다.';
+
+  @override
+  String get mcpToolPostToChat => '채팅에 답장을 씁니다.';
+
+  @override
   String get chatProcessing => '처리 중…';
 
   @override

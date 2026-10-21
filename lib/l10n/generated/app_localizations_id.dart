@@ -570,6 +570,90 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'Panduan';
+
+  @override
+  String get mcpGuideTitle => 'Panduan MCP';
+
+  @override
+  String get mcpGuideSubtitle => 'Hubungkan agent AI ke aplikasi ini.';
+
+  @override
+  String get mcpGuideStepStart => 'Nyalakan server';
+
+  @override
+  String get mcpGuideStepStartDesc => 'Hidup selama aplikasi terbuka.';
+
+  @override
+  String get mcpGuideEndpoint => 'Alamat';
+
+  @override
+  String get mcpGuideStepConnect => 'Hubungkan agent';
+
+  @override
+  String get mcpGuideStepConnectDesc => 'Pilih agent, lalu salin kodenya.';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'File: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'Salin kode';
+
+  @override
+  String get mcpGuideCopied => 'Kode disalin.';
+
+  @override
+  String get mcpGuideStepTest => 'Cek koneksi';
+
+  @override
+  String get mcpGuideStepTestDesc =>
+      'Kirim permintaan ini, lalu lihat daftar percakapan.';
+
+  @override
+  String get mcpGuideStepTools => 'Yang bisa dilakukan agent';
+
+  @override
+  String get mcpGuideStepToolsDesc =>
+      'Enam tool: daftar dulu, detail menyusul.';
+
+  @override
+  String get mcpGuideTipTitle => 'Kalau gagal tersambung';
+
+  @override
+  String get mcpGuideTipAppClosed =>
+      'Biarkan aplikasi terbuka; menutupnya mematikan server.';
+
+  @override
+  String get mcpGuideTipPort =>
+      'Kalau port 8765 dipakai, aplikasi pindah ke 8766–8774.';
+
+  @override
+  String get mcpGuideTipLocal =>
+      'Hanya lokal. Jangan buka port ini ke jaringan.';
+
+  @override
+  String get mcpToolListSessions =>
+      'Menampilkan daftar percakapan dan jumlahnya.';
+
+  @override
+  String get mcpToolGetSession =>
+      'Membaca satu percakapan dan daftar halamannya.';
+
+  @override
+  String get mcpToolGetPageHtml => 'Mengembalikan HTML lengkap satu halaman.';
+
+  @override
+  String get mcpToolWritePage => 'Membuat atau mengganti halaman.';
+
+  @override
+  String get mcpToolDeletePage => 'Menghapus halaman.';
+
+  @override
+  String get mcpToolPostToChat => 'Menulis balasan ke chat.';
+
+  @override
   String get chatProcessing => 'Memproses…';
 
   @override

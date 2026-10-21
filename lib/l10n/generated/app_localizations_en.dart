@@ -574,6 +574,87 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'Guide';
+
+  @override
+  String get mcpGuideTitle => 'MCP guide';
+
+  @override
+  String get mcpGuideSubtitle => 'Connect an AI agent to this app.';
+
+  @override
+  String get mcpGuideStepStart => 'Start the server';
+
+  @override
+  String get mcpGuideStepStartDesc =>
+      'Runs while the app is open. No sign-in needed.';
+
+  @override
+  String get mcpGuideEndpoint => 'Address';
+
+  @override
+  String get mcpGuideStepConnect => 'Connect your agent';
+
+  @override
+  String get mcpGuideStepConnectDesc =>
+      'Pick your agent, then copy the snippet.';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'File: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'Copy snippet';
+
+  @override
+  String get mcpGuideCopied => 'Snippet copied.';
+
+  @override
+  String get mcpGuideStepTest => 'Check the connection';
+
+  @override
+  String get mcpGuideStepTestDesc =>
+      'Send this request, then look for your sessions.';
+
+  @override
+  String get mcpGuideStepTools => 'What the agent can do';
+
+  @override
+  String get mcpGuideStepToolsDesc => 'Six tools: list first, detail later.';
+
+  @override
+  String get mcpGuideTipTitle => 'If it won\'t connect';
+
+  @override
+  String get mcpGuideTipAppClosed =>
+      'Keep the app open; closing it stops the server.';
+
+  @override
+  String get mcpGuideTipPort => 'If 8765 is taken, the app moves to 8766–8774.';
+
+  @override
+  String get mcpGuideTipLocal => 'Local only. Never share this port.';
+
+  @override
+  String get mcpToolListSessions => 'Lists conversations with counts.';
+
+  @override
+  String get mcpToolGetSession => 'Reads one conversation and its pages.';
+
+  @override
+  String get mcpToolGetPageHtml => 'Returns one page\'s full HTML.';
+
+  @override
+  String get mcpToolWritePage => 'Creates or replaces a page.';
+
+  @override
+  String get mcpToolDeletePage => 'Deletes a page.';
+
+  @override
+  String get mcpToolPostToChat => 'Writes a reply into the chat.';
+
+  @override
   String get chatProcessing => 'Processing…';
 
   @override

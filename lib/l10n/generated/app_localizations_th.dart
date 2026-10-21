@@ -567,6 +567,85 @@ class AppLocalizationsTh extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'คู่มือ';
+
+  @override
+  String get mcpGuideTitle => 'คู่มือ MCP';
+
+  @override
+  String get mcpGuideSubtitle => 'เชื่อมต่อเอเจนต์ AI กับแอปนี้';
+
+  @override
+  String get mcpGuideStepStart => 'เปิดเซิร์ฟเวอร์';
+
+  @override
+  String get mcpGuideStepStartDesc => 'ทำงานขณะแอปเปิดอยู่';
+
+  @override
+  String get mcpGuideEndpoint => 'ที่อยู่';
+
+  @override
+  String get mcpGuideStepConnect => 'เชื่อมต่อเอเจนต์';
+
+  @override
+  String get mcpGuideStepConnectDesc => 'เลือกเอเจนต์แล้วคัดลอกโค้ด';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'ไฟล์: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'คัดลอกโค้ด';
+
+  @override
+  String get mcpGuideCopied => 'คัดลอกโค้ดแล้ว';
+
+  @override
+  String get mcpGuideStepTest => 'ตรวจสอบการเชื่อมต่อ';
+
+  @override
+  String get mcpGuideStepTestDesc => 'ส่งคำขอนี้แล้วดูรายการบทสนทนา';
+
+  @override
+  String get mcpGuideStepTools => 'สิ่งที่เอเจนต์ทำได้';
+
+  @override
+  String get mcpGuideStepToolsDesc =>
+      'หกเครื่องมือ: ดูรายการก่อน แล้วค่อยดูรายละเอียด';
+
+  @override
+  String get mcpGuideTipTitle => 'ถ้าเชื่อมต่อไม่ได้';
+
+  @override
+  String get mcpGuideTipAppClosed => 'เปิดแอปไว้ ปิดแอปแล้วเซิร์ฟเวอร์จะหยุด';
+
+  @override
+  String get mcpGuideTipPort => 'ถ้าพอร์ต 8765 ถูกใช้ แอปจะย้ายไป 8766–8774';
+
+  @override
+  String get mcpGuideTipLocal =>
+      'ใช้ในเครื่องเท่านั้น อย่าเปิดพอร์ตนี้สู่เครือข่าย';
+
+  @override
+  String get mcpToolListSessions => 'แสดงรายการบทสนทนาพร้อมจำนวน';
+
+  @override
+  String get mcpToolGetSession => 'อ่านบทสนทนาหนึ่งรายการและรายการหน้า';
+
+  @override
+  String get mcpToolGetPageHtml => 'คืน HTML ทั้งหน้าของหน้าเดียว';
+
+  @override
+  String get mcpToolWritePage => 'สร้างหรือแทนที่หน้า';
+
+  @override
+  String get mcpToolDeletePage => 'ลบหน้า';
+
+  @override
+  String get mcpToolPostToChat => 'เขียนคำตอบลงในแชต';
+
+  @override
   String get chatProcessing => 'กำลังประมวลผล…';
 
   @override

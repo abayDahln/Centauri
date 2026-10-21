@@ -1120,6 +1120,156 @@ abstract class AppLocalizations {
   /// **'Tools: {tools}'**
   String mcpToolsList(String tools);
 
+  /// No description provided for @mcpGuideOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide'**
+  String get mcpGuideOpen;
+
+  /// No description provided for @mcpGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP guide'**
+  String get mcpGuideTitle;
+
+  /// No description provided for @mcpGuideSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect an AI agent to this app.'**
+  String get mcpGuideSubtitle;
+
+  /// No description provided for @mcpGuideStepStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the server'**
+  String get mcpGuideStepStart;
+
+  /// No description provided for @mcpGuideStepStartDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs while the app is open. No sign-in needed.'**
+  String get mcpGuideStepStartDesc;
+
+  /// No description provided for @mcpGuideEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get mcpGuideEndpoint;
+
+  /// No description provided for @mcpGuideStepConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect your agent'**
+  String get mcpGuideStepConnect;
+
+  /// No description provided for @mcpGuideStepConnectDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your agent, then copy the snippet.'**
+  String get mcpGuideStepConnectDesc;
+
+  /// No description provided for @mcpGuideWhere.
+  ///
+  /// In en, this message translates to:
+  /// **'File: {path}'**
+  String mcpGuideWhere(String path);
+
+  /// No description provided for @mcpGuideCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy snippet'**
+  String get mcpGuideCopy;
+
+  /// No description provided for @mcpGuideCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Snippet copied.'**
+  String get mcpGuideCopied;
+
+  /// No description provided for @mcpGuideStepTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the connection'**
+  String get mcpGuideStepTest;
+
+  /// No description provided for @mcpGuideStepTestDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Send this request, then look for your sessions.'**
+  String get mcpGuideStepTestDesc;
+
+  /// No description provided for @mcpGuideStepTools.
+  ///
+  /// In en, this message translates to:
+  /// **'What the agent can do'**
+  String get mcpGuideStepTools;
+
+  /// No description provided for @mcpGuideStepToolsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Six tools: list first, detail later.'**
+  String get mcpGuideStepToolsDesc;
+
+  /// No description provided for @mcpGuideTipTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'If it won\'t connect'**
+  String get mcpGuideTipTitle;
+
+  /// No description provided for @mcpGuideTipAppClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the app open; closing it stops the server.'**
+  String get mcpGuideTipAppClosed;
+
+  /// No description provided for @mcpGuideTipPort.
+  ///
+  /// In en, this message translates to:
+  /// **'If 8765 is taken, the app moves to 8766–8774.'**
+  String get mcpGuideTipPort;
+
+  /// No description provided for @mcpGuideTipLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local only. Never share this port.'**
+  String get mcpGuideTipLocal;
+
+  /// No description provided for @mcpToolListSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Lists conversations with counts.'**
+  String get mcpToolListSessions;
+
+  /// No description provided for @mcpToolGetSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Reads one conversation and its pages.'**
+  String get mcpToolGetSession;
+
+  /// No description provided for @mcpToolGetPageHtml.
+  ///
+  /// In en, this message translates to:
+  /// **'Returns one page\'s full HTML.'**
+  String get mcpToolGetPageHtml;
+
+  /// No description provided for @mcpToolWritePage.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates or replaces a page.'**
+  String get mcpToolWritePage;
+
+  /// No description provided for @mcpToolDeletePage.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes a page.'**
+  String get mcpToolDeletePage;
+
+  /// No description provided for @mcpToolPostToChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Writes a reply into the chat.'**
+  String get mcpToolPostToChat;
+
   /// No description provided for @chatProcessing.
   ///
   /// In en, this message translates to:

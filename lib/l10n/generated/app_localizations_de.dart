@@ -580,6 +580,89 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'Anleitung';
+
+  @override
+  String get mcpGuideTitle => 'MCP-Anleitung';
+
+  @override
+  String get mcpGuideSubtitle => 'Verbinde einen KI-Agenten mit dieser App.';
+
+  @override
+  String get mcpGuideStepStart => 'Server starten';
+
+  @override
+  String get mcpGuideStepStartDesc => 'Läuft, solange die App offen ist.';
+
+  @override
+  String get mcpGuideEndpoint => 'Adresse';
+
+  @override
+  String get mcpGuideStepConnect => 'Agent verbinden';
+
+  @override
+  String get mcpGuideStepConnectDesc => 'Agent wählen, dann Code kopieren.';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'Datei: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'Code kopieren';
+
+  @override
+  String get mcpGuideCopied => 'Code kopiert.';
+
+  @override
+  String get mcpGuideStepTest => 'Verbindung prüfen';
+
+  @override
+  String get mcpGuideStepTestDesc =>
+      'Sende diese Anfrage und sieh dir die Liste an.';
+
+  @override
+  String get mcpGuideStepTools => 'Was der Agent kann';
+
+  @override
+  String get mcpGuideStepToolsDesc =>
+      'Sechs Werkzeuge: erst Liste, dann Details.';
+
+  @override
+  String get mcpGuideTipTitle => 'Wenn keine Verbindung entsteht';
+
+  @override
+  String get mcpGuideTipAppClosed =>
+      'App offen lassen; beim Schließen stoppt der Server.';
+
+  @override
+  String get mcpGuideTipPort =>
+      'Ist 8765 belegt, wechselt die App auf 8766–8774.';
+
+  @override
+  String get mcpGuideTipLocal =>
+      'Nur lokal. Diesen Port nicht ins Netz freigeben.';
+
+  @override
+  String get mcpToolListSessions => 'Listet Unterhaltungen mit Anzahl.';
+
+  @override
+  String get mcpToolGetSession => 'Liest eine Unterhaltung und ihre Seiten.';
+
+  @override
+  String get mcpToolGetPageHtml =>
+      'Gibt das vollständige HTML einer Seite zurück.';
+
+  @override
+  String get mcpToolWritePage => 'Erstellt oder ersetzt eine Seite.';
+
+  @override
+  String get mcpToolDeletePage => 'Löscht eine Seite.';
+
+  @override
+  String get mcpToolPostToChat => 'Schreibt eine Antwort in den Chat.';
+
+  @override
   String get chatProcessing => 'Wird verarbeitet…';
 
   @override

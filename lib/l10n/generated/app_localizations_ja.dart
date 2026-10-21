@@ -564,6 +564,83 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'ガイド';
+
+  @override
+  String get mcpGuideTitle => 'MCP ガイド';
+
+  @override
+  String get mcpGuideSubtitle => 'AI エージェントをこのアプリに接続します。';
+
+  @override
+  String get mcpGuideStepStart => 'サーバーを起動';
+
+  @override
+  String get mcpGuideStepStartDesc => 'アプリを開いている間だけ動作します。';
+
+  @override
+  String get mcpGuideEndpoint => 'アドレス';
+
+  @override
+  String get mcpGuideStepConnect => 'エージェントを接続';
+
+  @override
+  String get mcpGuideStepConnectDesc => 'エージェントを選び、コードをコピーします。';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'ファイル：$path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'コードをコピー';
+
+  @override
+  String get mcpGuideCopied => 'コードをコピーしました。';
+
+  @override
+  String get mcpGuideStepTest => '接続を確認';
+
+  @override
+  String get mcpGuideStepTestDesc => 'このリクエストを送り、会話一覧を確認します。';
+
+  @override
+  String get mcpGuideStepTools => 'エージェントにできること';
+
+  @override
+  String get mcpGuideStepToolsDesc => '6 つのツール。まず一覧、次に詳細。';
+
+  @override
+  String get mcpGuideTipTitle => '接続できないとき';
+
+  @override
+  String get mcpGuideTipAppClosed => 'アプリを開いたままにしてください。閉じるとサーバーが止まります。';
+
+  @override
+  String get mcpGuideTipPort => '8765 が使用中なら 8766–8774 に切り替わります。';
+
+  @override
+  String get mcpGuideTipLocal => 'ローカル専用です。このポートをネットワークに公開しないでください。';
+
+  @override
+  String get mcpToolListSessions => '会話と件数の一覧。';
+
+  @override
+  String get mcpToolGetSession => '1 つの会話とページ一覧を読みます。';
+
+  @override
+  String get mcpToolGetPageHtml => '1 ページの HTML 全体を返します。';
+
+  @override
+  String get mcpToolWritePage => 'ページを作成または置換します。';
+
+  @override
+  String get mcpToolDeletePage => 'ページを削除します。';
+
+  @override
+  String get mcpToolPostToChat => 'チャットに返信を書き込みます。';
+
+  @override
   String get chatProcessing => '処理中…';
 
   @override

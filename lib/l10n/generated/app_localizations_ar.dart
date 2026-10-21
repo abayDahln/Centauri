@@ -572,6 +572,85 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get mcpGuideOpen => 'الدليل';
+
+  @override
+  String get mcpGuideTitle => 'دليل MCP';
+
+  @override
+  String get mcpGuideSubtitle => 'اربط وكيل ذكاء اصطناعي بهذا التطبيق.';
+
+  @override
+  String get mcpGuideStepStart => 'شغّل الخادم';
+
+  @override
+  String get mcpGuideStepStartDesc => 'يعمل ما دام التطبيق مفتوحًا.';
+
+  @override
+  String get mcpGuideEndpoint => 'العنوان';
+
+  @override
+  String get mcpGuideStepConnect => 'اربط الوكيل';
+
+  @override
+  String get mcpGuideStepConnectDesc => 'اختر الوكيل ثم انسخ الشيفرة.';
+
+  @override
+  String mcpGuideWhere(String path) {
+    return 'الملف: $path';
+  }
+
+  @override
+  String get mcpGuideCopy => 'انسخ الشيفرة';
+
+  @override
+  String get mcpGuideCopied => 'تم نسخ الشيفرة.';
+
+  @override
+  String get mcpGuideStepTest => 'تحقّق من الاتصال';
+
+  @override
+  String get mcpGuideStepTestDesc => 'أرسل هذا الطلب ثم راجع قائمة المحادثات.';
+
+  @override
+  String get mcpGuideStepTools => 'ما يستطيعه الوكيل';
+
+  @override
+  String get mcpGuideStepToolsDesc => 'ست أدوات: القائمة أولًا ثم التفاصيل.';
+
+  @override
+  String get mcpGuideTipTitle => 'إذا لم يتصل';
+
+  @override
+  String get mcpGuideTipAppClosed =>
+      'أبقِ التطبيق مفتوحًا؛ إغلاقه يوقف الخادم.';
+
+  @override
+  String get mcpGuideTipPort =>
+      'إذا كان المنفذ 8765 مشغولًا ينتقل التطبيق إلى 8766–8774.';
+
+  @override
+  String get mcpGuideTipLocal => 'محلي فقط. لا تفتح هذا المنفذ على الشبكة.';
+
+  @override
+  String get mcpToolListSessions => 'يسرد المحادثات مع الأعداد.';
+
+  @override
+  String get mcpToolGetSession => 'يقرأ محادثة وقائمة صفحاتها.';
+
+  @override
+  String get mcpToolGetPageHtml => 'يعيد HTML الكامل لصفحة.';
+
+  @override
+  String get mcpToolWritePage => 'ينشئ صفحة أو يستبدلها.';
+
+  @override
+  String get mcpToolDeletePage => 'يحذف صفحة.';
+
+  @override
+  String get mcpToolPostToChat => 'يكتب ردًا في المحادثة.';
+
+  @override
   String get chatProcessing => 'جارٍ المعالجة…';
 
   @override
