@@ -48,6 +48,9 @@ app.*.map.json
 .widget_preview/
 docs/
 
+# Local scratch tools and captures
+.tool/tmp/
+
 .history/
 .codegraph/
 

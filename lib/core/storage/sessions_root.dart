@@ -10,8 +10,12 @@ import 'package:path_provider/path_provider.dart';
 /// pendukung aplikasi (`path_provider`).
 ///
 /// [localAppDataOverride] untuk test: paksa lokasi Windows tanpa menyentuh
-/// penyimpanan pengguna sungguhan.
-Future<Directory> defaultSessionsRoot({String? localAppDataOverride}) async {
+/// penyimpanan pengguna sungguhan. [appSupportOverride] melakukan hal yang sama
+/// untuk platform non-Windows.
+Future<Directory> defaultSessionsRoot({
+  String? localAppDataOverride,
+  String? appSupportOverride,
+}) async {
   if (Platform.isWindows) {
     final env = localAppDataOverride ?? Platform.environment['LOCALAPPDATA'];
     if (env == null || env.isEmpty) {
@@ -23,8 +27,9 @@ Future<Directory> defaultSessionsRoot({String? localAppDataOverride}) async {
     await root.create(recursive: true);
     return root;
   }
-  final support = await getApplicationSupportDirectory();
-  final root = Directory('${support.path}${Platform.pathSeparator}sessions');
+  final support =
+      appSupportOverride ?? (await getApplicationSupportDirectory()).path;
+  final root = Directory('$support${Platform.pathSeparator}sessions');
   await root.create(recursive: true);
   return root;
 }
