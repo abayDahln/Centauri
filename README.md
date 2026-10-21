@@ -154,7 +154,7 @@ Folder [`figma-plugin/`](figma-plugin/) berisi plugin companion untuk mengimpor 
 
 ## Build & Rilis
 
-Rilis dibuat manual. Workflow **Build installers** hanya menghasilkan artifact
+Rilis dibuat manual. Workflow **Release installers** hanya menghasilkan artifact
 (tidak membuat GitHub Release): jalankan dari tab Actions (**Run workflow**) atau
 push tag `v*`, lalu unduh dari bagian **Artifacts** pada run tersebut.
 
@@ -172,7 +172,11 @@ flutter build windows --release
 
 Membuat APK secara lokal:
 
+Android membutuhkan JDK 17; Gradle 8.14 belum mendukung Java 25. Arahkan
+Flutter ke JDK 17 sekali saja:
+
 ```bash
+flutter config --jdk-dir="<path JDK 17>"
 flutter build apk --release
 # build/app/outputs/flutter-apk/app-release.apk
 ```
