@@ -913,7 +913,7 @@ class _PreviewToolbar extends ConsumerWidget {
   }
 }
 
-/// Kanvas: latar titik halus dan bingkai pratinjau di tengah.
+/// Kanvas: latar titik halus dan bingkai pratinjau.
 class _CanvasSurface extends StatelessWidget {
   const _CanvasSurface({required this.child});
 
@@ -925,14 +925,11 @@ class _CanvasSurface extends StatelessWidget {
       color: context.palette.bgBase,
       child: CustomPaint(
         painter: _DotGridPainter(color: context.palette.borderStrong),
+        // Pratinjau memakai lebar penuh kanvas; hanya gutter 24 px yang
+        // tersisa. Prototipe sudah fluid, jadi ikut melebar sampai tepi.
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1180),
-              child: child,
-            ),
-          ),
+          child: child,
         ),
       ),
     );
