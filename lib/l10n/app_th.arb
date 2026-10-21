@@ -202,6 +202,7 @@
   "commonGenericError": "เกิดข้อผิดพลาด ลองอีกครั้ง",
   "canvasMentionElementFallback": "องค์ประกอบที่เลือก",
   "canvasNoProvider": "ยังไม่มี Provider ที่ใช้งาน เพิ่มก่อนเริ่ม",
+  "canvasPagesTrimmed": "ลบหน้าที่เกินออกเพื่อให้ตรงกับจำนวนที่คุณขอ",
   "canvasUntitledPage": "ไม่มีชื่อ",
   "canvasGenerationStopped": "หยุดการสร้างแล้ว",
   "promptAttachmentLimit": "แนบได้สูงสุด 6 ไฟล์ต่อข้อความ",

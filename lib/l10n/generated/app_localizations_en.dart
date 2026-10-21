@@ -601,6 +601,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasNoProvider => 'No active provider. Add one to start.';
 
   @override
+  String get canvasPagesTrimmed =>
+      'Extra pages were removed to match the number you asked for.';
+
+  @override
   String get canvasUntitledPage => 'Untitled';
 
   @override

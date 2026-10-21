@@ -587,6 +587,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasNoProvider => '没有启用的 Provider。请先添加。';
 
   @override
+  String get canvasPagesTrimmed => '已移除多余页面，以符合你要求的数量。';
+
+  @override
   String get canvasUntitledPage => '无标题';
 
   @override

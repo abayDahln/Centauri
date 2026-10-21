@@ -327,6 +327,7 @@
   "commonGenericError": "Terjadi kesalahan. Coba lagi.",
   "canvasMentionElementFallback": "Elemen terpilih",
   "canvasNoProvider": "Belum ada provider aktif. Tambahkan provider untuk mulai.",
+  "canvasPagesTrimmed": "Halaman tambahan dipangkas sesuai jumlah yang kamu minta.",
   "canvasUntitledPage": "Tanpa judul",
   "canvasGenerationStopped": "Generasi dihentikan.",
   "promptAttachmentLimit": "Maksimal 6 lampiran per pesan.",

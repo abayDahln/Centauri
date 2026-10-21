@@ -57,7 +57,7 @@ Nilai utama Centauri adalah **Provider Agnostic (BYOK - Bring Your Own Key)**. P
 **Bahasa**
 
 - 12 bahasa antarmuka: Inggris (default), Indonesia, Mandarin Sederhana, Jepang, Korea, Rusia, Jerman, Arab, Prancis, Portugis, Thai, dan Filipina. Ganti lewat tombol globe di top bar; pilihan disimpan di perangkat.
-- Chat dengan AI tidak terikat bahasa UI: Alpha menjawab dalam bahasa pesan yang dikirim pengguna.
+- Chat dengan AI tidak terikat bahasa UI: Alpha menjawab dalam bahasa Inggris sebagai default, dan meniru bahasa user hanya kalau user jelas menulis dalam bahasa lain.
 - Arab didukung penuh termasuk tata letak kanan-ke-kiri (RTL).
 
 ## Tech Stack

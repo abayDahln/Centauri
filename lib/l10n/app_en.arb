@@ -327,6 +327,7 @@
   "commonGenericError": "Something went wrong. Try again.",
   "canvasMentionElementFallback": "Selected element",
   "canvasNoProvider": "No active provider. Add one to start.",
+  "canvasPagesTrimmed": "Extra pages were removed to match the number you asked for.",
   "canvasUntitledPage": "Untitled",
   "canvasGenerationStopped": "Generation stopped.",
   "promptAttachmentLimit": "Up to 6 attachments per message.",

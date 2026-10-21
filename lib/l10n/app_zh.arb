@@ -202,6 +202,7 @@
   "commonGenericError": "出现错误。请重试。",
   "canvasMentionElementFallback": "所选元素",
   "canvasNoProvider": "没有启用的 Provider。请先添加。",
+  "canvasPagesTrimmed": "已移除多余页面，以符合你要求的数量。",
   "canvasUntitledPage": "无标题",
   "canvasGenerationStopped": "生成已停止。",
   "promptAttachmentLimit": "每条消息最多 6 个附件。",

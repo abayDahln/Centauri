@@ -591,6 +591,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get canvasNoProvider => '사용 중인 Provider가 없어요. 추가하고 시작해 보세요.';
 
   @override
+  String get canvasPagesTrimmed => '요청한 개수에 맞추기 위해 추가 페이지를 제거했습니다.';
+
+  @override
   String get canvasUntitledPage => '제목 없음';
 
   @override

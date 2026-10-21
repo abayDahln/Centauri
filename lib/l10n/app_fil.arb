@@ -202,6 +202,7 @@
   "commonGenericError": "May nangyaring mali. Subukan muli.",
   "canvasMentionElementFallback": "Napiling elemento",
   "canvasNoProvider": "Walang aktibong Provider. Magdagdag para magsimula.",
+  "canvasPagesTrimmed": "Ang karagdagdag na pahinang alin para sa tumugma sa bilang mong hinihingi mo.",
   "canvasUntitledPage": "Walang pamagat",
   "canvasGenerationStopped": "Itinigil ang paggawa.",
   "promptAttachmentLimit": "Hanggang 6 na attachment bawat mensahe.",

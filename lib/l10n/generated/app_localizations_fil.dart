@@ -604,6 +604,10 @@ class AppLocalizationsFil extends AppLocalizations {
       'Walang aktibong Provider. Magdagdag para magsimula.';
 
   @override
+  String get canvasPagesTrimmed =>
+      'Ang karagdagdag na pahinang alin para sa tumugma sa bilang mong hinihingi mo.';
+
+  @override
   String get canvasUntitledPage => 'Walang pamagat';
 
   @override

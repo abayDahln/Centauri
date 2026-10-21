@@ -202,6 +202,7 @@
   "commonGenericError": "حدث خطأ. أعد المحاولة.",
   "canvasMentionElementFallback": "العنصر المحدد",
   "canvasNoProvider": "لا يوجد Provider مفعّل. أضف واحدًا للبدء.",
+  "canvasPagesTrimmed": "تمت إزالة الصفحات الزائدة لمطابقة العدد الذي طلبته.",
   "canvasUntitledPage": "بلا عنوان",
   "canvasGenerationStopped": "تم إيقاف الإنشاء.",
   "promptAttachmentLimit": "حتى 6 مرفقات لكل رسالة.",

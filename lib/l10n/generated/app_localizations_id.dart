@@ -598,6 +598,10 @@ class AppLocalizationsId extends AppLocalizations {
       'Belum ada provider aktif. Tambahkan provider untuk mulai.';
 
   @override
+  String get canvasPagesTrimmed =>
+      'Halaman tambahan dipangkas sesuai jumlah yang kamu minta.';
+
+  @override
   String get canvasUntitledPage => 'Tanpa judul';
 
   @override

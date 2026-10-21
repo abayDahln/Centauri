@@ -591,6 +591,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get canvasNoProvider => '有効な Provider がありません。追加して始めてください。';
 
   @override
+  String get canvasPagesTrimmed => '指定された枚数に合わせるため、余分なページは削除されました。';
+
+  @override
   String get canvasUntitledPage => '無題';
 
   @override

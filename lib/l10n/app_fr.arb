@@ -202,6 +202,7 @@
   "commonGenericError": "Une erreur est survenue. Réessayez.",
   "canvasMentionElementFallback": "Élément sélectionné",
   "canvasNoProvider": "Aucun Provider actif. Ajoutez-en un pour commencer.",
+  "canvasPagesTrimmed": "Des pages supplémentaires ont été supprimées pour correspondre au nombre demandé.",
   "canvasUntitledPage": "Sans titre",
   "canvasGenerationStopped": "Génération arrêtée.",
   "promptAttachmentLimit": "Jusqu'à 6 pièces jointes par message.",

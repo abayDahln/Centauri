@@ -202,6 +202,7 @@
   "commonGenericError": "問題が発生しました。もう一度お試しください。",
   "canvasMentionElementFallback": "選択中の要素",
   "canvasNoProvider": "有効な Provider がありません。追加して始めてください。",
+  "canvasPagesTrimmed": "指定された枚数に合わせるため、余分なページは削除されました。",
   "canvasUntitledPage": "無題",
   "canvasGenerationStopped": "生成を停止しました。",
   "promptAttachmentLimit": "1 通につき最大 6 個の添付。",

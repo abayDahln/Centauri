@@ -604,7 +604,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
         );
 
     final userText = wantsUi
-        ? '$trimmed${_uiContext()}${_selectedNodeContext()}${_mentionContext()}'
+        ? '$trimmed${_uiContext(trimmed)}${_selectedNodeContext()}${_mentionContext()}'
         : trimmed;
 
     state = state.copyWith(
@@ -656,14 +656,29 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
       _setStatus(AiStatus.rendering);
       final baseTitle = _titleFromPrompt(trimmed);
+
+      // Jumlah halaman yang dikunci user: kalau AI tetap membuat lebih, sisa
+      //-nya dibuang supaya sesuai permintaan.
+      final lockedCount = wantsUi ? explicitPageCount(trimmed) : null;
+      var screens = response.screens;
+      var dropped = 0;
+      if (lockedCount != null && screens.length > lockedCount) {
+        dropped = screens.length - lockedCount;
+        screens = screens.take(lockedCount).toList();
+      }
+
       final newPages = await _buildPagesFromScreens(
-        screens: response.screens,
+        screens: screens,
         baseTitle: baseTitle,
         existing: state.pages,
       );
       if (!state.isGenerating) return;
 
-      final note = response.note?.trim();
+      var note = response.note?.trim();
+      if (dropped > 0) {
+        final extra = l10nOf(ref).canvasPagesTrimmed;
+        note = (note == null || note.isEmpty) ? extra : '$note\n\n$extra';
+      }
       final messages = [...state.messages];
       if (note != null && note.isNotEmpty) {
         messages.add(
@@ -678,7 +693,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
         CanvasMessage(
           role: ChatRole.assistant,
           kind: ChatMessageKind.ui,
-          text: response.screens.first.html,
+          text: screens.first.html,
         ),
       );
 
@@ -890,7 +905,11 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
   }
 
   /// Konteks format UI: fluid/responsive wajib + konvensi link antar-halaman.
-  String _uiContext() {
+  ///
+  /// [userText] dipakai untuk mendeteksi jumlah halaman yang dikunci user:
+  /// kalau user menyebut angkanya, AI diminta menghasilkan tepat segitu.
+  String _uiContext([String? userText]) {
+    final locked = userText == null ? null : explicitPageCount(userText);
     return '\n\n[OUTPUT FORMAT — MUST FOLLOW]\n'
         '- The preview container width varies from ~320px (small phone) to '
         '~2560px (desktop/ultrawide). NEVER set a fixed page width. Build a '
@@ -910,7 +929,10 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
         '- Sections must hug their content (no empty spacer divs, no blank '
         'bands, footer directly after the last section).\n'
         '- Ensure real interactive vanilla JS controls, crisp high-DPI '
-        'imagery, and inline SVG icons.';
+        'imagery, and inline SVG icons.'
+        '${locked == null ? '' : '\n- The user explicitly asked for exactly '
+                  '$locked page(s). Output EXACTLY $locked HTML document(s) — no '
+                  'more, no fewer. Do not add, split, or invent extra screens.'}';
   }
 
   List<Map<String, dynamic>> _buildMessagesPayload({
@@ -1015,6 +1037,55 @@ String buildSelectedNodeContext({
       'at (${geometry.x.toStringAsFixed(0)},'
       '${geometry.y.toStringAsFixed(0)})'
       '${styleBits.isEmpty ? '' : ' styles=[$styleBits]'}.';
+}
+
+/// Angka halaman yang ditegaskan user di prompt ("satu halaman", "3 halaman",
+/// "just one page"). Null = user tidak menyebut jumlah halaman.
+const Map<String, int> _pageCountWords = {
+  'satu': 1,
+  'seorang': 1,
+  'single': 1,
+  'one': 1,
+  'dua': 2,
+  'two': 2,
+  'tiga': 3,
+  'three': 3,
+  'empat': 4,
+  'four': 4,
+  'lima': 5,
+  'five': 5,
+  'enam': 6,
+  'six': 6,
+  'tujuh': 7,
+  'seven': 7,
+  'delapan': 8,
+  'eight': 8,
+  'sembilan': 9,
+  'nine': 9,
+};
+
+/// Jumlah halaman yang diminta user secara eksplisit, atau null kalau tidak.
+///
+/// Ini yang mengunci jumlah halaman: kalau user menyebut angkanya, AI tidak
+/// boleh menambah halaman lain, dan kalau sampai lebih, app memangkas sisanya.
+///
+/// Top-level agar bisa diuji langsung tanpa ProviderContainer.
+int? explicitPageCount(String prompt) {
+  final lower = prompt.trim().toLowerCase();
+  if (lower.isEmpty) return null;
+
+  final match = RegExp(
+    r'\b(\d{1,2}|satu|seorang|single|one|dua|two|tiga|three|empat|four|lima|'
+    r'five|enam|six|tujuh|seven|delapan|eight|sembilan|nine)\s*[- ]?\s*'
+    r'(halaman|halaman-halaman|layar|layar-layar|page|pages|screen|screens|'
+    r'tab|tabs)\b',
+  ).firstMatch(lower);
+  if (match == null) return null;
+
+  final token = match.group(1)!;
+  final digits = int.tryParse(token);
+  if (digits != null) return digits > 0 ? digits : null;
+  return _pageCountWords[token];
 }
 
 /// Heuristik MODE GATE sisi klien: apakah prompt user benar-benar meminta UI?

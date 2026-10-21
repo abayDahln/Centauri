@@ -202,6 +202,7 @@
   "commonGenericError": "문제가 발생했어요. 다시 시도해 주세요.",
   "canvasMentionElementFallback": "선택한 요소",
   "canvasNoProvider": "사용 중인 Provider가 없어요. 추가하고 시작해 보세요.",
+  "canvasPagesTrimmed": "요청한 개수에 맞추기 위해 추가 페이지를 제거했습니다.",
   "canvasUntitledPage": "제목 없음",
   "canvasGenerationStopped": "생성을 중지했어요.",
   "promptAttachmentLimit": "메시지당 최대 첨부 6개.",

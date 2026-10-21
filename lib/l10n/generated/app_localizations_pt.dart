@@ -605,6 +605,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nenhum Provider ativo. Adicione um para começar.';
 
   @override
+  String get canvasPagesTrimmed =>
+      'Páginas extras foram removidas para corresponder ao número que você pediu.';
+
+  @override
   String get canvasUntitledPage => 'Sem título';
 
   @override

@@ -10,7 +10,8 @@ import 'app_language.dart';
 /// bertahan tanpa perlu restart.
 ///
 /// Ini hanya bahasa **teks UI**. Percakapan dengan AI tidak terpengaruh:
-/// Alpha selalu menjawab mengikuti bahasa pesan yang dikirim pengguna.
+/// Alpha menjawab dalam bahasa Inggris secara default, dan meniru bahasa user
+/// hanya kalau user jelas menulis dalam bahasa lain.
 final appLanguageProvider = NotifierProvider<AppLanguageNotifier, AppLanguage>(
   AppLanguageNotifier.new,
 );

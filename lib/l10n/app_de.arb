@@ -202,6 +202,7 @@
   "commonGenericError": "Etwas ist schiefgelaufen. Erneut versuchen.",
   "canvasMentionElementFallback": "Ausgewähltes Element",
   "canvasNoProvider": "Kein aktiver Provider. Fügen Sie einen hinzu, um zu starten.",
+  "canvasPagesTrimmed": "Zusätzliche Seiten wurden entfernt, um der gewünschten Anzahl zu entsprechen.",
   "canvasUntitledPage": "Ohne Titel",
   "canvasGenerationStopped": "Generierung gestoppt.",
   "promptAttachmentLimit": "Bis zu 6 Anhänge pro Nachricht.",

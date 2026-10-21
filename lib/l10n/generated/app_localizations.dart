@@ -1174,6 +1174,12 @@ abstract class AppLocalizations {
   /// **'No active provider. Add one to start.'**
   String get canvasNoProvider;
 
+  /// No description provided for @canvasPagesTrimmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra pages were removed to match the number you asked for.'**
+  String get canvasPagesTrimmed;
+
   /// No description provided for @canvasUntitledPage.
   ///
   /// In en, this message translates to:

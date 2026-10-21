@@ -607,6 +607,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Нет активного Provider. Добавьте его, чтобы начать.';
 
   @override
+  String get canvasPagesTrimmed =>
+      'Лишние страницы удалены, чтобы соответствовать запрошенному количеству.';
+
+  @override
   String get canvasUntitledPage => 'Без названия';
 
   @override

@@ -202,6 +202,7 @@
   "commonGenericError": "Что-то пошло не так. Повторите попытку.",
   "canvasMentionElementFallback": "Выбранный элемент",
   "canvasNoProvider": "Нет активного Provider. Добавьте его, чтобы начать.",
+  "canvasPagesTrimmed": "Лишние страницы удалены, чтобы соответствовать запрошенному количеству.",
   "canvasUntitledPage": "Без названия",
   "canvasGenerationStopped": "Создание остановлено.",
   "promptAttachmentLimit": "До 6 вложений на сообщение.",

@@ -594,6 +594,10 @@ class AppLocalizationsTh extends AppLocalizations {
   String get canvasNoProvider => 'ยังไม่มี Provider ที่ใช้งาน เพิ่มก่อนเริ่ม';
 
   @override
+  String get canvasPagesTrimmed =>
+      'ลบหน้าที่เกินออกเพื่อให้ตรงกับจำนวนที่คุณขอ';
+
+  @override
   String get canvasUntitledPage => 'ไม่มีชื่อ';
 
   @override

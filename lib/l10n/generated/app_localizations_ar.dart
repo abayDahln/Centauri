@@ -599,6 +599,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get canvasNoProvider => 'لا يوجد Provider مفعّل. أضف واحدًا للبدء.';
 
   @override
+  String get canvasPagesTrimmed =>
+      'تمت إزالة الصفحات الزائدة لمطابقة العدد الذي طلبته.';
+
+  @override
   String get canvasUntitledPage => 'بلا عنوان';
 
   @override

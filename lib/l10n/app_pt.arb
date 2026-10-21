@@ -202,6 +202,7 @@
   "commonGenericError": "Algo deu errado. Tente novamente.",
   "canvasMentionElementFallback": "Elemento selecionado",
   "canvasNoProvider": "Nenhum Provider ativo. Adicione um para começar.",
+  "canvasPagesTrimmed": "Páginas extras foram removidas para corresponder ao número que você pediu.",
   "canvasUntitledPage": "Sem título",
   "canvasGenerationStopped": "Geração interrompida.",
   "promptAttachmentLimit": "Até 6 anexos por mensagem.",
