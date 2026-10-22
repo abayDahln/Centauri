@@ -302,5 +302,14 @@
   "colorGreen": "เขียว",
   "colorAmber": "แอมเบอร์",
   "colorRose": "ชมพู",
-  "colorSlate": "เทาอมฟ้า"
+  "colorSlate": "เทาอมฟ้า",
+  "generationStepPreparing": "กำลังอ่านข้อความ",
+  "generationStepWaiting": "กำลังรอการตอบกลับ",
+  "generationStepWriting": "กำลังสร้างดีไซน์",
+  "generationStepBuilding": "กำลังประกอบหน้า",
+  "generationCanvasBuilding": "กำลังสร้าง…",
+  "generationPageProgress": "หน้า {index} จาก {total}",
+  "generationPageProgressUnknown": "หน้า {index}",
+  "generationTitle": "กำลังสร้างหน้าจอ"
 }
+

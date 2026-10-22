@@ -879,4 +879,32 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get colorSlate => '슬레이트';
+
+  @override
+  String get generationStepPreparing => '메시지 확인 중';
+
+  @override
+  String get generationStepWaiting => '서비스 응답 대기 중';
+
+  @override
+  String get generationStepWriting => '디자인 작성 중';
+
+  @override
+  String get generationStepBuilding => '페이지 구성 중';
+
+  @override
+  String get generationCanvasBuilding => '구성 중…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return '$total페이지 중 $index페이지';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return '$index페이지';
+  }
+
+  @override
+  String get generationTitle => '화면 생성 중';
 }

@@ -874,4 +874,32 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get colorSlate => '石板灰';
+
+  @override
+  String get generationStepPreparing => '正在读取消息';
+
+  @override
+  String get generationStepWaiting => '等待服务响应';
+
+  @override
+  String get generationStepWriting => '正在撰写设计';
+
+  @override
+  String get generationStepBuilding => '正在构建页面';
+
+  @override
+  String get generationCanvasBuilding => '正在构建…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return '第 $index 页，共 $total 页';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return '第 $index 页';
+  }
+
+  @override
+  String get generationTitle => '正在生成界面';
 }

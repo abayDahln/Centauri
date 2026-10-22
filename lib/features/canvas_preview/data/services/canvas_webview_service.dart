@@ -311,7 +311,12 @@ abstract class CanvasWebviewService {
   /// posisi baca setelah dokumen dirender ulang pasca mutasi.
   Future<void> scrollTo(double x, double y);
 
-  /// Tandai node yang sedang diedit inline (dipakai JS untuk membedakan
+  /// Tampilkan HTML parsial saat generate TANPA navigasi: isi dokumen yang
+  /// sudah dimuat diganti di tempat, sehingga bridge tetap hidup dan posisi
+  /// gulir tidak hilang. [html] null = keluar dari mode pratinjau.
+  Future<void> previewHtml(String? html);
+
+  /// Tandai node yang sedang diedit inline (dipakai JS untuk membedakan)
   /// mode edit dari mode seleksi biasa).
   ///
   /// [ringId] adalah elemen yang ring-nya digambar JS — biasanya elemen yang

@@ -302,5 +302,14 @@
   "colorGreen": "Vert",
   "colorAmber": "Ambre",
   "colorRose": "Rose",
-  "colorSlate": "Ardoise"
+  "colorSlate": "Ardoise",
+  "generationStepPreparing": "Lecture du message",
+  "generationStepWaiting": "En attente du service",
+  "generationStepWriting": "Rédaction du design",
+  "generationStepBuilding": "Construction des pages",
+  "generationCanvasBuilding": "Construction…",
+  "generationPageProgress": "Page {index} sur {total}",
+  "generationPageProgressUnknown": "Page {index}",
+  "generationTitle": "Création du design"
 }
+

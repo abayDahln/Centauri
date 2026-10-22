@@ -302,5 +302,14 @@
   "colorGreen": "グリーン",
   "colorAmber": "アンバー",
   "colorRose": "ローズ",
-  "colorSlate": "スレート"
+  "colorSlate": "スレート",
+  "generationStepPreparing": "メッセージを確認中",
+  "generationStepWaiting": "サービスを待機中",
+  "generationStepWriting": "デザインを作成中",
+  "generationStepBuilding": "ページを構築中",
+  "generationCanvasBuilding": "構築中…",
+  "generationPageProgress": "{total} ページ中 {index} ページ",
+  "generationPageProgressUnknown": "{index} ページ",
+  "generationTitle": "画面を生成中"
 }
+

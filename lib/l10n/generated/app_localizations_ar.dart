@@ -895,4 +895,32 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get colorSlate => 'أردوازي';
+
+  @override
+  String get generationStepPreparing => 'قراءة رسالتك';
+
+  @override
+  String get generationStepWaiting => 'في انتظار الخدمة';
+
+  @override
+  String get generationStepWriting => 'كتابة التصميم';
+
+  @override
+  String get generationStepBuilding => 'بناء الصفحات';
+
+  @override
+  String get generationCanvasBuilding => 'جارٍ البناء…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'الصفحة $index من $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'الصفحة $index';
+  }
+
+  @override
+  String get generationTitle => 'جارٍ إنشاء التصميم';
 }

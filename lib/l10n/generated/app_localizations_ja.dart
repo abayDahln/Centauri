@@ -878,4 +878,32 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get colorSlate => 'スレート';
+
+  @override
+  String get generationStepPreparing => 'メッセージを確認中';
+
+  @override
+  String get generationStepWaiting => 'サービスを待機中';
+
+  @override
+  String get generationStepWriting => 'デザインを作成中';
+
+  @override
+  String get generationStepBuilding => 'ページを構築中';
+
+  @override
+  String get generationCanvasBuilding => '構築中…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return '$total ページ中 $index ページ';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return '$index ページ';
+  }
+
+  @override
+  String get generationTitle => '画面を生成中';
 }

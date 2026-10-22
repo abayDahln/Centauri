@@ -891,4 +891,32 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get colorSlate => 'เทาอมฟ้า';
+
+  @override
+  String get generationStepPreparing => 'กำลังอ่านข้อความ';
+
+  @override
+  String get generationStepWaiting => 'กำลังรอการตอบกลับ';
+
+  @override
+  String get generationStepWriting => 'กำลังสร้างดีไซน์';
+
+  @override
+  String get generationStepBuilding => 'กำลังประกอบหน้า';
+
+  @override
+  String get generationCanvasBuilding => 'กำลังสร้าง…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'หน้า $index จาก $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'หน้า $index';
+  }
+
+  @override
+  String get generationTitle => 'กำลังสร้างหน้าจอ';
 }

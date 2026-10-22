@@ -302,5 +302,14 @@
   "colorGreen": "أخضر",
   "colorAmber": "عنبري",
   "colorRose": "وردي",
-  "colorSlate": "أردوازي"
+  "colorSlate": "أردوازي",
+  "generationStepPreparing": "قراءة رسالتك",
+  "generationStepWaiting": "في انتظار الخدمة",
+  "generationStepWriting": "كتابة التصميم",
+  "generationStepBuilding": "بناء الصفحات",
+  "generationCanvasBuilding": "جارٍ البناء…",
+  "generationPageProgress": "الصفحة {index} من {total}",
+  "generationPageProgressUnknown": "الصفحة {index}",
+  "generationTitle": "جارٍ إنشاء التصميم"
 }
+

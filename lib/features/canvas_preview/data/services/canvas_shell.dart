@@ -38,6 +38,9 @@ const String canvasBridgeScript = r'''
   var editingRingId = null;
   // Gaya wrap sementara selama edit, dipulihkan saat sesi edit berakhir.
   var editingWrap = null;
+  // Pratinjau saat generate: dokumen diganti tanpa navigasi dan halaman
+  // bersifat read-only sampai generate selesai.
+  var previewMode = false;
 
   function sendToHost(payload) {
     try {
@@ -251,7 +254,7 @@ const String canvasBridgeScript = r'''
     patchNavigationApis();
 
     document.addEventListener('mouseover', function (e) {
-      if (mode !== 'select') return;
+      if (previewMode || mode !== 'select') return;
       var id = idFromEvent(e);
       if (!id) return;
       placeBox(hoverBox, rectOf(id));
@@ -264,6 +267,12 @@ const String canvasBridgeScript = r'''
     }, true);
 
     document.addEventListener('click', function (e) {
+      // Pratinjau generate: halaman read-only, klik tidak diteruskan.
+      if (previewMode) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       // Mode seleksi: klik memilih elemen untuk memberi konteks ke AI.
       // Link tidak dinavigasi agar elemen <a> pun bisa ikut diedit.
       if (mode === 'select') {
@@ -557,6 +566,8 @@ const String canvasBridgeScript = r'''
   }
 
   function centauriSetMode(next) {
+    // Saat pratinjau generate, mode halaman dikunci read-only.
+    if (previewMode) return;
     mode = next === 'select' ? 'select' : 'interact';
     if (mode !== 'select') {
       selectedId = null;
@@ -1760,6 +1771,65 @@ const String canvasBridgeScript = r'''
     });
   }
 
+  // ---- Pratinjau saat generate -----------------------------------------
+  // Ganti isi dokumen tanpa navigasi: bridge tetap hidup karena fungsi dan
+  // listener menempel di `window`/`document`, bukan di elemen body.
+  function centauriPreview(payload) {
+    try {
+      var data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      var html = data && data.html ? String(data.html) : '';
+      if (!html) return false;
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      if (!doc || !doc.body) return false;
+
+      var x = window.scrollX || 0;
+      var y = window.scrollY || 0;
+      previewMode = true;
+
+      // Head: hanya style/title/meta/base. <link> dibuang agar tidak memicu
+      // permintaan jaringan baru di tiap pembaruan.
+      if (doc.head) {
+        var head = '';
+        var nodes = doc.head.children;
+        for (var i = 0; i < nodes.length; i++) {
+          var tag = nodes[i].tagName;
+          if (tag === 'SCRIPT' || tag === 'LINK' || tag === 'NOSCRIPT') continue;
+          head += nodes[i].outerHTML;
+        }
+        if (head) document.head.innerHTML = head;
+      }
+
+      // Body: atribut lalu konten. Script inline tidak dijalankan (innerHTML);
+      // pratinjau memang hanya untuk dilihat.
+      var cls = doc.body.getAttribute('class');
+      if (cls) document.body.className = cls;
+      var bodyStyle = doc.body.getAttribute('style');
+      if (bodyStyle) document.body.setAttribute('style', bodyStyle);
+      document.body.innerHTML = doc.body.innerHTML;
+
+      // Overlay lama ikut terhapus bersama body; buat ulang.
+      overlay = null;
+      hoverBox = null;
+      selectBox = null;
+      tagBadge = null;
+      ensureViewportMeta();
+      ensureScrollbarDefaults();
+      applySharpnessDefaults();
+      ensureOverlay();
+      applyAccentStyles();
+
+      try { window.scrollTo(x, y); } catch (e) { /* abaikan */ }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function centauriPreviewEnd() {
+    previewMode = false;
+    return true;
+  }
+
   window.centauriSetMode = centauriSetMode;
   window.centauriSelect = centauriSelect;
   window.centauriHover = centauriHover;
@@ -1778,6 +1848,8 @@ const String canvasBridgeScript = r'''
   window.centauriGetOuterHtml = centauriGetOuterHtml;
   window.centauriExportPng = centauriExportPng;
   window.centauriExportFigma = centauriExportFigma;
+  window.centauriPreview = centauriPreview;
+  window.centauriPreviewEnd = centauriPreviewEnd;
 
   function boot() {
     if (document.body) {

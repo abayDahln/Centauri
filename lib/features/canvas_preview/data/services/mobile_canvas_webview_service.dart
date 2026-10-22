@@ -90,7 +90,12 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
     _loadingDocument = true;
     try {
       if (html == null || html.isEmpty) {
-        await _controller.loadHtmlString(_emptyDocument);
+        // Bridge tetap dipasang walau dokumen kosong: pratinjau saat generate
+        // butuh `window.centauriPreview` sebelum halaman pertama ada.
+        await _controller.loadHtmlString(
+          injectBridge(_emptyDocument),
+          baseUrl: _baseUrl,
+        );
         return;
       }
       final document = injectBridge(html);
@@ -221,6 +226,25 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   Future<void> scrollTo(double x, double y) async {
     if (!_ready || _disposed) return;
     await _safeRun('window.centauriScrollTo($x, $y)');
+  }
+
+  /// Batas payload yang masih aman lewat channel JS di mobile.
+  static const int _maxPreviewChars = 400000;
+
+  @override
+  Future<void> previewHtml(String? html) async {
+    if (!_ready || _disposed) return;
+    if (html == null) {
+      await _safeRun(
+        'window.centauriPreviewEnd && window.centauriPreviewEnd()',
+      );
+      return;
+    }
+    if (html.length > _maxPreviewChars) return;
+    await _safeRun(
+      'window.centauriPreview && window.centauriPreview('
+      '${jsonEncode({'html': html})})',
+    );
   }
 
   @override

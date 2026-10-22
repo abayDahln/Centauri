@@ -903,4 +903,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get colorSlate => 'Slate';
+
+  @override
+  String get generationStepPreparing => 'Reading your message';
+
+  @override
+  String get generationStepWaiting => 'Waiting for the service';
+
+  @override
+  String get generationStepWriting => 'Writing the design';
+
+  @override
+  String get generationStepBuilding => 'Building pages';
+
+  @override
+  String get generationCanvasBuilding => 'Building…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'Page $index of $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'Page $index';
+  }
+
+  @override
+  String get generationTitle => 'Building your design';
 }

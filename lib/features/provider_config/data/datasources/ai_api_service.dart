@@ -20,6 +20,38 @@ class ApiConnectionException extends AppErrorDetails implements Exception {
   String toString() => debugLabel;
 }
 
+/// Event aliran generate.
+sealed class UiStreamEvent {
+  const UiStreamEvent();
+}
+
+/// Aliran dimulai. [streaming] false berarti provider tidak mengalirkan token
+/// (mis. menolak `stream: true` atau membalas JSON biasa) sehingga UI memakai
+/// animasi bertahap sampai hasil penuh tiba.
+final class UiStreamStart extends UiStreamEvent {
+  const UiStreamStart({required this.streaming});
+
+  final bool streaming;
+}
+
+/// Potongan teks baru dari model.
+final class UiStreamDelta extends UiStreamEvent {
+  const UiStreamDelta(this.text, {required this.totalChars});
+
+  final String text;
+
+  /// Jumlah karakter yang sudah diterima (untuk indikator progres).
+  final int totalChars;
+}
+
+/// Aliran selesai; [text] adalah teks penuh yang siap diklasifikasi.
+final class UiStreamDone extends UiStreamEvent {
+  const UiStreamDone(this.text, {required this.streamed});
+
+  final String text;
+  final bool streamed;
+}
+
 /// HTTP client dinamis berbasis Dio (TR-03). Dio dibuat per-request agar
 /// Base URL, header, dan kredensial selalu sesuai provider yang dipilih.
 class AiApiService {
@@ -251,17 +283,7 @@ class AiApiService {
     try {
       response = await _clientFor(provider).post<ResponseBody>(
         url,
-        data: {
-          'model': provider.model,
-          'messages': messages,
-          'temperature': AppConstants.designTemperature,
-          // max_tokens tidak dikirim: provider memakai batas maksimum modelnya,
-          // dan nilai besar justru ditolak saat input + max_tokens melewati
-          // context window (mis. OpenRouter HTTP 400).
-          // Minta respons tunggal. Sebagian gateway tetap membalas SSE;
-          // keduanya ditangani di bawah.
-          'stream': false,
-        },
+        data: _chatBody(provider, messages, stream: false),
         options: Options(responseType: ResponseType.stream),
         cancelToken: token,
       );
@@ -306,6 +328,38 @@ class AiApiService {
       _activeTokens.remove(token);
     }
 
+    return _finishBuffered(
+      raw,
+      url: url,
+      contentType: contentType,
+      statusCode: response.statusCode,
+    );
+  }
+
+  /// Body request chat completion.
+  Map<String, dynamic> _chatBody(
+    ApiProvider provider,
+    List<Map<String, dynamic>> messages, {
+    required bool stream,
+  }) {
+    return {
+      'model': provider.model,
+      'messages': messages,
+      'temperature': AppConstants.designTemperature,
+      // max_tokens tidak dikirim: provider memakai batas maksimum modelnya,
+      // dan nilai besar justru ditolak saat input + max_tokens melewati
+      // context window (mis. OpenRouter HTTP 400).
+      'stream': stream,
+    };
+  }
+
+  /// Ubah body penuh (JSON atau SSE) menjadi teks asisten.
+  String _finishBuffered(
+    String raw, {
+    required String url,
+    required String contentType,
+    int? statusCode,
+  }) {
     if (raw.isEmpty) {
       throw ApiConnectionException(
         AppErrorCode.apiBadResponse,
@@ -343,14 +397,274 @@ class AiApiService {
       // Status 200 dengan body error berarti provider melaporkan kegagalan di
       // dalam respons sukses (mis. upstream overload); baris status hanya
       // menambah kebisingan saat dicatat sebagai detail.
-      final statusLine = response.statusCode == 200
+      final statusLine = statusCode == 200
           ? ''
-          : 'Status: ${response.statusCode}, Content-Type: $contentType';
+          : 'Status: $statusCode, Content-Type: $contentType';
       throw ApiConnectionException(
         e.code,
         detail: [e.detail, statusLine, url].whereType<String>().join(' | '),
       );
     }
+  }
+
+  /// Generate dengan aliran token.
+  ///
+  /// Selalu memancarkan [UiStreamStart] lebih dulu. Bila provider menolak
+  /// `stream: true` atau membalas JSON utuh, nilainya `streaming: false` dan
+  /// hasil penuh tetap dikirim lewat [UiStreamDone] — tanpa error ke pengguna.
+  Stream<UiStreamEvent> streamUI({
+    required ApiProvider provider,
+    required List<Map<String, dynamic>> messages,
+    CancelToken? cancelToken,
+  }) async* {
+    if (provider.normalizedBaseUrl.isEmpty) {
+      throw ApiConnectionException(
+        AppErrorCode.apiNoChatEndpoint,
+        detail: 'Base URL kosong',
+      );
+    }
+
+    final url = resolveEndpoint(
+      provider.normalizedBaseUrl,
+      AppConstants.chatCompletionsPath,
+    );
+    final token = cancelToken ?? CancelToken();
+    _activeTokens.add(token);
+
+    try {
+      final Response<ResponseBody> response;
+      try {
+        response = await _clientFor(provider).post<ResponseBody>(
+          url,
+          data: _chatBody(provider, messages, stream: true),
+          options: Options(responseType: ResponseType.stream),
+          cancelToken: token,
+        );
+      } on DioException catch (e) {
+        // Gateway yang menolak `stream` bukan error bagi pengguna: ulangi
+        // sekali tanpa streaming, hasilnya identik.
+        if (_isStreamRejected(e)) {
+          yield const UiStreamStart(streaming: false);
+          final raw = await generateUI(
+            provider: provider,
+            messages: messages,
+            cancelToken: token,
+          );
+          yield UiStreamDone(raw, streamed: false);
+          return;
+        }
+        final errorBody = await _readErrorBody(e);
+        throw ApiConnectionException(
+          mapDioError(e),
+          detail: dioErrorDetail(
+            e,
+            responseBody: errorBody,
+            url: url,
+            model: provider.model,
+          ),
+        );
+      }
+
+      final body = response.data;
+      if (body == null) {
+        throw ApiConnectionException(
+          AppErrorCode.apiBadResponse,
+          detail: 'Body kosong | $url',
+        );
+      }
+      final contentType =
+          response.headers.value('content-type')?.toLowerCase() ?? '';
+
+      // Potongan pertama menentukan apakah gateway benar-benar mengalirkan
+      // token atau membalas JSON utuh meski diminta stream.
+      final iterator = StreamIterator<String>(
+        _readBodyStream(
+          body,
+          timeout: AppConstants.receiveTimeout,
+          cancelToken: token,
+        ),
+      );
+      try {
+        if (!await iterator.moveNext()) {
+          throw ApiConnectionException(
+            AppErrorCode.apiBadResponse,
+            detail: 'Body kosong | $url',
+          );
+        }
+        final firstChunk = iterator.current;
+        final looksJson =
+            !contentType.contains('text/event-stream') &&
+            firstChunk.trimLeft().startsWith('{');
+
+        if (looksJson) {
+          final buffer = StringBuffer(firstChunk);
+          while (await iterator.moveNext()) {
+            buffer.write(iterator.current);
+          }
+          yield const UiStreamStart(streaming: false);
+          yield UiStreamDone(
+            _finishBuffered(
+              buffer.toString(),
+              url: url,
+              contentType: contentType,
+              statusCode: response.statusCode,
+            ),
+            streamed: false,
+          );
+          return;
+        }
+
+        yield const UiStreamStart(streaming: true);
+
+        final decoder = _SseDecoder();
+        final all = StringBuffer();
+        var pending = <UiStreamDelta>[];
+
+        void consume(String text) {
+          final delta = decoder.add(text);
+          if (delta.isEmpty) return;
+          all.write(delta);
+          pending.add(UiStreamDelta(delta, totalChars: all.length));
+        }
+
+        consume(firstChunk);
+        while (await iterator.moveNext()) {
+          consume(iterator.current);
+          if (pending.length >= 8) {
+            for (final delta in pending) {
+              yield delta;
+            }
+            pending = <UiStreamDelta>[];
+          }
+        }
+        for (final delta in pending) {
+          yield delta;
+        }
+
+        final raw = all.toString();
+        if (raw.isEmpty) {
+          throw ApiConnectionException(
+            AppErrorCode.apiBadResponse,
+            detail: 'Body kosong | $url',
+          );
+        }
+        yield UiStreamDone(raw, streamed: true);
+      } finally {
+        await iterator.cancel();
+      }
+    } finally {
+      _activeTokens.remove(token);
+    }
+  }
+
+  /// Status HTTP yang berarti gateway tidak mendukung `stream: true`.
+  static bool _isStreamRejected(DioException e) {
+    final status = e.response?.statusCode;
+    return e.type == DioExceptionType.badResponse &&
+        (status == 400 || status == 422 || status == 501);
+  }
+
+  /// Seperti [_readBodyWithTimeout], tetapi memancarkan tiap potongan teks
+  /// begitu tiba (dipakai jalur streaming).
+  Stream<String> _readBodyStream(
+    ResponseBody body, {
+    required Duration timeout,
+    CancelToken? cancelToken,
+  }) {
+    late StreamController<String> controller;
+    Timer? inactivity;
+    Timer? total;
+    StreamSubscription<List<int>>? subscription;
+    Completer<void>? cancelWatch;
+    var closed = false;
+
+    void stopTimers() {
+      inactivity?.cancel();
+      total?.cancel();
+      final watch = cancelWatch;
+      if (watch != null && !watch.isCompleted) watch.complete();
+    }
+
+    void finish([Object? error]) {
+      if (closed) return;
+      closed = true;
+      stopTimers();
+      subscription?.cancel();
+      if (error != null) controller.addError(error);
+      controller.close();
+    }
+
+    controller = StreamController<String>(
+      onListen: () {
+        if (cancelToken != null) {
+          cancelWatch = Completer<void>();
+          cancelToken.whenCancel.then((_) {
+            if (!cancelWatch!.isCompleted) {
+              finish(ApiConnectionException(AppErrorCode.cancelled));
+            }
+          });
+          if (cancelToken.isCancelled) {
+            finish(ApiConnectionException(AppErrorCode.cancelled));
+            return;
+          }
+        }
+
+        void resetInactivity() {
+          inactivity?.cancel();
+          inactivity = Timer(timeout, () {
+            finish(
+              ApiConnectionException(
+                AppErrorCode.apiTimeout,
+                detail: 'Tidak ada data selama ${timeout.inSeconds} detik',
+              ),
+            );
+          });
+        }
+
+        resetInactivity();
+        total = Timer(AppConstants.generationTimeout, () {
+          finish(
+            ApiConnectionException(
+              AppErrorCode.generationTimeout,
+              detail:
+                  'Batas total ${AppConstants.generationTimeout.inMinutes} menit',
+            ),
+          );
+        });
+
+        subscription = body.stream.listen(
+          (bytes) {
+            if (closed) return;
+            resetInactivity();
+            controller.add(
+              const Utf8Decoder(allowMalformed: true).convert(bytes),
+            );
+          },
+          onDone: finish,
+          onError: (Object error, StackTrace stack) {
+            finish(
+              error is DioException
+                  ? ApiConnectionException(
+                      mapDioError(error),
+                      detail: dioErrorDetail(error),
+                    )
+                  : ApiConnectionException(
+                      AppErrorCode.apiConnectionBroken,
+                      detail: error.toString(),
+                    ),
+            );
+          },
+          cancelOnError: true,
+        );
+      },
+      onCancel: () {
+        closed = true;
+        stopTimers();
+        subscription?.cancel();
+      },
+    );
+
+    return controller.stream;
   }
 
   /// Membaca [ResponseBody] menjadi String, dengan batas inaktivitas antar
@@ -757,4 +1071,139 @@ class AiApiService {
     }
     return null;
   }
+}
+
+/// Pengurai Server-Sent Events inkremental: menerima potongan mentah dan
+/// mengembalikan teks delta yang sudah utuh.
+class _SseDecoder {
+  final StringBuffer _line = StringBuffer();
+  final StringBuffer _data = StringBuffer();
+
+  /// Tambahkan [chunk]; hasilnya delta teks (boleh kosong).
+  String add(String chunk) {
+    _line.write(chunk);
+    final buffered = _line.toString();
+    final out = StringBuffer();
+    var index = 0;
+    while (true) {
+      final newline = buffered.indexOf('\n', index);
+      if (newline < 0) break;
+      var line = buffered.substring(index, newline);
+      index = newline + 1;
+      if (line.endsWith('\r')) line = line.substring(0, line.length - 1);
+      final delta = _consumeLine(line);
+      if (delta != null) out.write(delta);
+    }
+    _line
+      ..clear()
+      ..write(buffered.substring(index));
+    return out.toString();
+  }
+
+  String? _consumeLine(String line) {
+    if (line.isEmpty) return null;
+    if (line.startsWith(':')) return null; // komentar / keep-alive
+    if (line.startsWith('event:')) return null;
+
+    if (line.startsWith('data:')) {
+      final payload = line.substring(5).trimLeft();
+      if (payload == '[DONE]') {
+        _data.clear();
+        return null;
+      }
+      _data.write(payload);
+      return _tryDecode();
+    }
+
+    // Ollama native: satu objek JSON per baris tanpa prefiks `data:`.
+    if (line.startsWith('{')) {
+      _data.write(line);
+      return _tryDecode();
+    }
+    return null;
+  }
+
+  String? _tryDecode() {
+    final text = _data.toString();
+    if (text.isEmpty) return null;
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(text);
+    } on FormatException {
+      return null; // JSON belum lengkap: tunggu potongan berikutnya.
+    }
+    _data.clear();
+    if (decoded is! Map) return null;
+    return _deltaOf(decoded);
+  }
+}
+
+/// Potongan teks dari satu objek SSE (OpenAI, Anthropic, Ollama).
+String? _deltaOf(Map<dynamic, dynamic> chunk) {
+  // Error yang dilaporkan di tengah stream.
+  final error = chunk['error'];
+  if (error is Map && error['message'] is String) {
+    throw ApiConnectionException(
+      AppErrorCode.apiProviderReported,
+      detail: error['message'] as String,
+    );
+  }
+
+  final choices = chunk['choices'];
+  if (choices is List && choices.isNotEmpty && choices.first is Map) {
+    final first = choices.first as Map;
+    final delta = first['delta'];
+    if (delta is Map) {
+      final piece = _rawContentOf(delta['content']);
+      if (piece != null) return piece;
+    }
+    final message = first['message'];
+    if (message is Map) {
+      final piece = _rawContentOf(message['content']);
+      if (piece != null) return piece;
+    }
+    final text = first['text'];
+    if (text is String) return text;
+  }
+
+  // Anthropic native.
+  if (chunk['type'] == 'content_block_delta') {
+    final delta = chunk['delta'];
+    if (delta is Map && delta['text'] is String) {
+      return delta['text'] as String;
+    }
+  }
+
+  // Ollama native.
+  final message = chunk['message'];
+  if (message is Map) {
+    final piece = _rawContentOf(message['content']);
+    if (piece != null) return piece;
+  }
+  final response = chunk['response'];
+  if (response is String) return response;
+  return null;
+}
+
+/// Seperti `_rawContentToString`, tetapi bisa dipakai dari fungsi top-level.
+String? _rawContentOf(dynamic content) {
+  if (content is String) return content.isEmpty ? null : content;
+  if (content is List) {
+    final buffer = StringBuffer();
+    for (final part in content) {
+      if (part is String) {
+        buffer.write(part);
+      } else if (part is Map) {
+        final text = part['text'];
+        if (text is String) {
+          buffer.write(text);
+        } else if (part['content'] is String) {
+          buffer.write(part['content'] as String);
+        }
+      }
+    }
+    final joined = buffer.toString();
+    return joined.isEmpty ? null : joined;
+  }
+  return null;
 }

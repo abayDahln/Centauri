@@ -1713,6 +1713,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Slate'**
   String get colorSlate;
+
+  /// No description provided for @generationStepPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading your message'**
+  String get generationStepPreparing;
+
+  /// No description provided for @generationStepWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the service'**
+  String get generationStepWaiting;
+
+  /// No description provided for @generationStepWriting.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing the design'**
+  String get generationStepWriting;
+
+  /// No description provided for @generationStepBuilding.
+  ///
+  /// In en, this message translates to:
+  /// **'Building pages'**
+  String get generationStepBuilding;
+
+  /// No description provided for @generationCanvasBuilding.
+  ///
+  /// In en, this message translates to:
+  /// **'Building…'**
+  String get generationCanvasBuilding;
+
+  /// No description provided for @generationPageProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {index} of {total}'**
+  String generationPageProgress(int index, int total);
+
+  /// No description provided for @generationPageProgressUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {index}'**
+  String generationPageProgressUnknown(int index);
+
+  /// No description provided for @generationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Building your design'**
+  String get generationTitle;
 }
 
 class _AppLocalizationsDelegate

@@ -431,6 +431,14 @@
   "colorGreen": "Hijau",
   "colorAmber": "Kuning",
   "colorRose": "Merah muda",
-  "colorSlate": "Abu"
+  "colorSlate": "Abu",
+  "generationStepPreparing": "Membaca pesan",
+  "generationStepWaiting": "Menunggu layanan",
+  "generationStepWriting": "Menyusun desain",
+  "generationStepBuilding": "Membangun halaman",
+  "generationCanvasBuilding": "Membangun…",
+  "generationPageProgress": "Halaman {index} dari {total}",
+  "generationPageProgressUnknown": "Halaman {index}",
+  "generationTitle": "Membuat desain"
 }
 

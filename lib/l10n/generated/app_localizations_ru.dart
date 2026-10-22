@@ -916,4 +916,32 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get colorSlate => 'Грифельный';
+
+  @override
+  String get generationStepPreparing => 'Читаю сообщение';
+
+  @override
+  String get generationStepWaiting => 'Жду ответа сервиса';
+
+  @override
+  String get generationStepWriting => 'Создаю дизайн';
+
+  @override
+  String get generationStepBuilding => 'Собираю страницы';
+
+  @override
+  String get generationCanvasBuilding => 'Собираю…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'Страница $index из $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'Страница $index';
+  }
+
+  @override
+  String get generationTitle => 'Создание дизайна';
 }

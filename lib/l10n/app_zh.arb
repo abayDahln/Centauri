@@ -302,5 +302,14 @@
   "colorGreen": "绿色",
   "colorAmber": "琥珀色",
   "colorRose": "玫瑰红",
-  "colorSlate": "石板灰"
+  "colorSlate": "石板灰",
+  "generationStepPreparing": "正在读取消息",
+  "generationStepWaiting": "等待服务响应",
+  "generationStepWriting": "正在撰写设计",
+  "generationStepBuilding": "正在构建页面",
+  "generationCanvasBuilding": "正在构建…",
+  "generationPageProgress": "第 {index} 页，共 {total} 页",
+  "generationPageProgressUnknown": "第 {index} 页",
+  "generationTitle": "正在生成界面"
 }
+

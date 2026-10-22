@@ -922,4 +922,32 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get colorSlate => 'Schiefer';
+
+  @override
+  String get generationStepPreparing => 'Nachricht wird gelesen';
+
+  @override
+  String get generationStepWaiting => 'Warte auf den Dienst';
+
+  @override
+  String get generationStepWriting => 'Design wird erstellt';
+
+  @override
+  String get generationStepBuilding => 'Seiten werden aufgebaut';
+
+  @override
+  String get generationCanvasBuilding => 'Wird aufgebaut…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'Seite $index von $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'Seite $index';
+  }
+
+  @override
+  String get generationTitle => 'Design wird generiert';
 }

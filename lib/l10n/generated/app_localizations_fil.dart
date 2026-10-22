@@ -912,4 +912,32 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get colorSlate => 'Abuhin';
+
+  @override
+  String get generationStepPreparing => 'Binabasa ang mensahe';
+
+  @override
+  String get generationStepWaiting => 'Hinihintay ang serbisyo';
+
+  @override
+  String get generationStepWriting => 'Isinusulat ang disenyo';
+
+  @override
+  String get generationStepBuilding => 'Binubuo ang mga pahina';
+
+  @override
+  String get generationCanvasBuilding => 'Binubuo…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'Pahina $index ng $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'Pahina $index';
+  }
+
+  @override
+  String get generationTitle => 'Ginagawa ang disenyo';
 }

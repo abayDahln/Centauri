@@ -914,4 +914,32 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get colorSlate => 'Ardósia';
+
+  @override
+  String get generationStepPreparing => 'Lendo sua mensagem';
+
+  @override
+  String get generationStepWaiting => 'Aguardando o serviço';
+
+  @override
+  String get generationStepWriting => 'Escrevendo o design';
+
+  @override
+  String get generationStepBuilding => 'Montando as páginas';
+
+  @override
+  String get generationCanvasBuilding => 'Montando…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'Página $index de $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'Página $index';
+  }
+
+  @override
+  String get generationTitle => 'Criando o design';
 }

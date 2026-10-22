@@ -918,4 +918,32 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get colorSlate => 'Ardoise';
+
+  @override
+  String get generationStepPreparing => 'Lecture du message';
+
+  @override
+  String get generationStepWaiting => 'En attente du service';
+
+  @override
+  String get generationStepWriting => 'Rédaction du design';
+
+  @override
+  String get generationStepBuilding => 'Construction des pages';
+
+  @override
+  String get generationCanvasBuilding => 'Construction…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'Page $index sur $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'Page $index';
+  }
+
+  @override
+  String get generationTitle => 'Création du design';
 }

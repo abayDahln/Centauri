@@ -905,4 +905,32 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get colorSlate => 'Abu';
+
+  @override
+  String get generationStepPreparing => 'Membaca pesan';
+
+  @override
+  String get generationStepWaiting => 'Menunggu layanan';
+
+  @override
+  String get generationStepWriting => 'Menyusun desain';
+
+  @override
+  String get generationStepBuilding => 'Membangun halaman';
+
+  @override
+  String get generationCanvasBuilding => 'Membangun…';
+
+  @override
+  String generationPageProgress(int index, int total) {
+    return 'Halaman $index dari $total';
+  }
+
+  @override
+  String generationPageProgressUnknown(int index) {
+    return 'Halaman $index';
+  }
+
+  @override
+  String get generationTitle => 'Membuat desain';
 }

@@ -455,6 +455,31 @@
   "colorGreen": "Green",
   "colorAmber": "Amber",
   "colorRose": "Rose",
-  "colorSlate": "Slate"
+  "colorSlate": "Slate",
+  "generationStepPreparing": "Reading your message",
+  "generationStepWaiting": "Waiting for the service",
+  "generationStepWriting": "Writing the design",
+  "generationStepBuilding": "Building pages",
+  "generationCanvasBuilding": "Building…",
+  "generationPageProgress": "Page {index} of {total}",
+  "@generationPageProgress": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "generationPageProgressUnknown": "Page {index}",
+  "@generationPageProgressUnknown": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "generationTitle": "Building your design"
 }
 

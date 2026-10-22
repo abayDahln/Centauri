@@ -15,6 +15,7 @@ import '../../domain/dom_tree.dart';
 import '../../domain/page.dart';
 import '../../domain/page_slug.dart';
 import '../../domain/prompt_mention.dart';
+import 'generation_stream_provider.dart';
 
 enum ChatRole { user, assistant, error }
 
@@ -360,6 +361,9 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
   // ---------------------------------------------------------------- pages --
 
   void setActivePage(String? id) {
+    // Selama generate, kanvas menampilkan pratinjau live: berpindah halaman
+    // akan bertabrakan dengan render parsial.
+    if (state.isGenerating) return;
     if (id == state.activePageId) return;
     state = state.copyWith(
       activePageId: id,
@@ -671,13 +675,34 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       ],
     );
 
+    // Pratinjau live: state terpisah supaya token tidak mengotori snapshot
+    // undo dan tidak merebuild panel lain.
+    final stream = ref.read(generationStreamProvider.notifier);
+    stream.begin(
+      knownScreenCount: wantsUi ? explicitPageCount(trimmed) : null,
+      uiRequest: wantsUi,
+    );
+
     try {
       final payload = _buildMessagesPayload(attachments: pendingAttachments);
-      final raw = await ref
-          .read(aiApiServiceProvider)
-          .generateUI(provider: activeProvider, messages: payload);
+      var raw = '';
+      await for (final event
+          in ref
+              .read(aiApiServiceProvider)
+              .streamUI(provider: activeProvider, messages: payload)) {
+        if (!state.isGenerating) return;
+        switch (event) {
+          case UiStreamStart(:final streaming):
+            stream.onStart(streaming: streaming);
+          case UiStreamDelta(:final text):
+            stream.onDelta(text);
+          case UiStreamDone(:final text):
+            raw = text;
+        }
+      }
       if (!state.isGenerating) return;
       _setStatus(AiStatus.responding);
+      stream.assembling();
       final response = await classifyAiResponseInIsolate(raw);
       if (!state.isGenerating) return;
 
@@ -697,6 +722,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
             ),
           ],
         );
+        stream.finish();
         return;
       }
 
@@ -745,19 +771,35 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
       final merged = _upsertPages(state.pages, newPages);
 
+      // Halaman yang terakhir tampil saat streaming menang, supaya pratinjau
+      // tidak melompat mundur di detik terakhir.
+      final previewSlug = stream.state.previewSlug?.toLowerCase();
+      String? settledId;
+      if (previewSlug != null) {
+        for (final page in merged.pages) {
+          if (page.slug.toLowerCase() == previewSlug) {
+            settledId = page.id;
+            break;
+          }
+        }
+      }
+      final activeId = settledId ?? merged.firstId;
+
       state = state.copyWith(
         pages: merged.pages,
-        activePageId: merged.firstId,
-        clearActivePage: merged.firstId == null,
+        activePageId: activeId,
+        clearActivePage: activeId == null,
         messages: messages,
         isGenerating: false,
         clearGenerationStart: true,
         status: AiStatus.idle,
       );
+      stream.finish();
     } on ApiConnectionException catch (e) {
       if (e.code == AppErrorCode.cancelled) {
         // Cancel dari tombol Stop sudah menutup state; jangan tambah pesan
         // "Generation stopped." untuk kedua kalinya.
+        stream.cancel();
         if (state.isGenerating) {
           _cancelGeneration(promptWasDiscarded: true);
         }
@@ -765,9 +807,11 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       }
       // Detail teknis (URL, status HTTP, pesan provider) hanya masuk log.
       debugPrint(e.debugLabel);
+      stream.fail();
       if (!state.isGenerating) return;
       _failGeneration(localizedAppError(l10nOf(ref), e));
     } catch (e) {
+      stream.fail();
       if (!state.isGenerating) return;
       _failGeneration(l10nOf(ref).commonGenericError);
     }
@@ -842,6 +886,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
   void cancelGeneration() {
     if (!state.isGenerating) return;
     AiApiService.cancelAll();
+    ref.read(generationStreamProvider.notifier).cancel();
     _cancelGeneration(promptWasDiscarded: true);
   }
 

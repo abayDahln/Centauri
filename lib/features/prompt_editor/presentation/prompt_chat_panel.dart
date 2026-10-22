@@ -5,9 +5,9 @@ import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/l10n.dart';
 import '../../canvas_preview/presentation/provider/workspace_provider.dart';
-import '../../canvas_preview/presentation/widgets/ai_status_indicator.dart';
 import '../../canvas_preview/presentation/widgets/attachment_preview_dialog.dart';
 import '../../canvas_preview/presentation/widgets/chat_error_card.dart';
+import '../../canvas_preview/presentation/widgets/generation_step_card.dart';
 import '../../canvas_preview/presentation/widgets/markdown_message.dart';
 
 /// Panel riwayat percakapan (read-only). Hanya menampilkan pesan user dan AI.
@@ -64,29 +64,15 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     );
   }
 
-  /// Saat AI sedang memproses dan belum ada pesan: tampilkan indikator
-  /// "thinking" agar jelas ada aktivitas, bukan layar kosong.
+  /// Saat AI sedang memproses dan belum ada pesan: tampilkan kartu langkah
+  /// agar jelas ada aktivitas dan tahapnya, bukan layar kosong.
   Widget _buildThinkingState() {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const AiStatusIndicator(),
-            const SizedBox(height: 12),
-            Text(
-              context.l10n.chatProcessing,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.uiFamily,
-                fontFamilyFallback: AppFonts.uiFallback,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: context.palette.textSecondary,
-              ),
-            ),
-          ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 320),
+        child: const Padding(
+          padding: EdgeInsets.all(24),
+          child: GenerationStepCard(),
         ),
       ),
     );
@@ -157,7 +143,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
             return _centered(
               const Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: AiStatusIndicator(),
+                child: GenerationStepCard(),
               ),
             );
           }

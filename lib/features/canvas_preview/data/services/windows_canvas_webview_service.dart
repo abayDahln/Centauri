@@ -169,7 +169,9 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
     if (!_ready || _disposed) return;
 
     if (html == null || html.isEmpty) {
-      await _loadDocument(_emptyDocument);
+      // Bridge tetap dipasang walau dokumen kosong: pratinjau saat generate
+      // butuh `window.centauriPreview` sebelum halaman pertama ada.
+      await _loadDocument(injectBridge(_emptyDocument));
       return;
     }
 
@@ -306,6 +308,26 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   Future<void> scrollTo(double x, double y) async {
     if (!_ready || _disposed) return;
     await _safeExecute('window.centauriScrollTo($x, $y)');
+  }
+
+  /// Batas payload `executeScript` yang masih aman untuk dokumen parsial.
+  static const int _maxPreviewChars = 600000;
+
+  @override
+  Future<void> previewHtml(String? html) async {
+    if (!_ready || _disposed) return;
+    if (html == null) {
+      await _safeExecute(
+        'window.centauriPreviewEnd && window.centauriPreviewEnd()',
+      );
+      return;
+    }
+    // Dokumen kebesaran: biarkan skeleton sampai render final.
+    if (html.length > _maxPreviewChars) return;
+    await _safeExecute(
+      'window.centauriPreview && window.centauriPreview('
+      '${jsonEncode({'html': html})})',
+    );
   }
 
   @override

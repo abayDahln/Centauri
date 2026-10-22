@@ -302,5 +302,14 @@
   "colorGreen": "Зелёный",
   "colorAmber": "Янтарный",
   "colorRose": "Розовый",
-  "colorSlate": "Грифельный"
+  "colorSlate": "Грифельный",
+  "generationStepPreparing": "Читаю сообщение",
+  "generationStepWaiting": "Жду ответа сервиса",
+  "generationStepWriting": "Создаю дизайн",
+  "generationStepBuilding": "Собираю страницы",
+  "generationCanvasBuilding": "Собираю…",
+  "generationPageProgress": "Страница {index} из {total}",
+  "generationPageProgressUnknown": "Страница {index}",
+  "generationTitle": "Создание дизайна"
 }
+

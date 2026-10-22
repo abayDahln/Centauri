@@ -302,5 +302,14 @@
   "colorGreen": "Grün",
   "colorAmber": "Bernstein",
   "colorRose": "Rosé",
-  "colorSlate": "Schiefer"
+  "colorSlate": "Schiefer",
+  "generationStepPreparing": "Nachricht wird gelesen",
+  "generationStepWaiting": "Warte auf den Dienst",
+  "generationStepWriting": "Design wird erstellt",
+  "generationStepBuilding": "Seiten werden aufgebaut",
+  "generationCanvasBuilding": "Wird aufgebaut…",
+  "generationPageProgress": "Seite {index} von {total}",
+  "generationPageProgressUnknown": "Seite {index}",
+  "generationTitle": "Design wird generiert"
 }
+

@@ -14,9 +14,11 @@ import '../../data/services/canvas_webview_service.dart';
 import '../../data/services/canvas_webview_service_factory.dart';
 import '../../domain/page.dart';
 import '../../domain/page_slug.dart';
+import '../provider/generation_stream_provider.dart';
 import '../provider/workspace_provider.dart';
 import 'chat_side_panel.dart';
 import 'element_edit_menu.dart';
+import 'generation_canvas_overlay.dart';
 import 'element_text_editor.dart';
 import 'page_switch_tracker.dart';
 
@@ -78,6 +80,14 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   /// supaya user tidak terlempar ke paling atas.
   double _scrollX = 0;
   double _scrollY = 0;
+
+  /// HTML yang benar-benar sedang tampil di WebView. Dipakai untuk membedakan
+  /// "dokumen parsial" dari halaman asli saat pratinjau berakhir.
+  String? _displayedHtml;
+
+  /// Dokumen parsial terakhir yang sudah dikirim ke WebView.
+  String? _appliedPreview;
+  Timer? _previewTimer;
 
   @override
   void initState() {
@@ -170,6 +180,8 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     if (mounted && _error != null) setState(() => _error = null);
     try {
       await _service.renderHtml(html == null || html.isEmpty ? null : html);
+      _displayedHtml = html;
+      _appliedPreview = null;
       // Dokumen baru selalu mulai di mode interaksi; terapkan ulang.
       await _service.setSelectionMode(
         ref.read(workspaceProvider).selectionMode,
@@ -441,6 +453,33 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     );
   }
 
+  /// Terapkan dokumen parsial ke WebView (throttle 200 ms, minimal 300 char
+  /// baru). `null` = pratinjau berakhir: pulihkan halaman asli bila yang
+  /// tampil memang dokumen parsial.
+  void _schedulePreview(String? html) {
+    if (html == null) {
+      _previewTimer?.cancel();
+      _previewTimer = null;
+      final applied = _appliedPreview;
+      _appliedPreview = null;
+      if (applied == null) return;
+      final page = ref.read(workspaceProvider).activePage;
+      if (_displayedHtml != (page?.html ?? '')) {
+        _renderPage(page?.id, page?.html);
+      }
+      return;
+    }
+    if (html == _appliedPreview) return;
+    if (html.length - (_appliedPreview?.length ?? 0) < 300) return;
+    _previewTimer?.cancel();
+    _previewTimer = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      _appliedPreview = html;
+      _displayedHtml = html;
+      _service.previewHtml(html);
+    });
+  }
+
   /// Setiap ketikan langsung ditulis ke DOM supaya komponen ikut membesar /
   /// mengecil saat itu juga.
   void _onEditorChanged(String text) {
@@ -538,6 +577,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       CanvasServiceRegistry.unregister(_registeredPageId!);
     }
     _liveTextTimer?.cancel();
+    _previewTimer?.cancel();
     _subscription?.cancel();
     _service.dispose();
     super.dispose();
@@ -546,6 +586,9 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   @override
   Widget build(BuildContext context) {
     final html = ref.watch(workspaceProvider.select((s) => s.activePage?.html));
+    final generating = ref.watch(
+      workspaceProvider.select((s) => s.isGenerating),
+    );
 
     // Muat ulang saat halaman aktif berganti atau HTML-nya berubah.
     // `activePage` mengembalikan instance baru setiap halaman berubah, jadi
@@ -566,6 +609,13 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     ref.listen<bool>(
       workspaceProvider.select((s) => s.selectionMode),
       (_, enabled) => _service.setSelectionMode(enabled),
+    );
+
+    // Pratinjau live saat generate: dokumen parsial diganti di tempat tanpa
+    // navigasi, jadi bridge & posisi gulir tetap.
+    ref.listen<String?>(
+      generationStreamProvider.select((s) => s.previewHtml),
+      (_, html) => _schedulePreview(html),
     );
 
     Widget content;
@@ -597,6 +647,10 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
               // Selagi dokumen baru dimuat, halaman lama tetap terlihat dan
               // ditindih scrim + spinner supaya pindah halaman terasa responsif.
               if (_switching) const _PageSwitchLoading(),
+              // Selama generate halaman read-only: klik & gulir tidak
+              // diteruskan ke WebView.
+              if (generating) const AbsorbPointer(child: SizedBox.expand()),
+              const GenerationCanvasOverlay(),
             ],
           ),
         );

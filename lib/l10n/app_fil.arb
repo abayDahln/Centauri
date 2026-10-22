@@ -302,5 +302,14 @@
   "colorGreen": "Berde",
   "colorAmber": "Amber",
   "colorRose": "Rosas",
-  "colorSlate": "Abuhin"
+  "colorSlate": "Abuhin",
+  "generationStepPreparing": "Binabasa ang mensahe",
+  "generationStepWaiting": "Hinihintay ang serbisyo",
+  "generationStepWriting": "Isinusulat ang disenyo",
+  "generationStepBuilding": "Binubuo ang mga pahina",
+  "generationCanvasBuilding": "Binubuo…",
+  "generationPageProgress": "Pahina {index} ng {total}",
+  "generationPageProgressUnknown": "Pahina {index}",
+  "generationTitle": "Ginagawa ang disenyo"
 }
+

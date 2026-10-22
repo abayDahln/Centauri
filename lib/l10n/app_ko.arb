@@ -302,5 +302,14 @@
   "colorGreen": "초록",
   "colorAmber": "앰버",
   "colorRose": "장미색",
-  "colorSlate": "슬레이트"
+  "colorSlate": "슬레이트",
+  "generationStepPreparing": "메시지 확인 중",
+  "generationStepWaiting": "서비스 응답 대기 중",
+  "generationStepWriting": "디자인 작성 중",
+  "generationStepBuilding": "페이지 구성 중",
+  "generationCanvasBuilding": "구성 중…",
+  "generationPageProgress": "{total}페이지 중 {index}페이지",
+  "generationPageProgressUnknown": "{index}페이지",
+  "generationTitle": "화면 생성 중"
 }
+
