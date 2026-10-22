@@ -323,11 +323,12 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
-  Future<void> setTextEditing(String id, bool editing) async {
+  Future<void> setTextEditing(String id, bool editing, {String? ringId}) async {
     if (!_ready || _disposed) return;
     await _safeExecute(
       'window.centauriSetTextEditing(${jsonEncode(id)}, '
-      '${editing ? 'true' : 'false'})',
+      '${editing ? 'true' : 'false'}, '
+      '${jsonEncode(ringId ?? id)})',
     );
   }
 

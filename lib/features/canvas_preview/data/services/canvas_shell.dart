@@ -24,7 +24,6 @@ const String canvasBridgeScript = r'''
   var hoverBox = null;
   var selectBox = null;
   var tagBadge = null;
-  var editBox = null;
   var selectedId = null;
   // Mode interaksi (default) membiarkan input, tombol, dan hover bekerja
   // seperti halaman biasa. Mode seleksi menangkap klik untuk memilih elemen.
@@ -33,6 +32,12 @@ const String canvasBridgeScript = r'''
   var accent = '#0078D4';
   // Node yang teksnya sedang diedit inline oleh host (teks dibuat transparan).
   var editingId = null;
+  // Elemen yang ring-nya digambar saat edit. Bisa induk dari target tulis
+  // (mis. <button> saat yang ditulis <span> labelnya) supaya indikatornya
+  // mengikuti bentuk komponen, bukan kotak teks kecil di dalamnya.
+  var editingRingId = null;
+  // Gaya wrap sementara selama edit, dipulihkan saat sesi edit berakhir.
+  var editingWrap = null;
 
   function sendToHost(payload) {
     try {
@@ -89,10 +94,6 @@ const String canvasBridgeScript = r'''
     if (tagBadge) {
       tagBadge.style.background = accent;
     }
-    if (editBox) {
-      editBox.style.borderColor = accent;
-      editBox.style.background = accentRgba(0.10);
-    }
   }
 
   function ensureOverlay() {
@@ -141,44 +142,6 @@ const String canvasBridgeScript = r'''
     box.style.top = (rect.y + sy) + 'px';
     box.style.width = rect.w + 'px';
     box.style.height = rect.h + 'px';
-  }
-
-  // Kotak edit teks: digambar DI DALAM halaman (bukan widget Flutter) supaya
-  // menempel persis pada teks yang benar-benar dirender browser.
-  function ensureEditBox() {
-    var host = overlay || document.body;
-    if (!host) return;
-    if (editBox && editBox.parentNode === host) return;
-    editBox = document.createElement('div');
-    editBox.setAttribute('data-centauri-editbox', '1');
-    editBox.style.cssText = 'position:absolute;display:none;pointer-events:none;' +
-      'box-sizing:border-box;border-radius:3px;border:1.5px solid;';
-    host.appendChild(editBox);
-    applyAccentStyles();
-  }
-
-  function placeEditBox(el) {
-    if (!el) { hideEditBox(); return; }
-    ensureEditBox();
-    if (!editBox) return;
-    var rect = textRectOf(el);
-    if (!rect || rect.w <= 0 || rect.h <= 0) {
-      // Teks kosong / elemen belum terlihat: pakai kotak elemen sebagai cadangan.
-      var er = el.getBoundingClientRect();
-      rect = { x: er.left, y: er.top, w: er.width, h: er.height };
-    }
-    var sx = window.scrollX || 0;
-    var sy = window.scrollY || 0;
-    var pad = 2;
-    editBox.style.display = 'block';
-    editBox.style.left = (rect.x + sx - pad) + 'px';
-    editBox.style.top = (rect.y + sy - pad) + 'px';
-    editBox.style.width = (rect.w + pad * 2) + 'px';
-    editBox.style.height = (rect.h + pad * 2) + 'px';
-  }
-
-  function hideEditBox() {
-    if (editBox) editBox.style.display = 'none';
   }
 
   // Badge nama tag di atas kotak seleksi (gaya editor visual).
@@ -373,18 +336,12 @@ const String canvasBridgeScript = r'''
   }
 
   function refreshSelection() {
-    if (!selectedId) return;
-    // Saat inline edit, outline editor yang jadi penanda — kotak seleksi besar
-    // justru mengganggu.
-    if (editingId) {
-      if (selectBox) selectBox.style.display = 'none';
-      placeBadge(null, '');
-      placeEditBox(__centauriQuery(editingId));
-      return;
-    }
-    var rect = rectOf(selectedId);
+    // Saat edit, kotak seleksi menandai elemen yang sedang diubah teksnya.
+    var id = editingId ? (editingRingId || selectedId || editingId) : selectedId;
+    if (!id) return;
+    var rect = rectOf(id);
     placeBox(selectBox, rect);
-    placeBadge(rect, tagOf(selectedId));
+    placeBadge(rect, tagOf(id));
   }
 
   // Default ketajaman render: font anti-alias + teks legible.
@@ -452,25 +409,88 @@ const String canvasBridgeScript = r'''
   }
 
   // ---- Inline text edit -------------------------------------------------
-  // Host menaruh TextField Flutter TEPAT di atas teks elemen (webview_windows
-  // tidak meneruskan keyboard ke DOM). JS hanya menyembunyikan TEXT NODE
-  // aslinya (dibungkus span transparan) agar ikon/anak elemen tetap terlihat,
-  // lalu menulis ulang text node itu saat commit.
-  // Teks TIDAK disembunyikan: yang terlihat adalah teks asli di DOM, jadi
-  // ukuran dan layout komponen ikut berubah real-time saat mengetik.
-  // TextField Flutter hanya menyediakan caret + input (glyph-nya transparan).
-  function centauriSetTextEditing(id, editing) {
-    editingId = editing ? id : null;
-    // Saat edit, kotak seleksi besar diganti outline tipis milik editor
-    // (posisinya mengikuti teks, bukan seluruh elemen).
-    if (editing) {
-      if (selectBox) selectBox.style.display = 'none';
-      placeBadge(null, '');
-      placeEditBox(__centauriQuery(id));
-    } else {
-      hideEditBox();
-      refreshSelection();
+  // Host menaruh TextField Flutter tepat di atas teks elemen (webview_windows
+  // tidak meneruskan keyboard ke DOM). Glyph TextField transparan: teks yang
+  // terlihat tetap teks asli di DOM, jadi ukuran dan layout komponen ikut
+  // berubah real-time saat mengetik. JS hanya menulis text node-nya.
+  // Elemen pembawa teks (target tulis) untuk sebuah id.
+  function textElOf(id) {
+    var el = __centauriQuery(id);
+    if (!el) return null;
+    return textTargetOf(el) || el;
+  }
+
+  // Tulis teks ke text node langsung elemen; node teks lain dikosongkan.
+  // Dipakai saat mengetik dan saat merapikan teks sebelum edit.
+  function writeText(el, text) {
+    var nodes = directTextNodes(el);
+    var node = nodes.length ? nodes[0] : null;
+    if (!node) {
+      var kids = el.childNodes || [];
+      for (var k = kids.length - 1; k >= 0; k--) {
+        if (kids[k].nodeType === 3) { node = kids[k]; break; }
+      }
     }
+    if (!node) {
+      node = document.createTextNode('');
+      el.appendChild(node);
+    }
+    if (node.data !== text) node.data = text;
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i] !== node) nodes[i].data = '';
+    }
+    return node;
+  }
+
+  // Teks panjang tanpa spasi harus turun baris, bukan terpotong tepi elemen.
+  // Gaya ini hanya hidup selama sesi edit lalu dipulihkan apa adanya.
+  function beginTextWrap(el) {
+    endTextWrap();
+    if (!el || !el.style) return;
+    var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+    var ws = cs ? (cs.whiteSpace || 'normal') : 'normal';
+    // `pre-wrap` menampilkan indentasi/newline HTML apa adanya; untuk elemen
+    // biasa teksnya dirapikan dulu supaya tidak ada lompatan layout.
+    if (ws !== 'pre' && ws !== 'pre-wrap' && ws !== 'break-spaces') {
+      writeText(el, directText(el));
+    }
+    editingWrap = {
+      el: el,
+      whiteSpace: el.style.whiteSpace,
+      overflowWrap: el.style.overflowWrap,
+      wordBreak: el.style.wordBreak,
+      overflow: el.style.overflow
+    };
+    el.style.whiteSpace = 'pre-wrap';
+    el.style.overflowWrap = 'anywhere';
+    el.style.wordBreak = 'break-word';
+    el.style.overflow = 'visible';
+  }
+
+  function endTextWrap() {
+    if (!editingWrap) return;
+    var w = editingWrap;
+    editingWrap = null;
+    try {
+      w.el.style.whiteSpace = w.whiteSpace;
+      w.el.style.overflowWrap = w.overflowWrap;
+      w.el.style.wordBreak = w.wordBreak;
+      w.el.style.overflow = w.overflow;
+    } catch (e) { /* abaikan */ }
+  }
+
+  function centauriSetTextEditing(id, editing, ringId) {
+    editingId = editing ? id : null;
+    // Kartu edit adalah widget native di atas WebView; di halaman cukup
+    // tandai elemennya dengan kotak seleksi.
+    if (editing) {
+      editingRingId = ringId || id;
+      beginTextWrap(textElOf(id));
+    } else {
+      editingRingId = null;
+      endTextWrap();
+    }
+    refreshSelection();
     return true;
   }
 
@@ -480,26 +500,10 @@ const String canvasBridgeScript = r'''
     var el = __centauriQuery(id);
     if (!el) return false;
     try {
-      var nodes = directTextNodes(el);
-      var node = nodes.length ? nodes[0] : null;
-      if (!node) {
-        // Pakai text node terakhir (termasuk yang kosong) agar tidak
-        // menumpuk node baru setiap kali teks dihapus habis.
-        var kids = el.childNodes || [];
-        for (var k = kids.length - 1; k >= 0; k--) {
-          if (kids[k].nodeType === 3) { node = kids[k]; break; }
-        }
-      }
-      if (!node) {
-        node = document.createTextNode('');
-        el.appendChild(node);
-      }
-      if (node.data !== text) node.data = text;
-      for (var i = 0; i < nodes.length; i++) {
-        if (nodes[i] !== node) nodes[i].data = '';
-      }
+      writeText(el, text);
       __centauriSync();
-      placeEditBox(el);
+      // Kotak seleksi ikut menyesuaikan saat elemen membesar/mengecil.
+      refreshSelection();
       var payload = geometryPayload(el, id);
       payload.type = 'textLayout';
       sendToHost(payload);
@@ -778,10 +782,8 @@ const String canvasBridgeScript = r'''
     if (!el) return null;
     var payload = geometryPayload(el, id);
     sendToHost(payload);
-    if (!editingId) {
-      placeBox(selectBox, payload.rect);
-      placeBadge(payload.rect, payload.tag);
-    }
+    placeBox(selectBox, payload.rect);
+    placeBadge(payload.rect, payload.tag);
     return payload;
   }
 

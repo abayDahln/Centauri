@@ -313,7 +313,11 @@ abstract class CanvasWebviewService {
 
   /// Tandai node yang sedang diedit inline (dipakai JS untuk membedakan
   /// mode edit dari mode seleksi biasa).
-  Future<void> setTextEditing(String id, bool editing);
+  ///
+  /// [ringId] adalah elemen yang ring-nya digambar JS — biasanya elemen yang
+  /// dipilih di kanvas, bukan target tulis di dalamnya, supaya indikatornya
+  /// mengikuti bentuk komponen (border-radius, padding).
+  Future<void> setTextEditing(String id, bool editing, {String? ringId});
 
   /// Tulis teks sambil mengetik tanpa memutus sesi edit: DOM ikut berubah
   /// sehingga ukuran/layout komponen menyesuaikan real-time. JS membalas

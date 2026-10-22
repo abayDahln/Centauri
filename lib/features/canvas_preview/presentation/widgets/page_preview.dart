@@ -53,6 +53,15 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   /// Node yang sedang diedit inline + teks/style awalnya.
   String? _editingNodeId;
   Rect? _editingRect;
+
+  /// Kotak elemen yang sedang diedit (bukan kotak teks) — dipakai untuk
+  /// menempatkan toolbar ✓/✕ di dekat elemennya.
+  Rect? _editingElementRect;
+
+  /// Id elemen yang ring-nya digambar (elemen terpilih, bisa induk dari
+  /// target tulis). Dipakai agar kotak toolbar hanya diperbarui oleh geometri
+  /// elemen itu, bukan oleh kotak teks anaknya.
+  String? _editingElementId;
   String _editingText = '';
   String _liveText = '';
   Map<String, String> _editingStyles = const {};
@@ -221,6 +230,15 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
             mounted) {
           setState(() {
             _editingRect = _editorRectFor(live);
+            // Toolbar tetap di kotak elemen; payload ini milik target teks.
+            if (live.id == _editingElementId) {
+              _editingElementRect = Rect.fromLTWH(
+                live.x,
+                live.y,
+                live.width,
+                live.height,
+              );
+            }
           });
         }
         return;
@@ -299,6 +317,14 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       if (geometry.id == _editingNodeId) {
         setState(() {
           _editingRect = _editorRectFor(geometry);
+          if (geometry.id == _editingElementId) {
+            _editingElementRect = Rect.fromLTWH(
+              geometry.x,
+              geometry.y,
+              geometry.width,
+              geometry.height,
+            );
+          }
         });
       }
       return;
@@ -347,7 +373,9 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       _menuGeometry = null;
       _menuChain = const [];
       _editingNodeId = null;
+      _editingElementId = null;
       _editingRect = null;
+      _editingElementRect = null;
     });
   }
 
@@ -369,7 +397,14 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     final rect = _editorRectFor(geometry);
     setState(() {
       _editingNodeId = targetId;
+      _editingElementId = geometry.id;
       _editingRect = rect;
+      _editingElementRect = Rect.fromLTWH(
+        geometry.x,
+        geometry.y,
+        geometry.width,
+        geometry.height,
+      );
       _editingText = geometry.text;
       _liveText = geometry.text;
       _editingStyles = geometry.textStyles.isNotEmpty
@@ -377,7 +412,9 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
           : geometry.styles;
       _menuGeometry = null;
     });
-    _service.setTextEditing(targetId, true);
+    // Ring digambar di elemen terpilih (bentuk komponen asli), bukan di
+    // kotak teks kecil di dalamnya.
+    _service.setTextEditing(targetId, true, ringId: geometry.id);
   }
 
   /// Kotak editor: lebar dari kotak isi elemen (agar wrap sama dengan
@@ -431,7 +468,9 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     }
     setState(() {
       _editingNodeId = null;
+      _editingElementId = null;
       _editingRect = null;
+      _editingElementRect = null;
     });
     await _service.setTextEditing(id, false);
     final ok = await ref
@@ -449,7 +488,9 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     _liveTextTimer?.cancel();
     setState(() {
       _editingNodeId = null;
+      _editingElementId = null;
       _editingRect = null;
+      _editingElementRect = null;
     });
     // DOM sudah ikut berubah selama mengetik; kembalikan teks aslinya.
     if (_liveText != _editingText) {
@@ -616,19 +657,36 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     );
   }
 
-  /// Editor teks inline menimpa kotak teks elemen aslinya.
+  /// Kartu edit mengambang di dekat elemen: di bawahnya bila ada ruang,
+  /// kalau tidak di atasnya, dan selalu di dalam viewport.
   Widget _positionEditor(Size size) {
-    final rect = _editingRect!;
+    final rect = _editingElementRect ?? _editingRect!;
     const margin = 8.0;
-    final maxWidth = math.max(90.0, size.width - margin * 2);
-    final width = rect.width.clamp(90.0, maxWidth).toDouble();
+    const gap = 8.0;
+
+    // Lebar nyaman untuk mengetik: tidak selebar halaman, tidak sekecil label.
+    final maxWidth = math.max(160.0, math.min(420.0, size.width - margin * 2));
+    final width = rect.width
+        .clamp(math.min(240.0, maxWidth), maxWidth)
+        .toDouble();
+
+    // Perkiraan tinggi kartu (field 1–5 baris + baris tombol + padding).
+    final charsPerLine = math.max(8, (width / 8).floor());
+    final lines = ((_liveText.length / charsPerLine).ceil()).clamp(1, 5);
+    final cardHeight = 96.0 + (lines - 1) * 20.0;
+
+    var top = rect.bottom + gap;
+    if (top + cardHeight > size.height - margin) {
+      top = rect.top - cardHeight - gap;
+    }
+    top = top
+        .clamp(margin, math.max(margin, size.height - cardHeight - margin))
+        .toDouble();
 
     var left = rect.left;
     left = left
         .clamp(margin, math.max(margin, size.width - width - margin))
         .toDouble();
-    var top = rect.top;
-    top = top.clamp(margin, math.max(margin, size.height - 80)).toDouble();
 
     return Positioned(
       left: left,

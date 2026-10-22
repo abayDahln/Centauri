@@ -5,11 +5,11 @@ import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 
-/// Editor teks inline yang ditumpuk tepat di atas teks elemen di kanvas.
+/// Kartu edit teks yang mengambang tepat di atas elemen kanvas.
 ///
-/// `webview_windows` tidak meneruskan keyboard ke DOM, jadi edit teks
-/// dilakukan TextField Flutter: JS menyembunyikan teks asli (transparan)
-/// selama editor terbuka, lalu host menulis ulang `textContent` saat Simpan.
+/// `webview_windows` tidak meneruskan keyboard ke DOM, jadi input ditangani
+/// TextField Flutter di dalam kartu ini. Setiap ketikan tetap ditulis ke DOM
+/// lewat [onChanged] supaya ukuran dan layout komponen ikut berubah live.
 class ElementTextEditor extends StatefulWidget {
   const ElementTextEditor({
     super.key,
@@ -23,7 +23,7 @@ class ElementTextEditor extends StatefulWidget {
   final String initialText;
 
   /// Subset `getComputedStyle` elemen (fontSize, fontWeight, color, ...) agar
-  /// teks di editor terlihat sama dengan teks aslinya.
+  /// teks di kartu terlihat sama dengan teks aslinya.
   final Map<String, String> styles;
 
   final ValueChanged<String> onSave;
@@ -47,9 +47,9 @@ class _ElementTextEditorState extends State<ElementTextEditor> {
   @override
   void initState() {
     super.initState();
-    _controller.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: _controller.text.length,
+    // Karet di akhir teks, bukan select-all.
+    _controller.selection = TextSelection.collapsed(
+      offset: _controller.text.length,
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
@@ -75,10 +75,12 @@ class _ElementTextEditorState extends State<ElementTextEditor> {
       widget.onCancel();
       return KeyEventResult.handled;
     }
-    final isCtrl =
-        HardwareKeyboard.instance.isControlPressed ||
-        HardwareKeyboard.instance.isMetaPressed;
-    if (isCtrl && event.logicalKey == LogicalKeyboardKey.enter) {
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      // Shift+Enter menyisipkan baris baru untuk teks multi-baris.
+      if (HardwareKeyboard.instance.isShiftPressed) {
+        return KeyEventResult.ignored;
+      }
       _save();
       return KeyEventResult.handled;
     }
@@ -89,68 +91,77 @@ class _ElementTextEditorState extends State<ElementTextEditor> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final l10n = context.l10n;
-    final size = _px(widget.styles['fontSize']) ?? 14;
+    final size = _px(widget.styles['fontSize']) ?? 14.0;
     final height = _lineHeight(widget.styles['lineHeight'], size);
+    final weight = _weight(widget.styles['fontWeight']);
+    final textAlign = _textAlign(widget.styles['textAlign']);
+    final family = _fontFamily(widget.styles['fontFamily']);
+    final color = _cssColor(widget.styles['color']) ?? palette.textPrimary;
 
     return Focus(
       onKeyEvent: _onKey,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Kotak edit digambar JS di dalam halaman (menempel persis pada
-          // teks asli); di sini hanya caret + input yang tak terlihat.
-          TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            maxLines: null,
-            cursorColor: palette.primary,
-            cursorWidth: 2,
-            textAlign: _textAlign(widget.styles['textAlign']),
-            style: TextStyle(
-              fontFamily: AppFonts.uiFamily,
-              fontFamilyFallback: AppFonts.uiFallback,
-              fontSize: size,
-              height: height,
-              fontWeight: _weight(widget.styles['fontWeight']),
-              // Teks yang terlihat adalah teks asli di DOM (ikut reflow).
-              // TextField hanya menyediakan caret + penanganan input.
-              color: Colors.transparent,
-            ),
-            decoration: const InputDecoration(
-              isDense: true,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              filled: false,
-            ),
-            onTapOutside: (_) {},
-            onChanged: widget.onChanged,
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              _EditorAction(
-                icon: Icons.check_rounded,
-                tooltip: l10n.commonSave,
-                background: palette.primary,
-                foreground: palette.onPrimary,
-                onTap: _save,
+      child: Container(
+        decoration: BoxDecoration(
+          color: palette.bgElevated,
+          borderRadius: AppRadius.md,
+          border: Border.all(color: palette.borderSubtle),
+          boxShadow: palette.shadowRaised,
+        ),
+        padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 8, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              minLines: 1,
+              maxLines: 5,
+              cursorColor: palette.primary,
+              cursorWidth: 2,
+              textAlign: textAlign,
+              style: TextStyle(
+                fontFamily: family,
+                fontFamilyFallback: AppFonts.uiFallback,
+                fontSize: size,
+                height: height,
+                fontWeight: weight,
+                color: color,
               ),
-              const SizedBox(width: 4),
-              _EditorAction(
-                icon: Icons.close_rounded,
-                tooltip: l10n.commonCancel,
-                background: palette.bgElevated,
-                foreground: palette.textSecondary,
-                onTap: widget.onCancel,
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                filled: false,
               ),
-            ],
-          ),
-        ],
+              onTapOutside: (_) {},
+              onChanged: widget.onChanged,
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _EditorAction(
+                  icon: Icons.close_rounded,
+                  tooltip: l10n.commonCancel,
+                  background: palette.bgSurface,
+                  foreground: palette.textSecondary,
+                  onTap: widget.onCancel,
+                ),
+                const SizedBox(width: 6),
+                _EditorAction(
+                  icon: Icons.check_rounded,
+                  tooltip: l10n.commonSave,
+                  background: palette.primary,
+                  foreground: palette.onPrimary,
+                  onTap: _save,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -183,14 +194,14 @@ class _EditorAction extends StatelessWidget {
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
           child: Container(
-            width: 22,
-            height: 22,
+            width: 26,
+            height: 26,
             decoration: BoxDecoration(
               color: background,
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: palette.shadowRaised,
+              borderRadius: AppRadius.sm,
+              border: Border.all(color: palette.borderSubtle),
             ),
-            child: Icon(icon, size: 13, color: foreground),
+            child: Icon(icon, size: 14, color: foreground),
           ),
         ),
       ),
@@ -203,6 +214,43 @@ double? _px(String? raw) {
   final value = double.tryParse(raw.replaceAll('px', '').trim());
   if (value == null || value <= 0) return null;
   return value.clamp(8, 96);
+}
+
+/// Nama font pertama dari `getComputedStyle().fontFamily`.
+String _fontFamily(String? raw) {
+  if (raw == null || raw.isEmpty) return AppFonts.uiFamily;
+  final first = raw
+      .split(',')
+      .first
+      .trim()
+      .replaceAll('"', '')
+      .replaceAll("'", '');
+  if (first.isEmpty || first == 'inherit' || first == 'initial') {
+    return AppFonts.uiFamily;
+  }
+  return first;
+}
+
+/// `rgb(r, g, b)` / `rgba(r, g, b, a)` / `#RRGGBB` → [Color].
+Color? _cssColor(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  final value = raw.trim();
+  if (value.startsWith('#')) {
+    final hex = value.substring(1);
+    if (hex.length != 6) return null;
+    final parsed = int.tryParse(hex, radix: 16);
+    return parsed == null ? null : Color(0xFF000000 | parsed);
+  }
+  final match = RegExp(r'rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)')
+      .firstMatch(value);
+  if (match == null) return null;
+  int channel(String raw) => double.tryParse(raw)?.round().clamp(0, 255) ?? 0;
+  return Color.fromARGB(
+    255,
+    channel(match.group(1)!),
+    channel(match.group(2)!),
+    channel(match.group(3)!),
+  );
 }
 
 double _lineHeight(String? raw, double fontSize) {
