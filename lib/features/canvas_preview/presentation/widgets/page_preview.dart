@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,8 @@ import '../../domain/page.dart';
 import '../../domain/page_slug.dart';
 import '../provider/workspace_provider.dart';
 import 'chat_side_panel.dart';
+import 'element_edit_menu.dart';
+import 'element_text_editor.dart';
 import 'page_switch_tracker.dart';
 
 /// Host preview halaman: SATU WebView untuk seluruh app yang selalu
@@ -40,10 +43,48 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   final PageSwitchTracker _switchTracker = PageSwitchTracker();
   bool _switching = false;
 
+  /// Geometri node yang menunya sedang terbuka. Null = menu tertutup.
+  NodeGeometry? _menuGeometry;
+
+  /// Rantai breadcrumb yang dipertahankan saat user naik ke induk, supaya
+  /// anak yang tadi dipilih tetap bisa dituju kembali dari menu yang sama.
+  List<NodeAncestor> _menuChain = const [];
+
+  /// Node yang sedang diedit inline + teks/style awalnya.
+  String? _editingNodeId;
+  Rect? _editingRect;
+  String _editingText = '';
+  String _liveText = '';
+  Map<String, String> _editingStyles = const {};
+
+  /// Ketikan ditahan sebentar lalu dikirim ke JS, supaya DOM (dan layout
+  /// komponen) ikut berubah real-time tanpa membanjiri bridge.
+  Timer? _liveTextTimer;
+
+  /// Warna aksen terakhir yang dikirim ke JS (hindari kiriman berulang).
+  String? _accentHex;
+
+  /// Posisi gulir terakhir di dokumen aktif (CSS px). Dipulihkan setelah
+  /// dokumen dirender ulang karena mutasi (hapus komponen / edit teks),
+  /// supaya user tidak terlempar ke paling atas.
+  double _scrollX = 0;
+  double _scrollY = 0;
+
   @override
   void initState() {
     super.initState();
     _initialize();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Overlay seleksi di dalam WebView memakai warna aksen aplikasi; kirim
+    // ulang setiap tema berubah.
+    final hex = _hexOf(context.palette.primary);
+    if (hex == _accentHex) return;
+    _accentHex = hex;
+    _service.setSelectionAccent(hex);
   }
 
   Future<void> _initialize() async {
@@ -61,6 +102,8 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
         await _service.setSelectionMode(
           ref.read(workspaceProvider).selectionMode,
         );
+        final accent = _accentHex;
+        if (accent != null) await _service.setSelectionAccent(accent);
       } else {
         await _service.renderHtml(null);
       }
@@ -81,6 +124,8 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       await _service.setSelectionMode(
         ref.read(workspaceProvider).selectionMode,
       );
+      final accent = _accentHex;
+      if (accent != null) await _service.setSelectionAccent(accent);
     } catch (e) {
       debugPrint('[workspace] retry render gagal: $e');
       if (mounted) setState(() => _error = '$e');
@@ -90,6 +135,16 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   /// Registrasi service di bawah id halaman aktif (agar MCP/exporter bisa
   /// menemukannya) dan muat HTML-nya.
   Future<void> _renderPage(String? pageId, String? html) async {
+    // Dokumen baru = koordinat lama tidak berlaku lagi; tutup menu/editor.
+    _resetSelectionUi();
+    // Mutasi pada halaman yang SAMA (hapus komponen / edit teks) memuat ulang
+    // dokumen. Posisi gulir lama disimpan agar tidak kembali ke paling atas.
+    final samePage = pageId != null && _registeredPageId == pageId;
+    final restoreScroll = samePage ? Offset(_scrollX, _scrollY) : null;
+    if (!samePage) {
+      _scrollX = 0;
+      _scrollY = 0;
+    }
     // Berpindah halaman → tindih preview dengan indikator memuat selagi
     // WebView memuat dokumen baru (klik tab langsung terasa responsif).
     final switching = _switchTracker.isSwitching(pageId);
@@ -110,6 +165,17 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       await _service.setSelectionMode(
         ref.read(workspaceProvider).selectionMode,
       );
+      final accent = _accentHex;
+      if (accent != null) await _service.setSelectionAccent(accent);
+      // Seleksi dipertahankan lintas render (mis. setelah edit teks / hapus)
+      // supaya menu elemen muncul lagi dengan geometri terbaru.
+      final selected = ref.read(workspaceProvider).selectedNodeId;
+      if (selected != null) await _service.selectNode(selected);
+      // Dipulihkan setelah seleksi (selectNode bisa memicu scrollIntoView).
+      if (restoreScroll != null &&
+          (restoreScroll.dx > 0 || restoreScroll.dy > 0)) {
+        await _service.scrollTo(restoreScroll.dx, restoreScroll.dy);
+      }
       if (mounted && _error != null) setState(() => _error = null);
     } catch (e) {
       debugPrint('[workspace] renderHtml gagal: $e');
@@ -142,16 +208,44 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
         final geometry = event.geometry;
         if (geometry != null) {
           ref.read(workspaceProvider.notifier).updateNodeGeometry(geometry);
+          _onGeometry(geometry);
+        }
+        return;
+      case 'textLayout':
+        // Geometri baru setelah teks berubah: editor ikut bergeser/menyesuaikan.
+        final live = event.geometry;
+        if (live != null &&
+            _editingNodeId != null &&
+            live.id == _editingNodeId &&
+            (live.textRect != null || live.textBox != null) &&
+            mounted) {
+          setState(() {
+            _editingRect = _editorRectFor(live);
+          });
         }
         return;
       case 'select':
+        // Fokus edit: seleksi elemen lain ditahan sampai Simpan/Batal.
+        if (_editingNodeId != null) return;
         ref.read(workspaceProvider.notifier).selectNodeFromCanvas(event.id);
+        if (event.id == null) _closeMenu();
         return;
-      case 'editWithAi':
-        _editElementWithAi(event.id, event.label);
+      case 'scroll':
+        // Simpan posisi baca sebelum dokumen mungkin dimuat ulang.
+        _scrollX = event.scrollX ?? _scrollX;
+        _scrollY = event.scrollY ?? _scrollY;
+        // Saat edit, editor ikut bergeser bersama teks (sesi edit tidak
+        // dibatalkan hanya karena halaman digulir).
+        if (_editingNodeId != null) {
+          _service.requestNodeGeometry(_editingNodeId!);
+          return;
+        }
+        // Menu native tidak ikut tergulir bersama halaman.
+        _closeMenu();
         return;
-      case 'deleteNode':
-        _deleteNodeFromCanvas(event.id);
+      case 'cancelled':
+        _closeMenu();
+        if (_editingNodeId != null) _cancelTextEdit(reopenMenu: false);
         return;
       case 'hover':
         ref.read(workspaceProvider.notifier).hoverNode(event.id);
@@ -193,16 +287,203 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     ref
         .read(workspaceProvider.notifier)
         .addElementMention(nodeId: nodeId, label: label ?? '');
+    _closeMenu();
     ref.read(panelTabProvider.notifier).select(PanelTab.chat);
     ref.read(panelVisibleProvider.notifier).show();
   }
 
-  /// "Hapus komponen" dari menu elemen: hapus node lalu sinkronkan HTML.
-  Future<void> _deleteNodeFromCanvas(String? nodeId) async {
-    if (nodeId == null) return;
+  /// Geometri terbaru dari JS: buka/perbarui menu elemen.
+  void _onGeometry(NodeGeometry geometry) {
+    if (_editingNodeId != null) {
+      // Reposisi editor saat halaman digulir (sesi edit tetap berjalan).
+      if (geometry.id == _editingNodeId) {
+        setState(() {
+          _editingRect = _editorRectFor(geometry);
+        });
+      }
+      return;
+    }
+    final state = ref.read(workspaceProvider);
+    if (!state.selectionMode || state.selectedNodeId != geometry.id) return;
+    setState(() {
+      _menuGeometry = geometry;
+      _menuChain = _mergeChain(_menuChain, geometry.chain);
+    });
+  }
+
+  /// Pertahankan rantai yang lebih panjang saat user naik ke induk, supaya
+  /// anak yang tadi dipilih tetap bisa dituju lagi lewat breadcrumb.
+  List<NodeAncestor> _mergeChain(
+    List<NodeAncestor> current,
+    List<NodeAncestor> next,
+  ) {
+    if (next.isEmpty) return const [];
+    if (current.length > next.length && _isPrefix(next, current)) {
+      return current;
+    }
+    return next;
+  }
+
+  bool _isPrefix(List<NodeAncestor> prefix, List<NodeAncestor> list) {
+    if (prefix.length > list.length) return false;
+    for (var i = 0; i < prefix.length; i++) {
+      if (prefix[i].id != list[i].id) return false;
+    }
+    return true;
+  }
+
+  void _closeMenu() {
+    if (_menuGeometry == null && _menuChain.isEmpty) return;
+    setState(() {
+      _menuGeometry = null;
+      _menuChain = const [];
+    });
+  }
+
+  void _resetSelectionUi() {
+    if (_menuGeometry == null && _editingNodeId == null) return;
+    _liveTextTimer?.cancel();
+    setState(() {
+      _menuGeometry = null;
+      _menuChain = const [];
+      _editingNodeId = null;
+      _editingRect = null;
+    });
+  }
+
+  /// Pilih elemen lain (induk/anak) langsung dari breadcrumb.
+  Future<void> _selectAncestor(String id) async {
+    if (id == _menuGeometry?.id) return;
+    ref.read(workspaceProvider.notifier).selectNode(id);
+    await _service.selectNode(id);
+  }
+
+  /// Buka editor teks inline di atas teks elemen.
+  void _openTextEditor() {
+    final geometry = _menuGeometry;
+    if (geometry == null || !geometry.textEditable) return;
+    // Target tulis bisa anak dari elemen terpilih (label di dalam tombol).
+    final targetId = geometry.textNodeId.isEmpty
+        ? geometry.id
+        : geometry.textNodeId;
+    final rect = _editorRectFor(geometry);
+    setState(() {
+      _editingNodeId = targetId;
+      _editingRect = rect;
+      _editingText = geometry.text;
+      _liveText = geometry.text;
+      _editingStyles = geometry.textStyles.isNotEmpty
+          ? geometry.textStyles
+          : geometry.styles;
+      _menuGeometry = null;
+    });
+    _service.setTextEditing(targetId, true);
+  }
+
+  /// Kotak editor: lebar dari kotak isi elemen (agar wrap sama dengan
+  /// halaman), posisi atas dari kotak teks sebenarnya.
+  Rect _editorRectFor(NodeGeometry geometry) {
+    final textRect = geometry.textRect;
+    final box = geometry.textBox;
+    final align = geometry.textStyles['textAlign'] ?? 'left';
+    final boxLeft = box?.left ?? textRect?.left ?? geometry.x;
+    final boxWidth = box?.width ?? textRect?.width ?? geometry.width;
+    // Teks rata kiri bisa dimulai setelah ikon (mis. chip dengan ikon), jadi
+    // caret harus mulai di kotak teks, bukan di tepi kotak isi. Untuk teks
+    // rata tengah/kanan, biarkan lebar penuh dan serahkan ke textAlign.
+    final centered = align == 'center' || align == 'right' || align == 'end';
+    final left = centered ? boxLeft : (textRect?.left ?? boxLeft);
+    final width = centered
+        ? boxWidth
+        : math.max(40.0, boxLeft + boxWidth - left);
+    return Rect.fromLTWH(
+      left,
+      textRect?.top ?? box?.top ?? geometry.y,
+      width,
+      textRect?.height ?? 0,
+    );
+  }
+
+  /// Setiap ketikan langsung ditulis ke DOM supaya komponen ikut membesar /
+  /// mengecil saat itu juga.
+  void _onEditorChanged(String text) {
+    _liveText = text;
+    final id = _editingNodeId;
+    if (id == null) return;
+    _liveTextTimer?.cancel();
+    _liveTextTimer = Timer(const Duration(milliseconds: 16), () {
+      final target = _editingNodeId;
+      if (target == null) return;
+      _service.liveTextUpdate(target, _liveText);
+    });
+  }
+
+  /// Simpan teks hasil inline edit; HTML halaman ikut disinkronkan.
+  Future<void> _commitTextEdit(String text) async {
+    final id = _editingNodeId;
+    if (id == null) return;
+    _liveTextTimer?.cancel();
     final l10n = context.l10n;
-    final ok = await ref.read(workspaceProvider.notifier).deleteNode(nodeId);
-    if (!ok) _toast(l10n.previewDeleteFailed);
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      await _cancelTextEdit();
+      return;
+    }
+    setState(() {
+      _editingNodeId = null;
+      _editingRect = null;
+    });
+    await _service.setTextEditing(id, false);
+    final ok = await ref
+        .read(workspaceProvider.notifier)
+        .commitCanvasTextEdit(id, trimmed);
+    if (!ok) _toast(l10n.previewTextEditFailed);
+  }
+
+  /// Batalkan inline edit: teks asli ditampilkan lagi tanpa perubahan.
+  /// [reopenMenu] false saat pembatalan dipicu scroll/Escape — menu tetap
+  /// tertutup, bukan muncul lagi di posisi lama.
+  Future<void> _cancelTextEdit({bool reopenMenu = true}) async {
+    final id = _editingNodeId;
+    if (id == null) return;
+    _liveTextTimer?.cancel();
+    setState(() {
+      _editingNodeId = null;
+      _editingRect = null;
+    });
+    // DOM sudah ikut berubah selama mengetik; kembalikan teks aslinya.
+    if (_liveText != _editingText) {
+      await _service.liveTextUpdate(id, _editingText);
+      _liveText = _editingText;
+    }
+    await _service.setTextEditing(id, false);
+    // Geometri diminta untuk elemen TERPILIH (bisa induk dari target teks).
+    final selected = ref.read(workspaceProvider).selectedNodeId;
+    if (reopenMenu && selected != null) {
+      await _service.requestNodeGeometry(selected);
+    }
+  }
+
+  /// Hapus elemen terpilih; hasilnya bisa dikembalikan lewat Undo.
+  Future<void> _deleteSelectedNode() async {
+    final id = _menuGeometry?.id ?? ref.read(workspaceProvider).selectedNodeId;
+    if (id == null) return;
+    final l10n = context.l10n;
+    final notifier = ref.read(workspaceProvider.notifier);
+    _closeMenu();
+    final ok = await notifier.deleteNode(id);
+    if (!ok) {
+      _toast(l10n.previewDeleteFailed);
+      return;
+    }
+    if (!mounted) return;
+    showAppToast(
+      context,
+      l10n.previewComponentDeleted,
+      kind: AppToastKind.success,
+      actionLabel: l10n.commonUndo,
+      onAction: notifier.undo,
+    );
   }
 
   void _toast(String message) {
@@ -215,6 +496,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     if (_registeredPageId != null) {
       CanvasServiceRegistry.unregister(_registeredPageId!);
     }
+    _liveTextTimer?.cancel();
     _subscription?.cancel();
     _service.dispose();
     super.dispose();
@@ -258,18 +540,114 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
 
     // Bingkai (border, radius, bilah browser) disediakan pemanggil agar
     // WebView bisa mengisi penuh area tanpa clipping tambahan.
-    return ColoredBox(
-      color: Colors.white,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          RepaintBoundary(child: content),
-          // Selagi dokumen baru dimuat, halaman lama tetap terlihat dan
-          // ditindih scrim + spinner supaya pindah halaman terasa responsif.
-          if (_switching) const _PageSwitchLoading(),
-        ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        return ColoredBox(
+          color: Colors.white,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              RepaintBoundary(child: content),
+              if (_menuGeometry != null && _editingNodeId == null)
+                _positionMenu(size),
+              if (_editingNodeId != null && _editingRect != null)
+                _positionEditor(size),
+              // Selagi dokumen baru dimuat, halaman lama tetap terlihat dan
+              // ditindih scrim + spinner supaya pindah halaman terasa responsif.
+              if (_switching) const _PageSwitchLoading(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Menu elemen mengambang di atas elemen terpilih (atau di bawahnya bila
+  /// ruang atas tidak cukup).
+  Widget _positionMenu(Size size) {
+    final geometry = _menuGeometry!;
+    const menuWidth = ElementEditMenu.width;
+    const margin = 8.0;
+    final estimatedHeight = 44.0 + (geometry.textEditable ? 34.0 : 0.0) + 68.0;
+
+    var left = geometry.x;
+    if (left + menuWidth > size.width - margin) {
+      left = size.width - menuWidth - margin;
+    }
+    left = left
+        .clamp(margin, math.max(margin, size.width - menuWidth - margin))
+        .toDouble();
+
+    var top = geometry.y - estimatedHeight - margin;
+    if (top < margin) top = geometry.y + geometry.height + margin;
+    top = top
+        .clamp(margin, math.max(margin, size.height - estimatedHeight - margin))
+        .toDouble();
+
+    return Positioned(
+      left: left,
+      top: top,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: math.max(200.0, size.width - 16)),
+        child: ElementEditMenu(
+          chain: _menuChain.isEmpty
+              ? [
+                  NodeAncestor(
+                    id: geometry.id,
+                    tag: geometry.tag,
+                    label: geometry.tag,
+                  ),
+                ]
+              : _menuChain,
+          selectedId: geometry.id,
+          canEditText: geometry.textEditable,
+          onEditText: _openTextEditor,
+          onEditWithAi: () => _editElementWithAi(geometry.id, geometry.tag),
+          onDelete: _deleteSelectedNode,
+          onSelectAncestor: _selectAncestor,
+          onClose: () {
+            _closeMenu();
+            ref.read(workspaceProvider.notifier).selectNode(null);
+            _service.selectNode(null);
+          },
+        ),
       ),
     );
+  }
+
+  /// Editor teks inline menimpa kotak teks elemen aslinya.
+  Widget _positionEditor(Size size) {
+    final rect = _editingRect!;
+    const margin = 8.0;
+    final maxWidth = math.max(90.0, size.width - margin * 2);
+    final width = rect.width.clamp(90.0, maxWidth).toDouble();
+
+    var left = rect.left;
+    left = left
+        .clamp(margin, math.max(margin, size.width - width - margin))
+        .toDouble();
+    var top = rect.top;
+    top = top.clamp(margin, math.max(margin, size.height - 80)).toDouble();
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      child: ElementTextEditor(
+        initialText: _editingText,
+        styles: _editingStyles,
+        onSave: _commitTextEdit,
+        onCancel: () => _cancelTextEdit(),
+        onChanged: _onEditorChanged,
+      ),
+    );
+  }
+
+  static String _hexOf(Color color) {
+    String channel(double value) =>
+        (value * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    return '#${channel(color.r)}${channel(color.g)}${channel(color.b)}';
   }
 }
 

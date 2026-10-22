@@ -40,6 +40,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonClose => 'Закрыть';
 
   @override
+  String get commonUndo => 'Отменить';
+
+  @override
   String get commonActive => 'Активен';
 
   @override
@@ -319,6 +322,19 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get previewDeleteFailed =>
       'Не удалось удалить компонент. Повторите попытку.';
+
+  @override
+  String get previewEditText => 'Изменить текст';
+
+  @override
+  String get previewEditWithAi => 'Изменить с ИИ';
+
+  @override
+  String get previewTextEditFailed =>
+      'Не удалось сохранить текст. Повторите попытку.';
+
+  @override
+  String get previewComponentDeleted => 'Компонент удалён';
 
   @override
   String get previewLoading => 'Загрузка…';

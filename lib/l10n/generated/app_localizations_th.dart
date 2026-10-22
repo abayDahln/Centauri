@@ -40,6 +40,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get commonClose => 'ปิด';
 
   @override
+  String get commonUndo => 'เลิกทำ';
+
+  @override
   String get commonActive => 'ใช้งานอยู่';
 
   @override
@@ -312,6 +315,18 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get previewDeleteFailed => 'ลบองค์ประกอบไม่ได้ ลองอีกครั้ง';
+
+  @override
+  String get previewEditText => 'แก้ไขข้อความ';
+
+  @override
+  String get previewEditWithAi => 'แก้ไขด้วย AI';
+
+  @override
+  String get previewTextEditFailed => 'บันทึกข้อความไม่ได้ ลองอีกครั้ง';
+
+  @override
+  String get previewComponentDeleted => 'ลบองค์ประกอบแล้ว';
 
   @override
   String get previewLoading => 'กำลังโหลด…';

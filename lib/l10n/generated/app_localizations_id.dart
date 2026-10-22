@@ -40,6 +40,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get commonClose => 'Tutup';
 
   @override
+  String get commonUndo => 'Urungkan';
+
+  @override
   String get commonActive => 'Aktif';
 
   @override
@@ -313,6 +316,18 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get previewDeleteFailed => 'Gagal menghapus komponen. Coba lagi.';
+
+  @override
+  String get previewEditText => 'Edit teks';
+
+  @override
+  String get previewEditWithAi => 'Edit dengan AI';
+
+  @override
+  String get previewTextEditFailed => 'Teks gagal disimpan. Coba lagi.';
+
+  @override
+  String get previewComponentDeleted => 'Komponen dihapus';
 
   @override
   String get previewLoading => 'Memuat…';

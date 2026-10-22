@@ -218,6 +218,35 @@ class MobileCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
+  Future<void> scrollTo(double x, double y) async {
+    if (!_ready || _disposed) return;
+    await _safeRun('window.centauriScrollTo($x, $y)');
+  }
+
+  @override
+  Future<void> setSelectionAccent(String hexColor) async {
+    if (!_ready || _disposed) return;
+    await _safeRun('window.centauriSetAccent(${jsonEncode(hexColor)})');
+  }
+
+  @override
+  Future<void> liveTextUpdate(String id, String text) async {
+    if (!_ready || _disposed) return;
+    await _safeRun(
+      'window.centauriLiveText(${jsonEncode(id)}, ${jsonEncode(text)})',
+    );
+  }
+
+  @override
+  Future<void> setTextEditing(String id, bool editing) async {
+    if (!_ready || _disposed) return;
+    await _safeRun(
+      'window.centauriSetTextEditing(${jsonEncode(id)}, '
+      '${editing ? 'true' : 'false'})',
+    );
+  }
+
+  @override
   Widget buildView() => WebViewWidget(controller: _controller);
 
   @override

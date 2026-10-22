@@ -2,6 +2,35 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+/// Satu simpul pada rantai induk→anak (breadcrumb menu elemen).
+@immutable
+class NodeAncestor {
+  const NodeAncestor({
+    required this.id,
+    required this.tag,
+    required this.label,
+  });
+
+  final String id;
+  final String tag;
+
+  /// Label ringkas, mis. `section.card` atau `h1 · Reset Password`.
+  final String label;
+
+  static NodeAncestor? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'];
+    if (id is! String || id.isEmpty) return null;
+    final tag = raw['tag'];
+    final label = raw['label'];
+    return NodeAncestor(
+      id: id,
+      tag: tag is String ? tag : '',
+      label: label is String ? label : '',
+    );
+  }
+}
+
 /// Geometri + gaya terkomputasi satu node DOM, dilaporkan JS bridge.
 /// HTML tetap source of truth; model ini hanya cache tampilan untuk overlay
 /// native (Fase 1). Tidak ada layout engine di Dart.
@@ -14,6 +43,13 @@ class NodeGeometry {
     required this.width,
     required this.height,
     this.styles = const {},
+    this.chain = const [],
+    this.text = '',
+    this.textNodeId = '',
+    this.textStyles = const {},
+    this.textBox,
+    this.textEditable = false,
+    this.textRect,
   });
 
   final String id;
@@ -26,11 +62,58 @@ class NodeGeometry {
   /// Subset `getComputedStyle` (mis. display, position, color, fontSize...).
   final Map<String, String> styles;
 
+  /// Rantai elemen dari paling luar sampai yang terpilih (breadcrumb).
+  final List<NodeAncestor> chain;
+
+  /// Teks langsung elemen (tanpa teks anak), kosong bila elemen bukan teks.
+  final String text;
+
+  /// Id elemen pembawa teks. Sama dengan [id] bila teks ada di elemen ini,
+  /// atau id anaknya bila label komponen disimpan di anak (mis. span di
+  /// dalam tombol).
+  final String textNodeId;
+
+  /// Gaya tipografi elemen pembawa teks, bila berbeda dari [styles].
+  final Map<String, String> textStyles;
+
+  /// Kotak isi elemen pembawa teks (setelah padding/border) — lebar wrap
+  /// sebenarnya, dipakai editor agar pemenggalan baris sama dengan halaman.
+  final Rect? textBox;
+
+  /// True bila [text] bisa diedit inline (elemen teks tanpa anak elemen).
+  final bool textEditable;
+
+  /// Kotak teks terlihat dalam koordinat viewport WebView (CSS px).
+  final Rect? textRect;
+
+  /// Elemen induk langsung pada [chain], null bila sudah paling luar.
+  NodeAncestor? get parent {
+    if (chain.length < 2) return null;
+    return chain[chain.length - 2];
+  }
+
   static NodeGeometry? tryParse(String id, Map<String, dynamic> json) {
     try {
       final rect = json['rect'];
       if (rect is! Map) return null;
       double numOf(Object? v) => (v as num?)?.toDouble() ?? 0;
+      Rect parseRect(Object? raw) {
+        if (raw is! Map) return const Rect.fromLTWH(0, 0, 0, 0);
+        return Rect.fromLTWH(
+          numOf(raw['x']),
+          numOf(raw['y']),
+          numOf(raw['w'] ?? raw['width']),
+          numOf(raw['h'] ?? raw['height']),
+        );
+      }
+
+      final rawTextStyles = json['textStyles'];
+      final textStyles = <String, String>{};
+      if (rawTextStyles is Map) {
+        rawTextStyles.forEach((k, v) {
+          if (k is String && v != null) textStyles[k] = v.toString();
+        });
+      }
       final rawStyles = json['styles'];
       final styles = <String, String>{};
       if (rawStyles is Map) {
@@ -38,6 +121,16 @@ class NodeGeometry {
           if (k is String && v != null) styles[k] = v.toString();
         });
       }
+      final rawChain = json['chain'];
+      final chain = <NodeAncestor>[];
+      if (rawChain is List) {
+        for (final item in rawChain) {
+          final ancestor = NodeAncestor.tryParse(item);
+          if (ancestor != null) chain.add(ancestor);
+        }
+      }
+      final text = json['text'];
+      final hasTextRect = json['textRect'] is Map;
       return NodeGeometry(
         id: id,
         tag: (json['tag'] ?? '').toString(),
@@ -46,6 +139,13 @@ class NodeGeometry {
         width: numOf(rect['w'] ?? rect['width']),
         height: numOf(rect['h'] ?? rect['height']),
         styles: styles,
+        chain: chain,
+        text: text is String ? text : '',
+        textNodeId: json['textId'] is String ? json['textId'] as String : '',
+        textStyles: textStyles,
+        textBox: json['textBox'] is Map ? parseRect(json['textBox']) : null,
+        textEditable: json['textEditable'] == true,
+        textRect: hasTextRect ? parseRect(json['textRect']) : null,
       );
     } catch (_) {
       return null;
@@ -60,6 +160,8 @@ class CanvasSelectEvent {
     required this.id,
     this.contentHeight,
     this.contentWidth,
+    this.scrollX,
+    this.scrollY,
     this.geometry,
     this.dataUrl,
     this.errorMessage,
@@ -78,7 +180,9 @@ class CanvasSelectEvent {
   /// `figma` saat ekspor struktur halaman untuk plugin Figma,
   /// `figmaError` saat ekspor Figma gagal,
   /// `html` saat JS mengirim dokumen penuh (sinkronisasi pasca-mutasi MCP),
-  /// `outerHtml` saat JS mengirim HTML satu node.
+  /// `outerHtml` saat JS mengirim HTML satu node,
+  /// `scroll` saat dokumen digulir (menu elemen harus menyingkir),
+  /// `cancelled` saat user menekan Escape di dalam canvas.
   final String type;
 
   /// Id node (`data-centauri-id`), null saat hover keluar.
@@ -89,6 +193,10 @@ class CanvasSelectEvent {
 
   /// Lebar konten dokumen (untuk event `size`).
   final double? contentWidth;
+
+  /// Posisi gulir dokumen (untuk event `scroll`).
+  final double? scrollX;
+  final double? scrollY;
 
   /// Geometri node (untuk event `geometry`).
   final NodeGeometry? geometry;
@@ -140,9 +248,11 @@ class CanvasSelectEvent {
       final height = decoded['height'];
       final width = decoded['width'];
       NodeGeometry? geometry;
-      if (type == 'geometry' && id is String) {
+      if ((type == 'geometry' || type == 'textLayout') && id is String) {
         geometry = NodeGeometry.tryParse(id, decoded);
       }
+      final scrollX = decoded['x'];
+      final scrollY = decoded['y'];
       final dataUrl = decoded['dataUrl'];
       final message = decoded['message'];
       final html = decoded['html'];
@@ -154,6 +264,8 @@ class CanvasSelectEvent {
         id: id is String ? id : null,
         contentHeight: height is num ? height.toDouble() : null,
         contentWidth: width is num ? width.toDouble() : null,
+        scrollX: scrollX is num ? scrollX.toDouble() : null,
+        scrollY: scrollY is num ? scrollY.toDouble() : null,
         geometry: geometry,
         dataUrl: dataUrl is String ? dataUrl : null,
         errorMessage: message is String ? message : null,
@@ -190,6 +302,23 @@ abstract class CanvasWebviewService {
 
   /// Tandai node sebagai hover (hover box).
   Future<void> hoverNode(String? id);
+
+  /// Warna overlay seleksi (hex `#RRGGBB`) — dikirim dari palet tema supaya
+  /// kotak seleksi di dalam WebView ikut warna aksen aplikasi.
+  Future<void> setSelectionAccent(String hexColor);
+
+  /// Gulir dokumen ke posisi tertentu (CSS px). Dipakai untuk memulihkan
+  /// posisi baca setelah dokumen dirender ulang pasca mutasi.
+  Future<void> scrollTo(double x, double y);
+
+  /// Tandai node yang sedang diedit inline (dipakai JS untuk membedakan
+  /// mode edit dari mode seleksi biasa).
+  Future<void> setTextEditing(String id, bool editing);
+
+  /// Tulis teks sambil mengetik tanpa memutus sesi edit: DOM ikut berubah
+  /// sehingga ukuran/layout komponen menyesuaikan real-time. JS membalas
+  /// dengan event `textLayout` berisi geometri terbaru.
+  Future<void> liveTextUpdate(String id, String text);
 
   /// Minta JS melaporkan `geometry` satu node via event stream.
   /// Dipakai setelah select dari layers panel / setelah move-resize.

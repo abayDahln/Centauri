@@ -21,6 +21,8 @@ void showAppToast(
   String message, {
   AppToastKind kind = AppToastKind.info,
   Duration? duration,
+  String? actionLabel,
+  VoidCallback? onAction,
 }) {
   final overlay = Overlay.maybeOf(context, rootOverlay: true);
   if (overlay == null) return;
@@ -32,9 +34,13 @@ void showAppToast(
     builder: (_) => _AppToastView(
       message: message,
       kind: kind,
+      actionLabel: actionLabel,
+      onAction: onAction,
       duration:
           duration ??
-          (kind == AppToastKind.error
+          (onAction != null
+              ? const Duration(seconds: 6)
+              : kind == AppToastKind.error
               ? const Duration(seconds: 4)
               : const Duration(seconds: 3)),
       onDismissed: () {
@@ -59,6 +65,8 @@ class _AppToastView extends StatefulWidget {
     required this.kind,
     required this.duration,
     required this.onDismissed,
+    this.actionLabel,
+    this.onAction,
   });
 
   final String message;
@@ -66,8 +74,44 @@ class _AppToastView extends StatefulWidget {
   final Duration duration;
   final VoidCallback onDismissed;
 
+  /// Tombol aksi opsional di ujung pesan (mis. "Undo").
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
   @override
   State<_AppToastView> createState() => _AppToastViewState();
+}
+
+class _ToastAction extends StatelessWidget {
+  const _ToastAction({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppFonts.uiFamily,
+              fontFamilyFallback: AppFonts.uiFallback,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: palette.primary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _AppToastViewState extends State<_AppToastView>
@@ -133,12 +177,16 @@ class _AppToastViewState extends State<_AppToastView>
       AppToastKind.info => (Icons.info_outline, palette.textSecondary),
     };
 
+    final actionLabel = widget.actionLabel;
+    final onAction = widget.onAction;
+
     return Positioned(
       // Di HP beri ruang untuk AppBar agar pesan tidak menutupi judul.
       top: media.padding.top + (compact ? kToolbarHeight + 8 : 16),
       left: 0,
       right: 0,
       child: IgnorePointer(
+        ignoring: onAction == null,
         child: Center(
           child: FadeTransition(
             opacity: _opacity,
@@ -177,6 +225,17 @@ class _AppToastViewState extends State<_AppToastView>
                           ),
                         ),
                       ),
+                      if (actionLabel != null && onAction != null) ...[
+                        const SizedBox(width: 10),
+                        _ToastAction(
+                          label: actionLabel,
+                          onTap: () {
+                            _timer?.cancel();
+                            widget.onDismissed();
+                            onAction();
+                          },
+                        ),
+                      ],
                     ],
                   ),
                 ),

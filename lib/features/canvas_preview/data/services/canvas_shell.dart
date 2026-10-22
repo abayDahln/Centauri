@@ -23,12 +23,16 @@ const String canvasBridgeScript = r'''
   var overlay = null;
   var hoverBox = null;
   var selectBox = null;
+  var tagBadge = null;
+  var editBox = null;
   var selectedId = null;
   // Mode interaksi (default) membiarkan input, tombol, dan hover bekerja
   // seperti halaman biasa. Mode seleksi menangkap klik untuk memilih elemen.
   var mode = 'interact';
-  var actionsBox = null;
-  var actionsId = null;
+  // Warna aksen overlay, dikirim host dari palet tema aplikasi.
+  var accent = '#0078D4';
+  // Node yang teksnya sedang diedit inline oleh host (teks dibuat transparan).
+  var editingId = null;
 
   function sendToHost(payload) {
     try {
@@ -57,6 +61,40 @@ const String canvasBridgeScript = r'''
     } catch (err) {}
   });
 
+  function accentRgba(alpha) {
+    var hex = String(accent || '').replace('#', '');
+    if (hex.length === 3) {
+      hex = hex.charAt(0) + hex.charAt(0) + hex.charAt(1) + hex.charAt(1) +
+        hex.charAt(2) + hex.charAt(2);
+    }
+    if (hex.length !== 6) hex = '0078D4';
+    var r = parseInt(hex.substring(0, 2), 16);
+    var g = parseInt(hex.substring(2, 4), 16);
+    var b = parseInt(hex.substring(4, 6), 16);
+    if (isNaN(r)) r = 0;
+    if (isNaN(g)) g = 0;
+    if (isNaN(b)) b = 0;
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  function applyAccentStyles() {
+    if (hoverBox) {
+      hoverBox.style.borderColor = accentRgba(0.85);
+      hoverBox.style.background = accentRgba(0.10);
+    }
+    if (selectBox) {
+      selectBox.style.borderColor = accent;
+      selectBox.style.background = accentRgba(0.10);
+    }
+    if (tagBadge) {
+      tagBadge.style.background = accent;
+    }
+    if (editBox) {
+      editBox.style.borderColor = accent;
+      editBox.style.background = accentRgba(0.10);
+    }
+  }
+
   function ensureOverlay() {
     if (overlay && overlay.ownerDocument === document &&
         overlay.parentNode === document.body) {
@@ -67,15 +105,23 @@ const String canvasBridgeScript = r'''
     overlay.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:2147483647';
 
     hoverBox = document.createElement('div');
-    hoverBox.style.cssText = 'position:absolute;border:1px solid rgba(78,161,255,0.9);' +
-      'background:rgba(78,161,255,0.12);pointer-events:none;display:none;box-sizing:border-box';
+    hoverBox.style.cssText = 'position:absolute;pointer-events:none;' +
+      'display:none;box-sizing:border-box;border:1px solid;';
     selectBox = document.createElement('div');
-    selectBox.style.cssText = 'position:absolute;border:1.5px solid rgb(0,120,212);' +
-      'background:rgba(0,120,212,0.10);pointer-events:none;display:none;box-sizing:border-box';
+    selectBox.style.cssText = 'position:absolute;pointer-events:none;' +
+      'display:none;box-sizing:border-box;border:1.5px solid;';
+    tagBadge = document.createElement('div');
+    tagBadge.setAttribute('data-centauri-badge', '1');
+    tagBadge.style.cssText = 'position:absolute;pointer-events:none;display:none;' +
+      'padding:1px 6px;border-radius:4px 4px 0 0;color:#FFFFFF;' +
+      'font:600 10px/14px ui-monospace,SFMono-Regular,Menlo,monospace;' +
+      'letter-spacing:0.02em;white-space:nowrap;';
 
     overlay.appendChild(hoverBox);
     overlay.appendChild(selectBox);
+    overlay.appendChild(tagBadge);
     document.body.appendChild(overlay);
+    applyAccentStyles();
   }
 
   function rectOf(id) {
@@ -95,6 +141,59 @@ const String canvasBridgeScript = r'''
     box.style.top = (rect.y + sy) + 'px';
     box.style.width = rect.w + 'px';
     box.style.height = rect.h + 'px';
+  }
+
+  // Kotak edit teks: digambar DI DALAM halaman (bukan widget Flutter) supaya
+  // menempel persis pada teks yang benar-benar dirender browser.
+  function ensureEditBox() {
+    var host = overlay || document.body;
+    if (!host) return;
+    if (editBox && editBox.parentNode === host) return;
+    editBox = document.createElement('div');
+    editBox.setAttribute('data-centauri-editbox', '1');
+    editBox.style.cssText = 'position:absolute;display:none;pointer-events:none;' +
+      'box-sizing:border-box;border-radius:3px;border:1.5px solid;';
+    host.appendChild(editBox);
+    applyAccentStyles();
+  }
+
+  function placeEditBox(el) {
+    if (!el) { hideEditBox(); return; }
+    ensureEditBox();
+    if (!editBox) return;
+    var rect = textRectOf(el);
+    if (!rect || rect.w <= 0 || rect.h <= 0) {
+      // Teks kosong / elemen belum terlihat: pakai kotak elemen sebagai cadangan.
+      var er = el.getBoundingClientRect();
+      rect = { x: er.left, y: er.top, w: er.width, h: er.height };
+    }
+    var sx = window.scrollX || 0;
+    var sy = window.scrollY || 0;
+    var pad = 2;
+    editBox.style.display = 'block';
+    editBox.style.left = (rect.x + sx - pad) + 'px';
+    editBox.style.top = (rect.y + sy - pad) + 'px';
+    editBox.style.width = (rect.w + pad * 2) + 'px';
+    editBox.style.height = (rect.h + pad * 2) + 'px';
+  }
+
+  function hideEditBox() {
+    if (editBox) editBox.style.display = 'none';
+  }
+
+  // Badge nama tag di atas kotak seleksi (gaya editor visual).
+  function placeBadge(rect, tag) {
+    if (!tagBadge) return;
+    if (!rect || !tag || rect.w <= 0 || rect.h <= 0) {
+      tagBadge.style.display = 'none';
+      return;
+    }
+    var sx = window.scrollX || 0;
+    var sy = window.scrollY || 0;
+    tagBadge.textContent = tag;
+    tagBadge.style.display = 'block';
+    tagBadge.style.left = (rect.x + sx) + 'px';
+    tagBadge.style.top = Math.max(sy, rect.y + sy - 16) + 'px';
   }
 
   function idFromEvent(e) {
@@ -206,12 +305,25 @@ const String canvasBridgeScript = r'''
       // Link tidak dinavigasi agar elemen <a> pun bisa ikut diedit.
       if (mode === 'select') {
         var pickedId = idFromEvent(e);
-        if (!pickedId) return;
         e.preventDefault();
         e.stopPropagation();
+        // Fokus edit teks: klik elemen lain diabaikan sampai user menekan
+        // Simpan (✓) atau Batal (✕).
+        if (editingId) return;
+        if (!pickedId) {
+          // Klik latar kosong = batal pilih (menu ikut tertutup).
+          if (selectedId) {
+            selectedId = null;
+            if (selectBox) selectBox.style.display = 'none';
+            placeBadge(null, '');
+            sendToHost({ type: 'select', id: null });
+          }
+          return;
+        }
         selectedId = pickedId;
-        placeBox(selectBox, rectOf(pickedId));
-        showActions(pickedId);
+        var pickedRect = rectOf(pickedId);
+        placeBox(selectBox, pickedRect);
+        placeBadge(pickedRect, tagOf(pickedId));
         sendToHost({ type: 'select', id: pickedId, label: labelOf(pickedId) });
         setTimeout(function () { centauriInspect(pickedId); }, 30);
         return;
@@ -241,8 +353,19 @@ const String canvasBridgeScript = r'''
     }, true);
 
     document.addEventListener('scroll', function () {
-      hideActions();
+      // Menu elemen adalah widget native di atas WebView, jadi posisinya
+      // tidak ikut bergulir — minta host menutupnya. Posisi gulir ikut
+      // dilaporkan supaya bisa dipulihkan setelah dokumen dirender ulang.
+      sendToHost({
+        type: 'scroll',
+        x: window.scrollX || 0,
+        y: window.scrollY || 0
+      });
       refreshSelection();
+    }, true);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') sendToHost({ type: 'cancelled' });
     }, true);
 
     refreshSelection();
@@ -250,7 +373,18 @@ const String canvasBridgeScript = r'''
   }
 
   function refreshSelection() {
-    if (selectedId) placeBox(selectBox, rectOf(selectedId));
+    if (!selectedId) return;
+    // Saat inline edit, outline editor yang jadi penanda — kotak seleksi besar
+    // justru mengganggu.
+    if (editingId) {
+      if (selectBox) selectBox.style.display = 'none';
+      placeBadge(null, '');
+      placeEditBox(__centauriQuery(editingId));
+      return;
+    }
+    var rect = rectOf(selectedId);
+    placeBox(selectBox, rect);
+    placeBadge(rect, tagOf(selectedId));
   }
 
   // Default ketajaman render: font anti-alias + teks legible.
@@ -299,6 +433,12 @@ const String canvasBridgeScript = r'''
     } catch (e) { /* abaikan */ }
   }
 
+  function tagOf(id) {
+    var el = id ? document.querySelector('[data-centauri-id="' + id + '"]') : null;
+    if (!el) return '';
+    return (el.tagName || '').toLowerCase();
+  }
+
   // Label ringkas untuk mention di prompt, mis. `button · Masukkan Keranjang`.
   function labelOf(id) {
     var el = id ? document.querySelector('[data-centauri-id="' + id + '"]') : null;
@@ -311,69 +451,82 @@ const String canvasBridgeScript = r'''
     return text ? (tag + ' · ' + text) : tag;
   }
 
-  // Menu aksi kecil di dekat elemen terpilih (mode seleksi).
-  function makeAction(text, color, onClick) {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = text;
-    btn.style.cssText = 'all:unset;cursor:pointer;padding:8px 10px;' +
-      'border-radius:7px;display:block;width:100%;box-sizing:border-box;' +
-      'color:' + color + ';font:500 12px Inter,system-ui,sans-serif;';
-    btn.addEventListener('mouseenter', function () {
-      btn.style.background = '#27272A';
-    });
-    btn.addEventListener('mouseleave', function () {
-      btn.style.background = 'transparent';
-    });
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      onClick();
-    }, true);
-    return btn;
+  // ---- Inline text edit -------------------------------------------------
+  // Host menaruh TextField Flutter TEPAT di atas teks elemen (webview_windows
+  // tidak meneruskan keyboard ke DOM). JS hanya menyembunyikan TEXT NODE
+  // aslinya (dibungkus span transparan) agar ikon/anak elemen tetap terlihat,
+  // lalu menulis ulang text node itu saat commit.
+  // Teks TIDAK disembunyikan: yang terlihat adalah teks asli di DOM, jadi
+  // ukuran dan layout komponen ikut berubah real-time saat mengetik.
+  // TextField Flutter hanya menyediakan caret + input (glyph-nya transparan).
+  function centauriSetTextEditing(id, editing) {
+    editingId = editing ? id : null;
+    // Saat edit, kotak seleksi besar diganti outline tipis milik editor
+    // (posisinya mengikuti teks, bukan seluruh elemen).
+    if (editing) {
+      if (selectBox) selectBox.style.display = 'none';
+      placeBadge(null, '');
+      placeEditBox(__centauriQuery(id));
+    } else {
+      hideEditBox();
+      refreshSelection();
+    }
+    return true;
   }
 
-  function ensureActions() {
-    if (actionsBox && actionsBox.ownerDocument === document &&
-        actionsBox.parentNode) return;
-    actionsBox = document.createElement('div');
-    actionsBox.setAttribute('data-centauri-actions', '1');
-    actionsBox.style.cssText = 'position:absolute;display:none;pointer-events:auto;' +
-      'flex-direction:column;background:#18181B;border:1px solid #3F3F46;' +
-      'border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,0.45);' +
-      'padding:4px;min-width:150px;z-index:2147483647;';
-    actionsBox.appendChild(makeAction('Edit dengan AI', '#FAFAFA', function () {
-      sendToHost({ type: 'editWithAi', id: actionsId, label: labelOf(actionsId) });
-      hideActions();
-    }));
-    actionsBox.appendChild(makeAction('Hapus komponen', '#F87171', function () {
-      sendToHost({ type: 'deleteNode', id: actionsId });
-      hideActions();
-    }));
-    (overlay || document.body).appendChild(actionsBox);
+  // Tulis teks sambil mengetik, lalu laporkan geometri baru ke host supaya
+  // editor bisa ikut diposisikan ulang.
+  function centauriLiveText(id, text) {
+    var el = __centauriQuery(id);
+    if (!el) return false;
+    try {
+      var nodes = directTextNodes(el);
+      var node = nodes.length ? nodes[0] : null;
+      if (!node) {
+        // Pakai text node terakhir (termasuk yang kosong) agar tidak
+        // menumpuk node baru setiap kali teks dihapus habis.
+        var kids = el.childNodes || [];
+        for (var k = kids.length - 1; k >= 0; k--) {
+          if (kids[k].nodeType === 3) { node = kids[k]; break; }
+        }
+      }
+      if (!node) {
+        node = document.createTextNode('');
+        el.appendChild(node);
+      }
+      if (node.data !== text) node.data = text;
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i] !== node) nodes[i].data = '';
+      }
+      __centauriSync();
+      placeEditBox(el);
+      var payload = geometryPayload(el, id);
+      payload.type = 'textLayout';
+      sendToHost(payload);
+      return true;
+    } catch (e) { return false; }
   }
 
-  function showActions(id) {
-    ensureActions();
-    var rect = rectOf(id);
-    if (!rect || rect.w <= 0 || rect.h <= 0) { hideActions(); return; }
-    actionsId = id;
-    var sx = window.scrollX || 0;
-    var sy = window.scrollY || 0;
-    actionsBox.style.display = 'flex';
-    var w = actionsBox.offsetWidth || 150;
-    var h = actionsBox.offsetHeight || 76;
-    var left = Math.max(sx + 4, Math.min(rect.x + sx,
-      sx + (window.innerWidth || 0) - w - 8));
-    var top = rect.y + sy - h - 8;
-    if (top < sy + 4) top = rect.y + sy + rect.h + 8;
-    actionsBox.style.left = left + 'px';
-    actionsBox.style.top = top + 'px';
+  // Pulihkan posisi gulir setelah host memuat ulang dokumen (mis. pasca
+  // hapus komponen). Tinggi dokumen baru bisa belum final saat gambar/font
+  // selesai dimuat, jadi coba ulang sebentar sampai posisinya tercapai.
+  function centauriScrollTo(x, y) {
+    var sx = Number(x) || 0;
+    var sy = Number(y) || 0;
+    var tries = 0;
+    var apply = function () {
+      if (tries++ > 6) return;
+      try { window.scrollTo(sx, sy); } catch (e) { return; }
+      if (Math.abs((window.scrollY || 0) - sy) > 1) setTimeout(apply, 100);
+    };
+    apply();
+    return true;
   }
 
-  function hideActions() {
-    actionsId = null;
-    if (actionsBox) actionsBox.style.display = 'none';
+  function centauriSetAccent(hex) {
+    if (typeof hex === 'string' && hex) accent = hex;
+    applyAccentStyles();
+    return true;
   }
 
   // Dipanggil dari Dart saat memilih / hover node.
@@ -381,14 +534,16 @@ const String canvasBridgeScript = r'''
     selectedId = id;
     if (!id) {
       if (selectBox) selectBox.style.display = 'none';
-      hideActions();
+      placeBadge(null, '');
       return;
     }
     var el = document.querySelector('[data-centauri-id="' + id + '"]');
     if (el && el.scrollIntoView) {
       el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
-    placeBox(selectBox, rectOf(id));
+    var rect = rectOf(id);
+    placeBox(selectBox, rect);
+    placeBadge(rect, tagOf(id));
     setTimeout(function () { centauriInspect(id); }, 30);
   }
 
@@ -403,8 +558,124 @@ const String canvasBridgeScript = r'''
       selectedId = null;
       if (hoverBox) hoverBox.style.display = 'none';
       if (selectBox) selectBox.style.display = 'none';
-      hideActions();
+      placeBadge(null, '');
+      centauriSetTextEditing(editingId, false);
     }
+  }
+
+  // ---- Metadata elemen untuk menu native -------------------------------
+  // Text node langsung elemen (bukan milik anak), yang masih berisi karakter.
+  function directTextNodes(el) {
+    var out = [];
+    var kids = el.childNodes || [];
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].nodeType === 3 && kids[i].data.replace(/\s+/g, '').length) {
+        out.push(kids[i]);
+      }
+    }
+    return out;
+  }
+
+  // Teks langsung elemen (tanpa teks anak), dirapatkan spasinya.
+  function directText(el) {
+    var nodes = directTextNodes(el);
+    var out = '';
+    for (var i = 0; i < nodes.length; i++) out += nodes[i].data;
+    return out.replace(/\s+/g, ' ').trim();
+  }
+
+  // Tag yang tidak boleh jadi target edit teks (kontrol form / media).
+  function canHoldText(el) {
+    var tag = (el.tagName || '').toLowerCase();
+    var blocked = { input: 1, textarea: 1, select: 1, option: 1, img: 1,
+      svg: 1, video: 1, audio: 1, canvas: 1, iframe: 1, script: 1,
+      style: 1, br: 1, hr: 1, meta: 1, link: 1, title: 1 };
+    return !blocked[tag];
+  }
+
+  // Elemen yang teksnya benar-benar bisa diedit:
+  //  - elemen itu sendiri bila punya text node langsung (ikon SVG/span anak
+  //    tetap aman karena hanya text node yang ditulis ulang), atau
+  //  - satu-satunya keturunan yang membawa teks (mis. <button><span>Label).
+  // Container yang punya banyak sumber teks tidak dianggap bisa diedit.
+  function textTargetOf(el) {
+    if (!canHoldText(el)) return null;
+    if (directText(el)) return el;
+    var kids = el.querySelectorAll('*');
+    var found = null;
+    for (var i = 0; i < kids.length; i++) {
+      if (!canHoldText(kids[i])) continue;
+      if (!directText(kids[i])) continue;
+      if (found) return null;
+      found = kids[i];
+    }
+    return found;
+  }
+
+  // Label breadcrumb: `section.card` atau `h1 · Reset Password`.
+  function labelOfEl(el) {
+    var tag = (el.tagName || '').toLowerCase();
+    var cls = '';
+    try {
+      if (el.classList && el.classList.length > 0) cls = el.classList[0];
+    } catch (e) { cls = ''; }
+    if (cls) return tag + '.' + cls;
+    var text = '';
+    try { text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim(); }
+    catch (e) { text = ''; }
+    if (text) {
+      if (text.length > 22) text = text.slice(0, 22) + '…';
+      return tag + ' · ' + text;
+    }
+    return tag;
+  }
+
+  // Rantai induk→anak dari paling luar sampai elemen terpilih (breadcrumb).
+  function chainOf(el) {
+    var out = [];
+    var node = el;
+    while (node && node.nodeType === 1) {
+      var id = node.getAttribute ? node.getAttribute('data-centauri-id') : null;
+      if (id) {
+        out.unshift({
+          id: id,
+          tag: (node.tagName || '').toLowerCase(),
+          label: labelOfEl(node)
+        });
+      }
+      if (node === document.body) break;
+      node = node.parentElement;
+    }
+    if (out.length > 8) out = out.slice(out.length - 8);
+    return out;
+  }
+
+  // Kotak teks terlihat (union semua baris text node langsung) dalam
+  // koordinat viewport — bukan kotak elemen, supaya editor tidak menutupi
+  // ikon di samping teks.
+  function textRectOf(el) {
+    var nodes = directTextNodes(el);
+    if (!nodes.length) return null;
+    try {
+      var doc = el.ownerDocument || document;
+      var range = doc.createRange();
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (var i = 0; i < nodes.length; i++) {
+        try {
+          range.selectNodeContents(nodes[i]);
+          var r = range.getBoundingClientRect();
+          if (r.width <= 0 || r.height <= 0) continue;
+          if (r.left < minX) minX = r.left;
+          if (r.top < minY) minY = r.top;
+          if (r.right > maxX) maxX = r.right;
+          if (r.bottom > maxY) maxY = r.bottom;
+        } catch (e) { /* abaikan */ }
+      }
+      try { range.detach(); } catch (e) { /* abaikan */ }
+      if (minX === Infinity) return null;
+      return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+    } catch (e) { /* abaikan */ }
+    return null;
   }
 
   var __centauriWatchedProps = ['display', 'position', 'left', 'top',
@@ -415,11 +686,10 @@ const String canvasBridgeScript = r'''
     'borderStyle', 'borderColor', 'borderRadius', 'boxShadow', 'opacity',
     'transform', 'gap', 'flexDirection', 'justifyContent', 'alignItems'];
 
-  function centauriInspect(id) {
-    if (!id) return null;
-    var el = document.querySelector('[data-centauri-id="' + id + '"]');
-    if (!el) return null;
+  // Bangun payload geometri untuk satu elemen (dipakai inspect & live text).
+  function geometryPayload(el, id) {
     var r = el.getBoundingClientRect();
+    var tag = el.tagName ? el.tagName.toLowerCase() : '';
     var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
     var styles = {};
     if (cs) {
@@ -427,8 +697,7 @@ const String canvasBridgeScript = r'''
         var k = __centauriWatchedProps[i];
         try { styles[k] = cs[k] || ''; } catch (e) { styles[k] = ''; }
       }
-      try { styles['tag'] = el.tagName ? el.tagName.toLowerCase() : ''; }
-      catch (e) {}
+      try { styles['tag'] = tag; } catch (e) {}
     }
     try {
       for (var j = 0; j < __centauriWatchedProps.length; j++) {
@@ -440,12 +709,79 @@ const String canvasBridgeScript = r'''
       }
       styles['cssText'] = el.style.cssText || '';
     } catch (e) {}
-    var payload = { type: 'geometry', id: id,
-      tag: el.tagName ? el.tagName.toLowerCase() : '',
+    // Target edit teks bisa elemen ini sendiri atau satu anak pembawa teks
+    // (mis. <button><svg/><span>Label</span></button>).
+    var textEl = textTargetOf(el);
+    var textId = '';
+    if (textEl) {
+      textId = textEl.getAttribute('data-centauri-id') || '';
+      if (!textId) textEl = null;
+    }
+    var text = textEl ? directText(textEl) : '';
+    // Gaya tipografi milik target teks (bisa beda dari elemen terpilih).
+    var textStyles = null;
+    var textBox = null;
+    if (textEl) {
+      var tcs = window.getComputedStyle ? window.getComputedStyle(textEl) : null;
+      if (tcs) {
+        textStyles = {};
+        var tkeys = ['fontSize', 'fontWeight', 'lineHeight', 'textAlign',
+          'color', 'fontFamily'];
+        for (var t = 0; t < tkeys.length; t++) {
+          try { textStyles[tkeys[t]] = tcs[tkeys[t]] || ''; }
+          catch (e) { textStyles[tkeys[t]] = ''; }
+        }
+        // Flex/grid memusatkan teks tanpa `text-align`; samakan untuk editor.
+        var align = tcs.textAlign;
+        if (align !== 'center' && align !== 'right' && align !== 'end' &&
+            align !== 'justify') {
+          var disp = tcs.display || '';
+          if (disp.indexOf('flex') >= 0 || disp.indexOf('grid') >= 0) {
+            var jc = tcs.justifyContent || '';
+            if (jc === 'center') align = 'center';
+            else if (jc === 'flex-end' || jc === 'end') align = 'right';
+          }
+        }
+        textStyles['textAlign'] = align;
+        // Kotak isi (setelah padding & border) = lebar wrap teks sebenarnya.
+        var tr = textEl.getBoundingClientRect();
+        var padL = parseFloat(tcs.paddingLeft) || 0;
+        var padR = parseFloat(tcs.paddingRight) || 0;
+        var padT = parseFloat(tcs.paddingTop) || 0;
+        var bL = parseFloat(tcs.borderLeftWidth) || 0;
+        var bR = parseFloat(tcs.borderRightWidth) || 0;
+        var bT = parseFloat(tcs.borderTopWidth) || 0;
+        textBox = {
+          x: tr.left + bL + padL,
+          y: tr.top + bT + padT,
+          w: Math.max(0, tr.width - bL - bR - padL - padR),
+          h: Math.max(0, tr.height)
+        };
+      }
+    }
+    return { type: 'geometry', id: id,
+      tag: tag,
       rect: { x: r.left, y: r.top, w: r.width, h: r.height },
-      styles: styles };
+      styles: styles,
+      chain: chainOf(el),
+      text: text,
+      textId: textId,
+      textStyles: textStyles,
+      textBox: textBox,
+      textEditable: !!textEl,
+      textRect: textEl ? textRectOf(textEl) : null };
+  }
+
+  function centauriInspect(id) {
+    if (!id) return null;
+    var el = document.querySelector('[data-centauri-id="' + id + '"]');
+    if (!el) return null;
+    var payload = geometryPayload(el, id);
     sendToHost(payload);
-    placeBox(selectBox, { x: r.left, y: r.top, w: r.width, h: r.height });
+    if (!editingId) {
+      placeBox(selectBox, payload.rect);
+      placeBadge(payload.rect, payload.tag);
+    }
     return payload;
   }
 
@@ -535,12 +871,19 @@ const String canvasBridgeScript = r'''
     } catch (e) { return false; }
   }
 
+  // Menulis HANYA text node langsung, jadi ikon / elemen anak tidak hilang.
   function centauriSetText(id, text) {
     var el = __centauriQuery(id);
     if (!el) return false;
     try {
-      el.textContent = text;
+      // Lepas span sementara dulu supaya yang ditulis text node aslinya.
+      if (editingId === id) centauriSetTextEditing(id, false);
+      var nodes = directTextNodes(el);
+      if (!nodes.length) return false;
+      nodes[0].data = text;
+      for (var i = 1; i < nodes.length; i++) nodes[i].data = '';
       __centauriSync();
+      setTimeout(function () { centauriInspect(id); }, 30);
       return true;
     } catch (e) { return false; }
   }
@@ -552,6 +895,7 @@ const String canvasBridgeScript = r'''
       if (selectedId === id) {
         selectedId = null;
         if (selectBox) selectBox.style.display = 'none';
+        placeBadge(null, '');
         sendToHost({ type: 'select', id: null });
       }
       el.remove();
@@ -1414,6 +1758,7 @@ const String canvasBridgeScript = r'''
     });
   }
 
+  window.centauriSetMode = centauriSetMode;
   window.centauriSelect = centauriSelect;
   window.centauriHover = centauriHover;
   window.centauriInspect = centauriInspect;
@@ -1422,6 +1767,10 @@ const String canvasBridgeScript = r'''
   window.centauriGetSize = centauriGetSize;
   window.centauriAddNode = centauriAddNode;
   window.centauriSetText = centauriSetText;
+  window.centauriSetAccent = centauriSetAccent;
+  window.centauriScrollTo = centauriScrollTo;
+  window.centauriSetTextEditing = centauriSetTextEditing;
+  window.centauriLiveText = centauriLiveText;
   window.centauriDeleteNode = centauriDeleteNode;
   window.centauriGetHtml = centauriGetHtml;
   window.centauriGetOuterHtml = centauriGetOuterHtml;

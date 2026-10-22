@@ -40,6 +40,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get commonClose => 'Fechar';
 
   @override
+  String get commonUndo => 'Desfazer';
+
+  @override
   String get commonActive => 'Ativo';
 
   @override
@@ -319,6 +322,19 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get previewDeleteFailed =>
       'Não foi possível excluir o componente. Tente novamente.';
+
+  @override
+  String get previewEditText => 'Editar texto';
+
+  @override
+  String get previewEditWithAi => 'Editar com IA';
+
+  @override
+  String get previewTextEditFailed =>
+      'Não foi possível salvar o texto. Tente novamente.';
+
+  @override
+  String get previewComponentDeleted => 'Componente excluído';
 
   @override
   String get previewLoading => 'Carregando…';

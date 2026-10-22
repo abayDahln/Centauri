@@ -178,6 +178,12 @@ abstract class AppLocalizations {
   /// **'Close'**
   String get commonClose;
 
+  /// No description provided for @commonUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get commonUndo;
+
   /// No description provided for @commonActive.
   ///
   /// In en, this message translates to:
@@ -675,6 +681,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t delete the component. Try again.'**
   String get previewDeleteFailed;
+
+  /// No description provided for @previewEditText.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit text'**
+  String get previewEditText;
+
+  /// No description provided for @previewEditWithAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit with AI'**
+  String get previewEditWithAi;
+
+  /// No description provided for @previewTextEditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the text. Try again.'**
+  String get previewTextEditFailed;
+
+  /// No description provided for @previewComponentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Component deleted'**
+  String get previewComponentDeleted;
 
   /// No description provided for @previewLoading.
   ///

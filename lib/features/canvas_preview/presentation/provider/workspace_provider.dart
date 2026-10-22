@@ -548,25 +548,71 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
   /// Hapus satu node di halaman aktif lewat WebView, lalu sinkronkan HTML.
   /// Mengembalikan false bila WebView halaman belum siap atau gagal.
+  ///
+  /// Snapshot undo diambil SEBELUM DOM berubah, jadi hasilnya bisa
+  /// dikembalikan lewat [undo].
   Future<bool> deleteNode(String nodeId) async {
     final pageId = state.activePageId;
     if (pageId == null) return false;
     final service = CanvasServiceRegistry.forFrame(pageId);
     if (service == null) return false;
     try {
-      final htmlFuture = service.selectionEvents
-          .firstWhere((e) => e.type == 'html')
-          .timeout(const Duration(seconds: 12));
+      final htmlFuture = _nextHtmlEvent(service);
       await service.deleteNode(nodeId);
-      await service.requestHtml();
-      final html = (await htmlFuture).html;
-      if (html == null || html.trim().isEmpty) return false;
-      final tree = await buildDomTreeInIsolate(html);
-      updatePageHtml(pageId: pageId, stampedHtml: tree.stampedHtml, tree: tree);
-      return true;
+      return await _syncPageHtmlFromCanvas(
+        pageId: pageId,
+        htmlFuture: htmlFuture,
+        service: service,
+      );
     } catch (_) {
       return false;
     }
+  }
+
+  /// Tulis teks baru hasil inline edit di kanvas, lalu sinkronkan HTML.
+  /// Mengembalikan false bila WebView halaman belum siap atau gagal.
+  ///
+  /// [text] adalah teks final dari TextField Flutter; JS menulisnya sebagai
+  /// `textContent` node supaya HTML tetap source of truth.
+  Future<bool> commitCanvasTextEdit(String nodeId, String text) async {
+    final pageId = state.activePageId;
+    if (pageId == null) return false;
+    final service = CanvasServiceRegistry.forFrame(pageId);
+    if (service == null) return false;
+    try {
+      final htmlFuture = _nextHtmlEvent(service);
+      await service.setNodeText(nodeId, text);
+      return await _syncPageHtmlFromCanvas(
+        pageId: pageId,
+        htmlFuture: htmlFuture,
+        service: service,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Event dokumen penuh berikutnya dari bridge JS. Di-subscribe SEBELUM
+  /// mutasi supaya respons tidak terlewat.
+  Future<CanvasSelectEvent> _nextHtmlEvent(CanvasWebviewService service) =>
+      service.selectionEvents
+          .firstWhere((e) => e.type == 'html')
+          .timeout(const Duration(seconds: 12));
+
+  /// Minta dokumen terbaru dari WebView, lalu simpan sebagai HTML halaman.
+  Future<bool> _syncPageHtmlFromCanvas({
+    required String pageId,
+    required Future<CanvasSelectEvent> htmlFuture,
+    required CanvasWebviewService service,
+  }) async {
+    await service.requestHtml();
+    final html = (await htmlFuture).html;
+    if (html == null || html.trim().isEmpty) return false;
+    final tree = await buildDomTreeInIsolate(html);
+    // State belum berubah di titik ini → snapshot = kondisi sebelum mutasi.
+    pushUndoSnapshot();
+    updatePageHtml(pageId: pageId, stampedHtml: tree.stampedHtml, tree: tree);
+    return true;
   }
 
   // ------------------------------------------------------------- generate --

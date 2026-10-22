@@ -13,6 +13,7 @@
   "commonCancel": "Batal",
   "commonSave": "Simpan",
   "commonClose": "Tutup",
+  "commonUndo": "Urungkan",
   "commonActive": "Aktif",
   "commonSetActive": "Jadikan aktif",
   "commonProvider": "Provider",
@@ -162,6 +163,10 @@
     }
   },
   "previewDeleteFailed": "Gagal menghapus komponen. Coba lagi.",
+  "previewEditText": "Edit teks",
+  "previewEditWithAi": "Edit dengan AI",
+  "previewTextEditFailed": "Teks gagal disimpan. Coba lagi.",
+  "previewComponentDeleted": "Komponen dihapus",
   "previewLoading": "Memuat…",
   "previewNoPagesTitle": "Belum ada halaman",
   "previewNoPagesBody": "Ketik pesan untuk membuat halaman.",

@@ -40,6 +40,9 @@ class AppLocalizationsFil extends AppLocalizations {
   String get commonClose => 'Isara';
 
   @override
+  String get commonUndo => 'I-undo';
+
+  @override
   String get commonActive => 'Aktibo';
 
   @override
@@ -318,6 +321,18 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String get previewDeleteFailed =>
       'Hindi matanggal ang component. Subukan muli.';
+
+  @override
+  String get previewEditText => 'I-edit ang text';
+
+  @override
+  String get previewEditWithAi => 'I-edit gamit ang AI';
+
+  @override
+  String get previewTextEditFailed => 'Hindi na-save ang text. Subukan muli.';
+
+  @override
+  String get previewComponentDeleted => 'Na-delete ang component';
 
   @override
   String get previewLoading => 'Naglo-load…';

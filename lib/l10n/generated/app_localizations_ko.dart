@@ -40,6 +40,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get commonClose => '닫기';
 
   @override
+  String get commonUndo => '실행 취소';
+
+  @override
   String get commonActive => '사용 중';
 
   @override
@@ -309,6 +312,18 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get previewDeleteFailed => '구성 요소를 삭제하지 못했어요. 다시 시도해 주세요.';
+
+  @override
+  String get previewEditText => '텍스트 편집';
+
+  @override
+  String get previewEditWithAi => 'AI로 편집';
+
+  @override
+  String get previewTextEditFailed => '텍스트를 저장하지 못했어요. 다시 시도해 주세요.';
+
+  @override
+  String get previewComponentDeleted => '구성 요소를 삭제했어요';
 
   @override
   String get previewLoading => '불러오는 중…';

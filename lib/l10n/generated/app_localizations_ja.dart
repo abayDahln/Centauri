@@ -40,6 +40,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get commonClose => '閉じる';
 
   @override
+  String get commonUndo => '元に戻す';
+
+  @override
   String get commonActive => '有効';
 
   @override
@@ -309,6 +312,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get previewDeleteFailed => 'コンポーネントを削除できませんでした。もう一度お試しください。';
+
+  @override
+  String get previewEditText => 'テキストを編集';
+
+  @override
+  String get previewEditWithAi => 'AI で編集';
+
+  @override
+  String get previewTextEditFailed => 'テキストを保存できませんでした。もう一度お試しください。';
+
+  @override
+  String get previewComponentDeleted => 'コンポーネントを削除しました';
 
   @override
   String get previewLoading => '読み込み中…';

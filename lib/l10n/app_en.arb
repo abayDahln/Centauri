@@ -13,6 +13,7 @@
   "commonCancel": "Cancel",
   "commonSave": "Save",
   "commonClose": "Close",
+  "commonUndo": "Undo",
   "commonActive": "Active",
   "commonSetActive": "Set active",
   "commonProvider": "Provider",
@@ -162,6 +163,10 @@
     }
   },
   "previewDeleteFailed": "Couldn't delete the component. Try again.",
+  "previewEditText": "Edit text",
+  "previewEditWithAi": "Edit with AI",
+  "previewTextEditFailed": "Couldn't save the text. Try again.",
+  "previewComponentDeleted": "Component deleted",
   "previewLoading": "Loading.",
   "previewNoPagesTitle": "No pages yet",
   "previewNoPagesBody": "Type a message to create a page.",

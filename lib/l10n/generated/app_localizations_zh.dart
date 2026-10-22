@@ -40,6 +40,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonClose => '关闭';
 
   @override
+  String get commonUndo => '撤销';
+
+  @override
   String get commonActive => '已启用';
 
   @override
@@ -308,6 +311,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get previewDeleteFailed => '无法删除组件。请重试。';
+
+  @override
+  String get previewEditText => '编辑文字';
+
+  @override
+  String get previewEditWithAi => '用 AI 编辑';
+
+  @override
+  String get previewTextEditFailed => '无法保存文字。请重试。';
+
+  @override
+  String get previewComponentDeleted => '组件已删除';
 
   @override
   String get previewLoading => '加载中…';

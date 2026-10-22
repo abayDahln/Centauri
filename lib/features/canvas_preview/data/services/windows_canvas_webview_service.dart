@@ -303,6 +303,35 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   }
 
   @override
+  Future<void> scrollTo(double x, double y) async {
+    if (!_ready || _disposed) return;
+    await _safeExecute('window.centauriScrollTo($x, $y)');
+  }
+
+  @override
+  Future<void> setSelectionAccent(String hexColor) async {
+    if (!_ready || _disposed) return;
+    await _safeExecute('window.centauriSetAccent(${jsonEncode(hexColor)})');
+  }
+
+  @override
+  Future<void> liveTextUpdate(String id, String text) async {
+    if (!_ready || _disposed) return;
+    await _safeExecute(
+      'window.centauriLiveText(${jsonEncode(id)}, ${jsonEncode(text)})',
+    );
+  }
+
+  @override
+  Future<void> setTextEditing(String id, bool editing) async {
+    if (!_ready || _disposed) return;
+    await _safeExecute(
+      'window.centauriSetTextEditing(${jsonEncode(id)}, '
+      '${editing ? 'true' : 'false'})',
+    );
+  }
+
+  @override
   Widget buildView() => Webview(_controller);
 
   /// Tangkap navigasi yang dipicu halaman sendiri (mis. `location.href`).

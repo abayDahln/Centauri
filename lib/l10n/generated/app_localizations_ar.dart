@@ -40,6 +40,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonClose => 'إغلاق';
 
   @override
+  String get commonUndo => 'تراجع';
+
+  @override
   String get commonActive => 'مفعّل';
 
   @override
@@ -314,6 +317,18 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get previewDeleteFailed => 'تعذّر حذف العنصر. أعد المحاولة.';
+
+  @override
+  String get previewEditText => 'تعديل النص';
+
+  @override
+  String get previewEditWithAi => 'تعديل بالذكاء الاصطناعي';
+
+  @override
+  String get previewTextEditFailed => 'تعذّر حفظ النص. أعد المحاولة.';
+
+  @override
+  String get previewComponentDeleted => 'تم حذف المكوّن';
 
   @override
   String get previewLoading => 'جارٍ التحميل…';
