@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Centauri | AI UI &amp; Prototype Builder</title>
+    <meta
+      name="description"
+      content="Centauri turns prompts into fluid, linked HTML UI pages ready to export. Download for Windows and Android."
+    />
+    <meta name="theme-color" content="#07080b" />
+    <meta name="author" content="Centauri" />
+    <meta property="og:title" content="Centauri | AI UI &amp; Prototype Builder" />
+    <meta
+      property="og:description"
+      content="From prompt to a clickable prototype. Download Centauri for Windows and Android."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <script>
+      // Set tema dan bahasa sebelum paint supaya tidak ada flash saat
+      // preferensi tersimpan.
+      try {
+        const savedTheme = localStorage.getItem("centauri-theme");
+        const theme = savedTheme === "light" ? "light" : "dark";
+        document.documentElement.dataset.theme = theme;
+
+        const themeColor = document.querySelector('meta[name="theme-color"]');
+        if (themeColor) {
+          themeColor.setAttribute(
+            "content",
+            theme === "light" ? "#f6f7f8" : "#07080b",
+          );
+        }
+
+        const savedLanguage = localStorage.getItem("centauri-language");
+        const language = savedLanguage || "en";
+        document.documentElement.lang = language;
+        document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+        document.documentElement.lang = "en";
+        document.documentElement.dir = "ltr";
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      This page needs JavaScript to show the download buttons. You can still
+      download from the
+      <a href="https://github.com/abayDahln/Centauri/releases">GitHub releases page</a>.
+    </noscript>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
