@@ -76,3 +76,4 @@ design/
 export_chat.json
 .scratch
 .superpowers
+.playwright-mcp/
