@@ -77,6 +77,8 @@ class WorkspaceState {
     this.attachments = const [],
     this.selectionMode = false,
     this.mentions = const [],
+    this.undoDepth = 0,
+    this.redoDepth = 0,
   });
 
   /// Semua halaman (urut kronologis).
@@ -108,6 +110,14 @@ class WorkspaceState {
 
   /// Mention yang menempel di prompt berikutnya (elemen / halaman).
   final List<PromptMention> mentions;
+
+  /// Jumlah langkah undo/redo yang tersedia. Disimpan di state supaya tombol
+  /// undo/redo ikut rebuild saat stack berubah.
+  final int undoDepth;
+  final int redoDepth;
+
+  bool get canUndo => undoDepth > 0;
+  bool get canRedo => redoDepth > 0;
 
   AppPage? get activePage {
     if (activePageId == null) return null;
@@ -144,6 +154,8 @@ class WorkspaceState {
     List<Attachment>? attachments,
     bool? selectionMode,
     List<PromptMention>? mentions,
+    int? undoDepth,
+    int? redoDepth,
   }) {
     return WorkspaceState(
       pages: pages ?? this.pages,
@@ -167,6 +179,8 @@ class WorkspaceState {
       attachments: attachments ?? this.attachments,
       selectionMode: selectionMode ?? this.selectionMode,
       mentions: mentions ?? this.mentions,
+      undoDepth: undoDepth ?? this.undoDepth,
+      redoDepth: redoDepth ?? this.redoDepth,
     );
   }
 }
@@ -175,29 +189,43 @@ final workspaceProvider = NotifierProvider<WorkspaceNotifier, WorkspaceState>(
   WorkspaceNotifier.new,
 );
 
-/// Snapshot immutable untuk undo/redo.
+/// Snapshot satu halaman untuk undo/redo.
+///
+/// Riwayat sengaja hanya menyimpan konten halaman (HTML + DOM tree), bukan
+/// seluruh workspace: undo/redo hanya untuk mengembalikan komponen yang
+/// dihapus dan teks yang diedit, bukan percakapan, nama halaman, atau
+/// perubahan lain di luar kanvas.
 @immutable
 class WorkspaceSnapshot {
   const WorkspaceSnapshot({
-    required this.pages,
-    required this.messages,
-    required this.activePageId,
+    required this.pageId,
+    required this.html,
+    required this.domTree,
   });
 
-  final List<AppPage> pages;
-  final List<CanvasMessage> messages;
-  final String? activePageId;
+  final String pageId;
+  final String html;
+  final DomTreeResult? domTree;
 
-  static WorkspaceSnapshot of(WorkspaceState state) => WorkspaceSnapshot(
-    pages: state.pages,
-    messages: state.messages,
-    activePageId: state.activePageId,
+  static WorkspaceSnapshot fromPage(AppPage page) => WorkspaceSnapshot(
+    pageId: page.id,
+    html: page.html,
+    domTree: page.domTree,
   );
 
+  /// Snapshot halaman [pageId] (default halaman aktif) dari [state].
+  static WorkspaceSnapshot? fromState(WorkspaceState state, {String? pageId}) {
+    final id = pageId ?? state.activePageId;
+    if (id == null) return null;
+    for (final page in state.pages) {
+      if (page.id == id) return fromPage(page);
+    }
+    return null;
+  }
+
+  /// Isi halaman sama = tidak perlu snapshot baru.
   bool contentEquals(WorkspaceSnapshot other) =>
-      identical(pages, other.pages) &&
-      identical(messages, other.messages) &&
-      activePageId == other.activePageId;
+      pageId == other.pageId && html == other.html;
 }
 
 class WorkspaceNotifier extends Notifier<WorkspaceState> {
@@ -207,80 +235,116 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
   static const int _historyLimit = 60;
   final List<WorkspaceSnapshot> _undoStack = [];
   final List<WorkspaceSnapshot> _redoStack = [];
-  WorkspaceSnapshot? _lastRecorded;
   bool _applyingHistory = false;
 
-  bool get canUndo => _undoStack.isNotEmpty;
-  bool get canRedo => _redoStack.isNotEmpty;
+  /// Kedalaman stack dibaca dari state agar tombol undo/redo reaktif.
+  bool get canUndo => state.canUndo;
+  bool get canRedo => state.canRedo;
   int get undoDepth => _undoStack.length;
   int get redoDepth => _redoStack.length;
 
   @override
-  WorkspaceState build() {
-    _lastRecorded = null;
-    return const WorkspaceState();
+  WorkspaceState build() => const WorkspaceState();
+
+  AppPage? _pageById(String? id) {
+    if (id == null) return null;
+    for (final page in state.pages) {
+      if (page.id == id) return page;
+    }
+    return null;
   }
 
-  /// Dorong snapshot SEBELUM perubahan ([previous]) ke stack undo bila
-  /// kontennya berbeda dari snapshot terakhir yang tercatat.
+  /// Salin kedalaman stack ke state supaya UI ikut rebuild.
+  void _publishHistory() {
+    final undo = _undoStack.length;
+    final redo = _redoStack.length;
+    if (state.undoDepth == undo && state.redoDepth == redo) return;
+    state = state.copyWith(undoDepth: undo, redoDepth: redo);
+  }
+
+  /// Catat snapshot konten halaman [previous]. Helper tingkat rendah untuk
+  /// mensimulasikan satu mutasi kanvas; alur produksi memakai
+  /// [pushUndoSnapshot] tepat sebelum HTML diubah lewat WebView.
   void recordHistory(WorkspaceState previous) {
     if (_applyingHistory) return;
-    final snapshot = WorkspaceSnapshot.of(previous);
-    if (_lastRecorded != null && _lastRecorded!.contentEquals(snapshot)) {
-      _lastRecorded = WorkspaceSnapshot.of(state);
-      return;
-    }
-    _undoStack.add(snapshot);
-    if (_undoStack.length > _historyLimit) _undoStack.removeAt(0);
-    _redoStack.clear();
-    _lastRecorded = WorkspaceSnapshot.of(state);
+    final snapshot = WorkspaceSnapshot.fromState(previous);
+    if (snapshot != null) _pushSnapshot(snapshot);
   }
 
-  void pushUndoSnapshot() {
-    final snapshot = WorkspaceSnapshot.of(state);
-    if (_lastRecorded != null && _lastRecorded!.contentEquals(snapshot)) {
+  /// Dorong kondisi halaman saat ini ke stack undo. Dipanggil SEBELUM HTML
+  /// halaman diubah lewat WebView.
+  void pushUndoSnapshot({String? pageId}) {
+    if (_applyingHistory) return;
+    final snapshot = WorkspaceSnapshot.fromState(state, pageId: pageId);
+    if (snapshot != null) _pushSnapshot(snapshot);
+  }
+
+  void _pushSnapshot(WorkspaceSnapshot snapshot) {
+    if (_undoStack.isNotEmpty && _undoStack.last.contentEquals(snapshot)) {
       return;
     }
     _undoStack.add(snapshot);
     if (_undoStack.length > _historyLimit) _undoStack.removeAt(0);
     _redoStack.clear();
-    _lastRecorded = snapshot;
+    _publishHistory();
   }
 
   bool undo() {
-    if (_undoStack.isEmpty) return false;
-    final target = _undoStack.removeLast();
-    _redoStack.add(WorkspaceSnapshot.of(state));
-    _applySnapshot(target);
-    return true;
+    while (_undoStack.isNotEmpty) {
+      final target = _undoStack.removeLast();
+      final current = _pageById(target.pageId);
+      // Halaman sudah dihapus sejak snapshot dibuat: lewati entri basi.
+      if (current == null) continue;
+      _redoStack.add(WorkspaceSnapshot.fromPage(current));
+      _applySnapshot(target);
+      return true;
+    }
+    _publishHistory();
+    return false;
   }
 
   bool redo() {
-    if (_redoStack.isEmpty) return false;
-    final target = _redoStack.removeLast();
-    _undoStack.add(WorkspaceSnapshot.of(state));
-    _applySnapshot(target);
-    return true;
+    while (_redoStack.isNotEmpty) {
+      final target = _redoStack.removeLast();
+      final current = _pageById(target.pageId);
+      if (current == null) continue;
+      _undoStack.add(WorkspaceSnapshot.fromPage(current));
+      _applySnapshot(target);
+      return true;
+    }
+    _publishHistory();
+    return false;
   }
 
   void _applySnapshot(WorkspaceSnapshot snapshot) {
+    final index = state.pages.indexWhere((p) => p.id == snapshot.pageId);
+    if (index < 0) return;
+    final current = state.pages[index];
+    final pages = [...state.pages];
+    // Pertahankan id/nama/slug terkini; undo hanya memulihkan isi halaman.
+    pages[index] = AppPage(
+      id: current.id,
+      name: current.name,
+      slug: current.slug,
+      html: snapshot.html,
+      domTree: snapshot.domTree,
+    );
     _applyingHistory = true;
     state = state.copyWith(
-      pages: snapshot.pages,
-      messages: snapshot.messages,
-      activePageId: snapshot.activePageId,
-      clearActivePage: snapshot.activePageId == null,
+      pages: pages,
+      activePageId: snapshot.pageId,
       clearSelection: true,
       clearGeometry: true,
+      undoDepth: _undoStack.length,
+      redoDepth: _redoStack.length,
     );
-    _lastRecorded = snapshot;
     _applyingHistory = false;
   }
 
   void clearHistory() {
     _undoStack.clear();
     _redoStack.clear();
-    _lastRecorded = WorkspaceSnapshot.of(state);
+    _publishHistory();
   }
 
   void setOutputMode(OutputMode mode) {
@@ -379,12 +443,18 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     if (nextActive == id) {
       nextActive = pages.isEmpty ? null : pages.first.id;
     }
+    // Snapshot halaman yang dihapus tidak bisa dipulihkan lagi; buang supaya
+    // tombol undo/redo langsung mencerminkan sisa langkah yang valid.
+    _undoStack.removeWhere((snapshot) => snapshot.pageId == id);
+    _redoStack.removeWhere((snapshot) => snapshot.pageId == id);
     state = state.copyWith(
       pages: pages,
       activePageId: nextActive,
       clearActivePage: nextActive == null,
       clearSelection: true,
       clearGeometry: true,
+      undoDepth: _undoStack.length,
+      redoDepth: _redoStack.length,
     );
   }
 
@@ -464,6 +534,10 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       if (value != null && value >= _pageCounter) _pageCounter = value + 1;
     }
 
+    // Sesi baru = riwayat komponen sesi lama tidak berlaku.
+    _undoStack.clear();
+    _redoStack.clear();
+
     state = WorkspaceState(
       pages: rebuilt,
       activePageId: activePageId,
@@ -475,6 +549,8 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
 
   void clearWorkspace() {
     _pageCounter = 0;
+    _undoStack.clear();
+    _redoStack.clear();
     state = state.copyWith(
       pages: const [],
       messages: const [],
@@ -483,6 +559,8 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       clearSelection: true,
       clearHover: true,
       clearGenerationStart: true,
+      undoDepth: 0,
+      redoDepth: 0,
     );
   }
 
@@ -613,8 +691,11 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     final html = (await htmlFuture).html;
     if (html == null || html.trim().isEmpty) return false;
     final tree = await buildDomTreeInIsolate(html);
+    // Tidak ada perubahan nyata: jangan kotori riwayat undo.
+    final current = _pageById(pageId);
+    if (current != null && current.html == tree.stampedHtml) return true;
     // State belum berubah di titik ini → snapshot = kondisi sebelum mutasi.
-    pushUndoSnapshot();
+    pushUndoSnapshot(pageId: pageId);
     updatePageHtml(pageId: pageId, stampedHtml: tree.stampedHtml, tree: tree);
     return true;
   }
@@ -639,6 +720,10 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       );
       return;
     }
+
+    // Prompt baru = konten halaman akan dibuat ulang; riwayat undo/redo
+    // langkah kanvas sebelumnya tidak berlaku lagi.
+    clearHistory();
 
     final pendingAttachments = state.attachments;
 

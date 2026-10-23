@@ -331,49 +331,149 @@ void main() {
   });
 
   group('undo / redo', () {
-    test('recordHistory + undo/redo round-trip', () async {
+    Future<void> loadPage(WorkspaceNotifier n, {String html = ''}) =>
+        n.loadSession(
+          messages: const [],
+          pages: [_page('page_0', 'Home', html: html)],
+          activePageId: 'page_0',
+        );
+
+    test('starts empty and loadSession clears previous history', () async {
       final n = notifier();
       expect(n.canUndo, isFalse);
+      expect(state().canUndo, isFalse);
 
-      final before = state();
+      await loadPage(n, html: '<html><body><p>A</p></body></html>');
+      n.pushUndoSnapshot();
+      expect(n.canUndo, isTrue);
+      expect(state().canUndo, isTrue);
+
       await n.loadSession(
         messages: const [],
-        pages: [_page('page_0', 'Home')],
-        activePageId: 'page_0',
+        pages: [
+          _page('page_1', 'Other', html: '<html><body><p>B</p></body></html>'),
+        ],
+        activePageId: 'page_1',
       );
-      n.recordHistory(before);
+      expect(n.canUndo, isFalse);
+      expect(state().canUndo, isFalse);
+      expect(n.undoDepth, 0);
+    });
 
-      expect(n.canUndo, isTrue);
+    test('undo restores page content and redo reapplies it', () async {
+      final n = notifier();
+      await loadPage(n, html: '<html><body><p>Original</p></body></html>');
+      final original = state().activePage!.html;
+
+      final edited = _tree('<html><body><p>Edited</p></body></html>');
+      n.pushUndoSnapshot();
+      n.updatePageHtml(
+        pageId: 'page_0',
+        stampedHtml: edited.stampedHtml,
+        tree: edited,
+      );
+
+      expect(state().activePage!.html, contains('Edited'));
+      expect(state().undoDepth, 1);
+      expect(state().canUndo, isTrue);
+
       expect(n.undo(), isTrue);
-      expect(state().pages, isEmpty);
-      expect(n.canRedo, isTrue);
+      expect(state().activePage!.html, original);
+      expect(state().canRedo, isTrue);
 
       expect(n.redo(), isTrue);
-      expect(state().pages.length, 1);
+      expect(state().activePage!.html, contains('Edited'));
       expect(n.canRedo, isFalse);
     });
 
-    test('pushUndoSnapshot records exactly once', () {
+    test('undo only restores content, not chat or page names', () async {
       final n = notifier();
+      await loadPage(n, html: '<html><body><p>Original</p></body></html>');
+      final original = state().activePage!.html;
+
+      final edited = _tree('<html><body><p>Edited</p></body></html>');
       n.pushUndoSnapshot();
-      expect(n.undoDepth, 1);
-      n.pushUndoSnapshot(); // identik -> tidak dobel
-      expect(n.undoDepth, 1);
+      n.updatePageHtml(
+        pageId: 'page_0',
+        stampedHtml: edited.stampedHtml,
+        tree: edited,
+      );
+      n.renamePage('page_0', 'Renamed');
+      n.appendExternalMessage(
+        const CanvasMessage(role: ChatRole.assistant, text: 'catatan'),
+      );
+
+      expect(n.undo(), isTrue);
+      expect(state().activePage!.html, original);
+      expect(state().activePage!.name, 'Renamed');
+      expect(state().messages.single.text, 'catatan');
     });
 
-    test('clearHistory empties both stacks', () {
+    test('identical snapshot is not recorded twice', () async {
       final n = notifier();
+      await loadPage(n);
+      n.pushUndoSnapshot();
+      n.pushUndoSnapshot(); // identik -> tidak dobel
+      expect(n.undoDepth, 1);
+      expect(state().undoDepth, 1);
+    });
+
+    test('clearHistory empties both stacks and state flags', () async {
+      final n = notifier();
+      await loadPage(n);
       n.pushUndoSnapshot();
       expect(n.canUndo, isTrue);
       n.clearHistory();
       expect(n.canUndo, isFalse);
       expect(n.canRedo, isFalse);
+      expect(state().canUndo, isFalse);
+      expect(state().canRedo, isFalse);
     });
 
     test('undo/redo on empty stacks return false', () {
       final n = notifier();
       expect(n.undo(), isFalse);
       expect(n.redo(), isFalse);
+    });
+
+    test('snapshots for deleted pages are pruned', () async {
+      final n = notifier();
+      await loadPage(n);
+      n.pushUndoSnapshot();
+      n.deletePage('page_0');
+      expect(n.canUndo, isFalse);
+      expect(state().canUndo, isFalse);
+      expect(n.undo(), isFalse);
+    });
+
+    test('a new edit after undo starts a fresh history branch', () async {
+      final n = notifier();
+      await loadPage(n, html: '<html><body><p>A</p></body></html>');
+      final first = state().activePage!.html;
+
+      final second = _tree('<html><body><p>B</p></body></html>');
+      n.pushUndoSnapshot();
+      n.updatePageHtml(
+        pageId: 'page_0',
+        stampedHtml: second.stampedHtml,
+        tree: second,
+      );
+      expect(n.undo(), isTrue);
+      expect(n.canUndo, isFalse);
+      expect(n.canRedo, isTrue);
+
+      // Edit baru membuang cabang redo lama dan tetap bisa di-undo.
+      final third = _tree('<html><body><p>C</p></body></html>');
+      n.pushUndoSnapshot();
+      n.updatePageHtml(
+        pageId: 'page_0',
+        stampedHtml: third.stampedHtml,
+        tree: third,
+      );
+      expect(n.canRedo, isFalse);
+      expect(n.canUndo, isTrue);
+      expect(n.undo(), isTrue);
+      expect(state().activePage!.html, first);
     });
   });
 

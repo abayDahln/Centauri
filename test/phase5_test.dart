@@ -14,67 +14,60 @@ void main() {
   }
 
   group('WorkspaceNotifier undo/redo (Fase 5a)', () {
-    test(
-      'a content change is recorded and undo restores prior pages',
-      () async {
-        final container = makeContainer();
-        final notifier = container.read(workspaceProvider.notifier);
-
-        expect(notifier.canUndo, isFalse);
-
-        // Simulasi satu perubahan konten: state kosong -> 1 halaman.
-        final before = container.read(workspaceProvider);
-        await notifier.loadSession(
-          messages: const [],
-          pages: [_page('page_0')],
-          activePageId: 'page_0',
-        );
-        notifier.recordHistory(before);
-        expect(notifier.canUndo, isTrue);
-
-        expect(notifier.undo(), isTrue);
-        expect(container.read(workspaceProvider).pages, isEmpty);
-        expect(notifier.canRedo, isTrue);
-        expect(notifier.redo(), isTrue);
-        expect(notifier.canRedo, isFalse);
-      },
-    );
-
-    test(
-      'loadSession is undoable and restores the previous workspace',
-      () async {
-        final container = makeContainer();
-        final notifier = container.read(workspaceProvider.notifier);
-
-        final before = container.read(workspaceProvider);
-        await notifier.loadSession(
-          messages: const [],
-          pages: [_page('page_0')],
-          activePageId: 'page_0',
-        );
-        notifier.recordHistory(before);
-
-        expect(container.read(workspaceProvider).pages.length, 1);
-        expect(notifier.canUndo, isTrue);
-
-        notifier.undo();
-        expect(container.read(workspaceProvider).pages, isEmpty);
-      },
-    );
-
-    test('pushUndoSnapshot records current state exactly once', () {
+    test('undo/redo availability is mirrored in state', () async {
       final container = makeContainer();
       final notifier = container.read(workspaceProvider.notifier);
 
+      expect(notifier.canUndo, isFalse);
+      expect(container.read(workspaceProvider).canUndo, isFalse);
+
+      await notifier.loadSession(
+        messages: const [],
+        pages: [_page('page_0')],
+        activePageId: 'page_0',
+      );
       notifier.pushUndoSnapshot();
-      expect(notifier.undoDepth, 1);
-      notifier.pushUndoSnapshot(); // identik -> tidak dobel
-      expect(notifier.undoDepth, 1);
+      expect(notifier.canUndo, isTrue);
+      expect(container.read(workspaceProvider).undoDepth, 1);
+
+      expect(notifier.undo(), isTrue);
+      expect(notifier.canRedo, isTrue);
+      expect(container.read(workspaceProvider).canRedo, isTrue);
+
+      expect(notifier.redo(), isTrue);
+      expect(notifier.canRedo, isFalse);
+      expect(container.read(workspaceProvider).canRedo, isFalse);
     });
 
-    test('clearHistory empties stacks', () {
+    test('loadSession clears history from the previous session', () async {
       final container = makeContainer();
       final notifier = container.read(workspaceProvider.notifier);
+
+      await notifier.loadSession(
+        messages: const [],
+        pages: [_page('page_0')],
+        activePageId: 'page_0',
+      );
+      notifier.pushUndoSnapshot();
+      expect(notifier.canUndo, isTrue);
+
+      await notifier.loadSession(
+        messages: const [],
+        pages: [_page('page_1')],
+        activePageId: 'page_1',
+      );
+      expect(notifier.canUndo, isFalse);
+      expect(notifier.canRedo, isFalse);
+    });
+
+    test('clearHistory empties stacks', () async {
+      final container = makeContainer();
+      final notifier = container.read(workspaceProvider.notifier);
+      await notifier.loadSession(
+        messages: const [],
+        pages: [_page('page_0')],
+        activePageId: 'page_0',
+      );
       notifier.pushUndoSnapshot();
       expect(notifier.canUndo, isTrue);
       notifier.clearHistory();

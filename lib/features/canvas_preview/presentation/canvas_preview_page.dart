@@ -92,9 +92,6 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
   @override
   Widget build(BuildContext context) {
     ref.listen(workspaceProvider, (previous, next) {
-      if (previous != null) {
-        _recordUndo(ref, previous, next);
-      }
       _AutoSaveDebouncer.onChanged(ref, previous, next);
       _McpLiveSync.onChanged(ref, previous, next);
     });
@@ -114,22 +111,6 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     );
   }
 
-  /// Catat snapshot untuk undo bila perubahan menyentuh konten workspace
-  /// (pages / messages / halaman aktif) — bukan sekadar seleksi.
-  void _recordUndo(
-    WidgetRef ref,
-    WorkspaceState previous,
-    WorkspaceState next,
-  ) {
-    final contentChanged =
-        !identical(previous.pages, next.pages) ||
-        !identical(previous.messages, next.messages) ||
-        previous.activePageId != next.activePageId;
-    if (!contentChanged) return;
-    if (next.isGenerating) return;
-    ref.read(workspaceProvider.notifier).recordHistory(previous);
-  }
-
   /// Hotkey global desktop:
   /// Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z / Ctrl+Y redo, Delete/Backspace hapus
   /// node terpilih (atau halaman aktif).
@@ -145,16 +126,13 @@ class _CanvasPreviewPageState extends ConsumerState<CanvasPreviewPage> {
     final notifier = ref.read(workspaceProvider.notifier);
 
     if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyZ) {
-      if (HardwareKeyboard.instance.isShiftPressed) {
-        notifier.redo();
-      } else {
-        notifier.undo();
-      }
-      return KeyEventResult.handled;
+      final handled = HardwareKeyboard.instance.isShiftPressed
+          ? notifier.redo()
+          : notifier.undo();
+      return handled ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyY) {
-      notifier.redo();
-      return KeyEventResult.handled;
+      return notifier.redo() ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     if (event.logicalKey == LogicalKeyboardKey.delete ||
         event.logicalKey == LogicalKeyboardKey.backspace) {
@@ -788,13 +766,13 @@ class _TopBar extends ConsumerWidget {
                   SoftIconButton(
                     icon: Icons.undo,
                     tooltip: l10n.canvasUndoTooltip,
-                    onPressed: notifier.undo,
+                    onPressed: state.canUndo ? () => notifier.undo() : null,
                   ),
                   const SizedBox(width: 2),
                   SoftIconButton(
                     icon: Icons.redo,
                     tooltip: l10n.canvasRedoTooltip,
-                    onPressed: notifier.redo,
+                    onPressed: state.canRedo ? () => notifier.redo() : null,
                   ),
                 ],
                 const SizedBox(width: 12),
