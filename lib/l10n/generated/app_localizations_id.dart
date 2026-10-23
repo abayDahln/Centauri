@@ -261,6 +261,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get canvasHideCode => 'Sembunyikan kode';
 
   @override
+  String get canvasLayoutDesktop => 'Desktop';
+
+  @override
+  String get canvasLayoutMobile => 'Mobile';
+
+  @override
   String get canvasServiceSettings => 'Pengaturan layanan';
 
   @override

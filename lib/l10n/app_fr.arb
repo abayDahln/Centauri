@@ -88,6 +88,8 @@
   "canvasModeCode": "Code",
   "canvasShowCode": "Afficher le code",
   "canvasHideCode": "Masquer le code",
+  "canvasLayoutDesktop": "Bureau",
+  "canvasLayoutMobile": "Mobile",
   "canvasServiceSettings": "Réglages du service",
   "canvasSelectionOff": "Désactiver la sélection",
   "canvasSelectionOn": "Sélectionnez un élément sur le canvas",

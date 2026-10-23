@@ -88,6 +88,8 @@
   "canvasModeCode": "Код",
   "canvasShowCode": "Показать код",
   "canvasHideCode": "Скрыть код",
+  "canvasLayoutDesktop": "Десктоп",
+  "canvasLayoutMobile": "Мобильный",
   "canvasServiceSettings": "Настройки сервиса",
   "canvasSelectionOff": "Отключить выбор элементов",
   "canvasSelectionOn": "Выберите элемент на канве",

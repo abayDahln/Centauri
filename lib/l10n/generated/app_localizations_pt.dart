@@ -264,6 +264,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get canvasHideCode => 'Ocultar código';
 
   @override
+  String get canvasLayoutDesktop => 'Desktop';
+
+  @override
+  String get canvasLayoutMobile => 'Mobile';
+
+  @override
   String get canvasServiceSettings => 'Configurações do serviço';
 
   @override

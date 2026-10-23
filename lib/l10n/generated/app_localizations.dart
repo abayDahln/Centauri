@@ -580,6 +580,18 @@ abstract class AppLocalizations {
   /// **'Hide code'**
   String get canvasHideCode;
 
+  /// No description provided for @canvasLayoutDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop'**
+  String get canvasLayoutDesktop;
+
+  /// No description provided for @canvasLayoutMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile'**
+  String get canvasLayoutMobile;
+
   /// No description provided for @canvasServiceSettings.
   ///
   /// In en, this message translates to:

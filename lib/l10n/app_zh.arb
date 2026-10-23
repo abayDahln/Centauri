@@ -88,6 +88,8 @@
   "canvasModeCode": "代码",
   "canvasShowCode": "显示代码",
   "canvasHideCode": "隐藏代码",
+  "canvasLayoutDesktop": "桌面端",
+  "canvasLayoutMobile": "移动端",
   "canvasServiceSettings": "服务设置",
   "canvasSelectionOff": "停止选择元素",
   "canvasSelectionOn": "在画布上选择元素",

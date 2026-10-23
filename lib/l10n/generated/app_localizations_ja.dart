@@ -257,6 +257,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get canvasHideCode => 'コードを隠す';
 
   @override
+  String get canvasLayoutDesktop => 'デスクトップ';
+
+  @override
+  String get canvasLayoutMobile => 'モバイル';
+
+  @override
   String get canvasServiceSettings => 'サービス設定';
 
   @override

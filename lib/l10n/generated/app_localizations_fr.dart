@@ -265,6 +265,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get canvasHideCode => 'Masquer le code';
 
   @override
+  String get canvasLayoutDesktop => 'Bureau';
+
+  @override
+  String get canvasLayoutMobile => 'Mobile';
+
+  @override
   String get canvasServiceSettings => 'Réglages du service';
 
   @override

@@ -262,6 +262,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get canvasHideCode => 'إخفاء الكود';
 
   @override
+  String get canvasLayoutDesktop => 'سطح المكتب';
+
+  @override
+  String get canvasLayoutMobile => 'الجوال';
+
+  @override
   String get canvasServiceSettings => 'إعدادات الخدمة';
 
   @override

@@ -265,6 +265,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get canvasHideCode => 'Скрыть код';
 
   @override
+  String get canvasLayoutDesktop => 'Десктоп';
+
+  @override
+  String get canvasLayoutMobile => 'Мобильный';
+
+  @override
   String get canvasServiceSettings => 'Настройки сервиса';
 
   @override

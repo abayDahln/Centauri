@@ -88,6 +88,8 @@
   "canvasModeCode": "コード",
   "canvasShowCode": "コードを表示",
   "canvasHideCode": "コードを隠す",
+  "canvasLayoutDesktop": "デスクトップ",
+  "canvasLayoutMobile": "モバイル",
   "canvasServiceSettings": "サービス設定",
   "canvasSelectionOff": "要素の選択を終了",
   "canvasSelectionOn": "キャンバスで要素を選択",

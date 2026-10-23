@@ -123,6 +123,8 @@
   "canvasModeCode": "Kode",
   "canvasShowCode": "Tampilkan kode",
   "canvasHideCode": "Sembunyikan kode",
+  "canvasLayoutDesktop": "Desktop",
+  "canvasLayoutMobile": "Mobile",
   "canvasServiceSettings": "Pengaturan layanan",
   "canvasSelectionOff": "Matikan seleksi elemen",
   "canvasSelectionOn": "Pilih elemen di kanvas",

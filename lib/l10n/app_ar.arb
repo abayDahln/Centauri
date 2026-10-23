@@ -88,6 +88,8 @@
   "canvasModeCode": "كود",
   "canvasShowCode": "عرض الكود",
   "canvasHideCode": "إخفاء الكود",
+  "canvasLayoutDesktop": "سطح المكتب",
+  "canvasLayoutMobile": "الجوال",
   "canvasServiceSettings": "إعدادات الخدمة",
   "canvasSelectionOff": "إيقاف تحديد العناصر",
   "canvasSelectionOn": "حدّد عنصرًا على اللوحة",

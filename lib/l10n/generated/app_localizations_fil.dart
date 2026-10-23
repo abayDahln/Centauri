@@ -264,6 +264,12 @@ class AppLocalizationsFil extends AppLocalizations {
   String get canvasHideCode => 'Itago ang code';
 
   @override
+  String get canvasLayoutDesktop => 'Desktop';
+
+  @override
+  String get canvasLayoutMobile => 'Mobile';
+
+  @override
   String get canvasServiceSettings => 'Mga setting ng serbisyo';
 
   @override

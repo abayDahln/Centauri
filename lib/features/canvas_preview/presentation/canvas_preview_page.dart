@@ -732,7 +732,8 @@ class _TopBar extends ConsumerWidget {
                 // Tombol chat selalu ada saat workspace aktif agar struktur
                 // top bar tidak berubah saat pratinjau disembunyikan. Di mode
                 // fokus tombol ini nonaktif karena chat sudah memenuhi layar.
-                if (workspaceActive)
+                if (workspaceActive) ...[
+                  const SizedBox(width: 4),
                   SoftIconButton(
                     icon: canvasVisible && chatVisible
                         ? Icons.chat_bubble
@@ -752,6 +753,8 @@ class _TopBar extends ConsumerWidget {
                           }
                         : null,
                   ),
+                ],
+                const SizedBox(width: 4),
                 SoftIconButton(
                   icon: canvasVisible
                       ? Icons.close_fullscreen_outlined
@@ -762,13 +765,13 @@ class _TopBar extends ConsumerWidget {
                   onPressed: onToggleCanvas,
                 ),
                 if (workspaceActive) ...[
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 4),
                   SoftIconButton(
                     icon: Icons.undo,
                     tooltip: l10n.canvasUndoTooltip,
                     onPressed: state.canUndo ? () => notifier.undo() : null,
                   ),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 4),
                   SoftIconButton(
                     icon: Icons.redo,
                     tooltip: l10n.canvasRedoTooltip,
@@ -827,9 +830,9 @@ class _TopBar extends ConsumerWidget {
                   ],
                 ],
                 const AppearanceMenuButton(),
-                const SizedBox(width: 2),
+                const SizedBox(width: 4),
                 const LanguageMenuButton(),
-                const SizedBox(width: 2),
+                const SizedBox(width: 4),
                 SoftIconButton(
                   icon: Icons.settings_outlined,
                   tooltip: l10n.canvasServiceSettings,
@@ -844,7 +847,7 @@ class _TopBar extends ConsumerWidget {
   }
 }
 
-/// Toolbar kanvas: tab halaman bergaris bawah + kontrol seleksi.
+/// Toolbar kanvas: tab halaman bergaris bawah + kontrol layout + kontrol seleksi.
 class _PreviewToolbar extends ConsumerWidget {
   const _PreviewToolbar();
 
@@ -853,6 +856,7 @@ class _PreviewToolbar extends ConsumerWidget {
     final selectionMode = ref.watch(
       workspaceProvider.select((s) => s.selectionMode),
     );
+    final layoutMode = ref.watch(canvasLayoutModeProvider);
     final l10n = context.l10n;
     return Container(
       height: AppMetrics.toolbarHeight,
@@ -864,6 +868,30 @@ class _PreviewToolbar extends ConsumerWidget {
       child: Row(
         children: [
           const Expanded(child: PageSwitcherBar()),
+          const SizedBox(width: 8),
+          SoftIconButton(
+            icon: Icons.desktop_windows_outlined,
+            tooltip: l10n.canvasLayoutDesktop,
+            active: layoutMode == CanvasLayoutMode.desktop,
+            size: 32,
+            iconSize: 16,
+            onPressed: () => ref
+                .read(canvasLayoutModeProvider.notifier)
+                .set(CanvasLayoutMode.desktop),
+          ),
+          const SizedBox(width: 4),
+          SoftIconButton(
+            icon: Icons.phone_android_outlined,
+            tooltip: l10n.canvasLayoutMobile,
+            active: layoutMode == CanvasLayoutMode.mobile,
+            size: 32,
+            iconSize: 16,
+            onPressed: () => ref
+                .read(canvasLayoutModeProvider.notifier)
+                .set(CanvasLayoutMode.mobile),
+          ),
+          const SizedBox(width: 6),
+          Container(width: 1, height: 16, color: context.palette.borderSubtle),
           const SizedBox(width: 8),
           Text(
             '100%',
@@ -943,9 +971,13 @@ class _PreviewFrame extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final page = ref.watch(workspaceProvider.select((s) => s.activePage));
-    return Container(
+    final layoutMode = ref.watch(canvasLayoutModeProvider);
+    final isMobile = layoutMode == CanvasLayoutMode.mobile;
+
+    final frame = Container(
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
+        borderRadius: isMobile ? AppRadius.xl : null,
         border: Border.all(color: context.palette.borderSubtle),
         boxShadow: context.palette.shadowSoft,
       ),
@@ -993,6 +1025,25 @@ class _PreviewFrame extends ConsumerWidget {
         ],
       ),
     );
+
+    if (isMobile) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          const mobileWidth = 390.0;
+          final width = math.min(mobileWidth, constraints.maxWidth);
+          return Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: width,
+              height: constraints.maxHeight,
+              child: frame,
+            ),
+          );
+        },
+      );
+    }
+
+    return frame;
   }
 }
 

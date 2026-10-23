@@ -257,6 +257,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get canvasHideCode => '코드 숨기기';
 
   @override
+  String get canvasLayoutDesktop => '데스크톱';
+
+  @override
+  String get canvasLayoutMobile => '모바일';
+
+  @override
   String get canvasServiceSettings => '서비스 설정';
 
   @override

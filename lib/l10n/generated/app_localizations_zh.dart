@@ -256,6 +256,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasHideCode => '隐藏代码';
 
   @override
+  String get canvasLayoutDesktop => '桌面端';
+
+  @override
+  String get canvasLayoutMobile => '移动端';
+
+  @override
   String get canvasServiceSettings => '服务设置';
 
   @override

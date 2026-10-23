@@ -260,6 +260,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String get canvasHideCode => 'ซ่อนโค้ด';
 
   @override
+  String get canvasLayoutDesktop => 'เดสก์ท็อป';
+
+  @override
+  String get canvasLayoutMobile => 'มือถือ';
+
+  @override
   String get canvasServiceSettings => 'ตั้งค่าบริการ';
 
   @override

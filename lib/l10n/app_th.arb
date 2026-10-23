@@ -88,6 +88,8 @@
   "canvasModeCode": "โค้ด",
   "canvasShowCode": "แสดงโค้ด",
   "canvasHideCode": "ซ่อนโค้ด",
+  "canvasLayoutDesktop": "เดสก์ท็อป",
+  "canvasLayoutMobile": "มือถือ",
   "canvasServiceSettings": "ตั้งค่าบริการ",
   "canvasSelectionOff": "หยุดเลือกองค์ประกอบ",
   "canvasSelectionOn": "เลือกองค์ประกอบบนแคนวาส",

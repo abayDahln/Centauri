@@ -88,6 +88,8 @@
   "canvasModeCode": "코드",
   "canvasShowCode": "코드 보기",
   "canvasHideCode": "코드 숨기기",
+  "canvasLayoutDesktop": "데스크톱",
+  "canvasLayoutMobile": "모바일",
   "canvasServiceSettings": "서비스 설정",
   "canvasSelectionOff": "요소 선택 끄기",
   "canvasSelectionOn": "캔버스에서 요소 선택",

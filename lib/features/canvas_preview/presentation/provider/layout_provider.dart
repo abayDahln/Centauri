@@ -1,4 +1,42 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// Mode layout pratinjau kanvas: desktop atau mobile.
+enum CanvasLayoutMode { desktop, mobile }
+
+/// Menentukan mode layout pratinjau kanvas default berdasarkan platform target:
+/// - Windows / desktop: default desktop.
+/// - Android / mobile: default mobile.
+CanvasLayoutMode get defaultCanvasLayoutMode {
+  if (kIsWeb) return CanvasLayoutMode.desktop;
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.android:
+    case TargetPlatform.iOS:
+    case TargetPlatform.fuchsia:
+      return CanvasLayoutMode.mobile;
+    case TargetPlatform.windows:
+    case TargetPlatform.macOS:
+    case TargetPlatform.linux:
+      return CanvasLayoutMode.desktop;
+  }
+}
+
+/// Mode layout pratinjau kanvas (desktop vs mobile).
+final canvasLayoutModeProvider =
+    NotifierProvider<CanvasLayoutModeNotifier, CanvasLayoutMode>(
+      CanvasLayoutModeNotifier.new,
+    );
+
+class CanvasLayoutModeNotifier extends Notifier<CanvasLayoutMode> {
+  @override
+  CanvasLayoutMode build() => defaultCanvasLayoutMode;
+
+  void set(CanvasLayoutMode mode) => state = mode;
+
+  void toggle() => state = state == CanvasLayoutMode.desktop
+      ? CanvasLayoutMode.mobile
+      : CanvasLayoutMode.desktop;
+}
 
 /// Visibilitas area UI (kanvas pratinjau + panel kode).
 ///

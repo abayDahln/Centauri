@@ -88,6 +88,8 @@
   "canvasModeCode": "Code",
   "canvasShowCode": "Ipakita ang code",
   "canvasHideCode": "Itago ang code",
+  "canvasLayoutDesktop": "Desktop",
+  "canvasLayoutMobile": "Mobile",
   "canvasServiceSettings": "Mga setting ng serbisyo",
   "canvasSelectionOff": "Itigil ang pagpili ng elemento",
   "canvasSelectionOn": "Pumili ng elemento sa canvas",

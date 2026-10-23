@@ -123,6 +123,8 @@
   "canvasModeCode": "Code",
   "canvasShowCode": "Show code",
   "canvasHideCode": "Hide code",
+  "canvasLayoutDesktop": "Desktop",
+  "canvasLayoutMobile": "Mobile",
   "canvasServiceSettings": "Service settings",
   "canvasSelectionOff": "Stop selecting elements",
   "canvasSelectionOn": "Select an element on the canvas",
