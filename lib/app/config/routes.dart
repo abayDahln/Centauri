@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/canvas_preview/presentation/canvas_preview_page.dart';
 import '../../features/code_exporter/presentation/code_exporter_page.dart';
+import '../../features/mcp/presentation/mcp_guide_page.dart';
 import '../../features/provider_config/presentation/provider_detail_page.dart';
 import '../../features/provider_config/presentation/provider_list_page.dart';
 
@@ -19,6 +20,9 @@ class AppRoutes {
 
   /// Detail/edit provider tersimpan.
   static String providerDetail(String id) => '/providers/$id';
+
+  /// Panduan koneksi MCP server.
+  static const String mcpGuide = '/mcp-guide';
 }
 
 final GoRouter appRouter = GoRouter(
@@ -44,6 +48,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.codeExport,
       builder: (_, _) => const CodeExporterPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.mcpGuide,
+      builder: (_, _) => const McpGuidePage(),
     ),
   ],
 );

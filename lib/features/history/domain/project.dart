@@ -212,6 +212,7 @@ class Project {
     required String title,
     required WorkspaceState state,
     required DateTime createdAt,
+    DateTime? updatedAt,
   }) {
     return Project(
       id: id,
@@ -236,7 +237,7 @@ class Project {
           .toList(),
       activePageId: state.activePageId,
       createdAt: createdAt,
-      updatedAt: DateTime.now(),
+      updatedAt: updatedAt ?? DateTime.now(),
     );
   }
 }

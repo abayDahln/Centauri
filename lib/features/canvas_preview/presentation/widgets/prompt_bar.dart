@@ -62,8 +62,8 @@ class _PromptBarState extends ConsumerState<PromptBar> {
     await ref
         .read(workspaceProvider.notifier)
         .submitPrompt(text.isEmpty ? context.l10n.promptAnalyzeImage : text);
-    // Auto-save percakapan + board ke riwayat.
-    ref.read(historyProvider.notifier).persistCurrent();
+    // Auto-save percakapan + board ke riwayat (pesan baru -> naik ke paling atas).
+    ref.read(historyProvider.notifier).persistCurrent(touchUpdatedAt: true);
   }
 
   /// Hentikan generate yang sedang berjalan (tombol Stop).

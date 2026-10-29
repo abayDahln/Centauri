@@ -48,7 +48,7 @@ final canvasVisibleProvider = NotifierProvider<CanvasVisibleNotifier, bool>(
 
 class CanvasVisibleNotifier extends Notifier<bool> {
   @override
-  bool build() => true;
+  bool build() => false;
 
   void set(bool value) => state = value;
 

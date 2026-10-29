@@ -3,15 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/config/app_palette.dart';
+import '../../../../app/config/routes.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../../app/widgets/app_toast.dart';
 import '../../../../app/widgets/stitch_widgets.dart';
 import '../data/mcp_bridge.dart';
 import '../data/mcp_server.dart';
-import 'mcp_guide_dialog.dart';
 
 /// Status + info koneksi MCP server lokal (Fase 4: Desktop Full).
 /// Ditampilkan di halaman konfigurasi provider agar agent eksternal
@@ -128,7 +129,8 @@ class _McpStatusSectionState extends ConsumerState<McpStatusSection> {
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: TextButton.icon(
-            onPressed: () => showMcpGuide(context, endpoint: endpoint),
+            // Buka layar panduan MCP sebagai screen penuh.
+            onPressed: () => context.push(AppRoutes.mcpGuide),
             icon: const Icon(Icons.menu_book_outlined, size: 16),
             label: Text(l10n.mcpGuideOpen),
           ),

@@ -100,7 +100,9 @@ class HistoryNotifier extends Notifier<HistoryState> {
 
   /// Simpan state workspace saat ini menjadi proyek (auto-save).
   /// Bila belum ada proyek aktif, buat baru.
-  void persistCurrent({String? title}) {
+  /// [touchUpdatedAt] bernilai true hanya jika user mengirim pesan baru atau
+  /// terjadi aktivitas baru, sehingga membuka riwayat lama tidak memindahkannya ke paling atas.
+  void persistCurrent({String? title, bool touchUpdatedAt = false}) {
     final canvas = ref.read(workspaceProvider);
     // Jangan simpan sesi yang benar-benar kosong.
     if (canvas.messages.isEmpty && canvas.pages.isEmpty) return;
@@ -114,6 +116,7 @@ class HistoryNotifier extends Notifier<HistoryState> {
       title: title ?? _deriveTitle(canvas),
       state: canvas,
       createdAt: isNew ? _createdAt : _existingCreatedAt(id),
+      updatedAt: (isNew || touchUpdatedAt) ? DateTime.now() : _existingUpdatedAt(id),
     );
 
     repo.save(project);
@@ -131,6 +134,13 @@ class HistoryNotifier extends Notifier<HistoryState> {
       if (project.id == id) return project.createdAt;
     }
     return _createdAt;
+  }
+
+  DateTime _existingUpdatedAt(String id) {
+    for (final project in state.projects) {
+      if (project.id == id) return project.updatedAt;
+    }
+    return DateTime.now();
   }
 
   String _deriveTitle(WorkspaceState canvas) {

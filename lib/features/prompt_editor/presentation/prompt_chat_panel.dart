@@ -97,37 +97,36 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     final l10n = context.l10n;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.forum_outlined,
-              size: 28,
-              color: context.palette.textDisabled,
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: context.palette.primarySoft,
+                borderRadius: AppRadius.md,
+              ),
+              child: Icon(
+                Icons.forum_outlined,
+                size: 28,
+                color: context.palette.primary,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               l10n.chatNoMessagesTitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.uiFamily,
-                fontFamilyFallback: AppFonts.uiFallback,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: context.palette.textSecondary,
-              ),
+              style: context.text.panelTitle,
             ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.chatNoMessagesBody,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.uiFamily,
-                fontFamilyFallback: AppFonts.uiFallback,
-                fontSize: 11,
-                height: 1.6,
-                color: context.palette.textDisabled,
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 380),
+              child: Text(
+                l10n.chatNoMessagesBody,
+                textAlign: TextAlign.center,
+                style: context.text.uiSmall,
               ),
             ),
           ],
