@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../canvas_preview/domain/page.dart';
 import '../../canvas_preview/presentation/provider/workspace_provider.dart';
+import '../data/mydesign_service.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
 
@@ -52,6 +53,11 @@ class HistoryState {
 
 final historyProvider = NotifierProvider<HistoryNotifier, HistoryState>(
   HistoryNotifier.new,
+);
+
+/// Service berkas proyek; dipisah sebagai provider agar bisa diganti di test.
+final mydesignServiceProvider = Provider<MydesignService>(
+  (ref) => MydesignService(),
 );
 
 class HistoryNotifier extends Notifier<HistoryState> {
@@ -201,7 +207,39 @@ class HistoryNotifier extends Notifier<HistoryState> {
     }
   }
 
-  /// Simpan proyek hasil impor file `.mydesign` lalu buka di board.
+  /// Buka dialog berkas lalu baca proyek `.mydesign` pilihan pengguna.
+  ///
+  /// Return null bila pengguna membatalkan; melempar [MydesignException] bila
+  /// berkas tidak valid. [dialogTitle] berasal dari UI agar ikut bahasa aktif.
+  Future<Project?> pickProjectForImport({required String dialogTitle}) {
+    return ref
+        .read(mydesignServiceProvider)
+        .pickAndLoad(dialogTitle: dialogTitle);
+  }
+
+  /// Ekspor satu sesi ke berkas `.mydesign` pilihan pengguna.
+  ///
+  /// Sesi aktif disimpan lebih dulu supaya berkas memuat perubahan terbaru
+  /// yang belum sempat di-auto-save. Return path bila berhasil, null bila
+  /// pengguna membatalkan atau sesi tidak ditemukan.
+  Future<String?> exportProject(
+    String id, {
+    required String dialogTitle,
+  }) async {
+    if (state.activeProjectId == id) persistCurrent();
+
+    Project? target;
+    for (final project in state.projects) {
+      if (project.id == id) target = project;
+    }
+    if (target == null) return null;
+
+    return ref
+        .read(mydesignServiceProvider)
+        .saveToFile(target, dialogTitle: dialogTitle);
+  }
+
+  /// Simpan proyek hasil impor file `.mydesign` lalu buka di workspace.
   /// Id dipertahankan bila belum dipakai; bila bentrok, dibuat id baru.
   Future<void> importProject(Project project) async {
     final repo = ref.read(projectRepositoryProvider);

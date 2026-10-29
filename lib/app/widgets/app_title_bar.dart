@@ -9,8 +9,8 @@ import '../l10n/l10n.dart';
 
 /// Title bar kustom untuk shell desktop (Windows).
 ///
-/// Latar panel putih, garis bawah 1 px, dan tombol window minimalis tanpa
-/// logo atau nama aplikasi. Mengikuti Centauri Design System.
+/// Latar panel, garis bawah 1 px, dan tombol window minimalis tanpa logo atau
+/// nama aplikasi. Mengikuti Centauri Design System.
 class AppTitleBar extends StatefulWidget {
   const AppTitleBar({super.key});
 

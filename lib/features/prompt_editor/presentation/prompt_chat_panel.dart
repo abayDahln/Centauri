@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/config/app_palette.dart';
 import '../../../app/config/theme.dart';
 import '../../../app/l10n/l10n.dart';
+import '../../canvas_preview/presentation/provider/generation_stream_provider.dart';
 import '../../canvas_preview/presentation/provider/workspace_provider.dart';
 import '../../canvas_preview/presentation/widgets/attachment_preview_dialog.dart';
 import '../../canvas_preview/presentation/widgets/chat_error_card.dart';
-import '../../canvas_preview/presentation/widgets/generation_step_card.dart';
+import '../../canvas_preview/presentation/widgets/chat_stream_bubble.dart';
 import '../../canvas_preview/presentation/widgets/markdown_message.dart';
 
 /// Panel riwayat percakapan (read-only). Hanya menampilkan pesan user dan AI.
@@ -28,6 +29,8 @@ class PromptChatPanel extends ConsumerStatefulWidget {
 class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
   final _scrollController = ScrollController();
   final Set<int> _expandedAssistant = <int>{};
+  int _lastStreamChars = 0;
+  int _lastMessageCount = 0;
 
   @override
   void dispose() {
@@ -46,10 +49,28 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     });
   }
 
+  /// Ikuti token baru tanpa animasi (tiap ~80 ms) dan tanpa merebut scroll
+  /// user: hanya bergeser bila posisi masih dekat dasar.
+  void _followStream(int chars) {
+    if (chars == _lastStreamChars) return;
+    _lastStreamChars = chars;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (position.maxScrollExtent - position.pixels > 120) return;
+      _scrollController.jumpTo(position.maxScrollExtent);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final canvasState = ref.watch(workspaceProvider);
-    if (canvasState.messages.isNotEmpty) _scrollToBottom();
+    final stream = ref.watch(generationStreamProvider);
+    if (canvasState.messages.length != _lastMessageCount) {
+      _lastMessageCount = canvasState.messages.length;
+      if (canvasState.messages.isNotEmpty) _scrollToBottom();
+    }
+    if (stream.phase.isActive) _followStream(stream.streamedText.length);
 
     return Column(
       children: [
@@ -64,17 +85,11 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
     );
   }
 
-  /// Saat AI sedang memproses dan belum ada pesan: tampilkan kartu langkah
-  /// agar jelas ada aktivitas dan tahapnya, bukan layar kosong.
+  /// Saat AI sedang memproses dan belum ada pesan: tampilkan bubble tunggu
+  /// di posisi balasan AI, bukan layar kosong.
   Widget _buildThinkingState() {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 320),
-        child: const Padding(
-          padding: EdgeInsets.all(24),
-          child: GenerationStepCard(),
-        ),
-      ),
+    return const Center(
+      child: Padding(padding: EdgeInsets.all(24), child: ChatStreamBubble()),
     );
   }
 
@@ -140,12 +155,7 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           if (index >= state.messages.length) {
-            return _centered(
-              const Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: GenerationStepCard(),
-              ),
-            );
+            return _centered(const ChatStreamBubble());
           }
           return _centered(
             _buildMessageBubble(

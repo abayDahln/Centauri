@@ -694,6 +694,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatNoMessagesBody => 'Type a message to get started.';
 
   @override
+  String chatStreamPage(int page) {
+    return 'Writing page $page…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return 'Writing page $page of $total…';
+  }
+
+  @override
+  String get chatStreamFinishing => 'Preparing pages…';
+
+  @override
   String get commonGenericError => 'Something went wrong. Try again.';
 
   @override
@@ -735,6 +748,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorApiRateLimited =>
       'The service is limiting requests. Try again shortly.';
+
+  @override
+  String get errorApiInsufficientCredits =>
+      'Account balance is empty. Top up and try again.';
 
   @override
   String get errorApiNotFound => 'Address or model not found. Check both.';
@@ -934,6 +951,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return 'Page $index';
   }
+
+  @override
+  String get oauthConnect => 'Connect';
+
+  @override
+  String get oauthConnecting => 'Connecting…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return 'Signed in as $account';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return 'Balance $amount';
+  }
+
+  @override
+  String get oauthDisconnect => 'Sign out';
+
+  @override
+  String get oauthLoginRequired => 'Sign in first to continue.';
+
+  @override
+  String get providerSubtitleOpencode => 'Free coding models';
+
+  @override
+  String get providerSubtitleOpenrouter => 'Many models, one key';
+
+  @override
+  String get providerSubtitleNvidia => 'Free developer account';
+
+  @override
+  String get providerSubtitleOllamaCloud => 'Runs in the cloud';
+
+  @override
+  String get providerSubtitleGemini => 'Key from Google AI Studio';
+
+  @override
+  String get providerSubtitleCline => 'Sign in with an account';
+
+  @override
+  String get providerSubtitleCommandCode => 'Paid plan needed';
+
+  @override
+  String get providerSubtitleGroq => 'Fast replies';
+
+  @override
+  String get providerSubtitleMinimax => 'MiniMax models';
+
+  @override
+  String get providerSubtitleMistral => 'Mistral models';
+
+  @override
+  String get providerSubtitleZai => 'GLM models';
+
+  @override
+  String get providerSubtitleKiro => 'Local proxy needed';
+
+  @override
+  String get providerSubtitleCustom => 'Your own service';
+
+  @override
+  String get clineLoginTitle => 'Sign in with a Cline account';
+
+  @override
+  String get clineLoginBody =>
+      'Sign in with your browser. This window updates by itself.';
+
+  @override
+  String get clinePasteBody =>
+      'If the browser doesn\'t come back, paste the link it shows.';
+
+  @override
+  String get clineFieldLink => 'Login link';
+
+  @override
+  String get clineFieldLinkHint => 'Paste the link from Cline';
+
+  @override
+  String get clineLinkInvalid =>
+      'That link isn\'t valid. Copy it from Cline again.';
+
+  @override
+  String get providerDetailTestAccount => 'Test account';
 
   @override
   String get generationTitle => 'Building your design';

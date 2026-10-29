@@ -123,3 +123,21 @@ String _closeStructure(String html) {
   if (!out.toLowerCase().contains('</html>')) out = '$out</html>';
   return out;
 }
+
+/// Teks penjelasan di luar blok kode berpagar, untuk bubble chat live.
+///
+/// Blok ```...``` (HTML halaman) dibuang supaya chat tidak dibanjiri kode;
+/// kalimat sebelum/sesudah blok tetap tampil. Teks yang belum selesai
+/// ditulis tetap dikembalikan apa adanya agar terasa mengalir.
+String streamProse(String raw) {
+  final buffer = StringBuffer();
+  var inFence = false;
+  for (final line in raw.split('\n')) {
+    if (line.trimLeft().startsWith('```')) {
+      inFence = !inFence;
+      continue;
+    }
+    if (!inFence) buffer.writeln(line);
+  }
+  return buffer.toString().trim();
+}

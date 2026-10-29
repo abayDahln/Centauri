@@ -1,5 +1,6 @@
 import 'package:centauri/features/provider_config/data/catalog/provider_models.dart';
 import 'package:centauri/features/provider_config/presentation/provider_catalog_view_model.dart';
+import 'package:centauri/l10n/generated/app_localizations_en.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Provider yang sengaja TIDAK punya daftar model hardcode (pengguna mengisi
@@ -81,7 +82,9 @@ void main() {
     });
 
     test('setiap kartu di panel katalog punya daftar model', () {
-      for (final card in ProviderCatalogViewModel.allCards()) {
+      for (final card in ProviderCatalogViewModel.allCards(
+        AppLocalizationsEn(),
+      )) {
         if (_noStaticModels.contains(card.id)) continue;
         expect(
           ProviderModelCatalog.forProvider(card.id),

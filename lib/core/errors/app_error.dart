@@ -13,6 +13,11 @@ enum AppErrorCode {
   apiTimeout,
   apiUnreachable,
   apiUnauthorized,
+
+  /// Saldo akun provider habis (HTTP 402). Bukan masalah kunci akses, jadi
+  /// pesannya berbeda: pengguna perlu mengisi saldo, bukan mengganti kunci.
+  apiInsufficientCredits,
+
   apiRateLimited,
   apiNotFound,
   apiRejected,

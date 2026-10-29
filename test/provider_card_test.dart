@@ -2,6 +2,7 @@ import 'package:centauri/features/provider_config/domain/catalog/provider_catalo
 import 'package:centauri/features/provider_config/presentation/provider_catalog_view_model.dart';
 import 'package:centauri/features/provider_config/presentation/widgets/provider_card.dart';
 import 'package:flutter/material.dart';
+import 'package:centauri/l10n/generated/app_localizations_en.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers/pump_app.dart';
@@ -53,7 +54,8 @@ void main() {
 
   group('ProviderCatalogPanel data', () {
     test('setiap kartu view-model bisa dirender ProviderCard', () {
-      final data = ProviderCatalogViewModel.allCards().first;
+      final data = ProviderCatalogViewModel.allCards(AppLocalizationsEn())
+          .first;
       expect(data.name.trim(), isNotEmpty);
       expect(data.entry.id, isNotEmpty);
     });

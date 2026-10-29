@@ -1348,6 +1348,24 @@ abstract class AppLocalizations {
   /// **'Type a message to get started.'**
   String get chatNoMessagesBody;
 
+  /// No description provided for @chatStreamPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing page {page}…'**
+  String chatStreamPage(int page);
+
+  /// No description provided for @chatStreamPageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing page {page} of {total}…'**
+  String chatStreamPageOf(int page, int total);
+
+  /// No description provided for @chatStreamFinishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing pages…'**
+  String get chatStreamFinishing;
+
   /// No description provided for @commonGenericError.
   ///
   /// In en, this message translates to:
@@ -1425,6 +1443,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The service is limiting requests. Try again shortly.'**
   String get errorApiRateLimited;
+
+  /// No description provided for @errorApiInsufficientCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Account balance is empty. Top up and try again.'**
+  String get errorApiInsufficientCredits;
 
   /// No description provided for @errorApiNotFound.
   ///
@@ -1767,6 +1791,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Page {index}'**
   String generationPageProgressUnknown(int index);
+
+  /// No description provided for @oauthConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get oauthConnect;
+
+  /// No description provided for @oauthConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get oauthConnecting;
+
+  /// No description provided for @oauthConnectedAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {account}'**
+  String oauthConnectedAs(String account);
+
+  /// No description provided for @oauthBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance {amount}'**
+  String oauthBalance(String amount);
+
+  /// No description provided for @oauthDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get oauthDisconnect;
+
+  /// No description provided for @oauthLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in first to continue.'**
+  String get oauthLoginRequired;
+
+  /// No description provided for @providerSubtitleOpencode.
+  ///
+  /// In en, this message translates to:
+  /// **'Free coding models'**
+  String get providerSubtitleOpencode;
+
+  /// No description provided for @providerSubtitleOpenrouter.
+  ///
+  /// In en, this message translates to:
+  /// **'Many models, one key'**
+  String get providerSubtitleOpenrouter;
+
+  /// No description provided for @providerSubtitleNvidia.
+  ///
+  /// In en, this message translates to:
+  /// **'Free developer account'**
+  String get providerSubtitleNvidia;
+
+  /// No description provided for @providerSubtitleOllamaCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs in the cloud'**
+  String get providerSubtitleOllamaCloud;
+
+  /// No description provided for @providerSubtitleGemini.
+  ///
+  /// In en, this message translates to:
+  /// **'Key from Google AI Studio'**
+  String get providerSubtitleGemini;
+
+  /// No description provided for @providerSubtitleCline.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with an account'**
+  String get providerSubtitleCline;
+
+  /// No description provided for @providerSubtitleCommandCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid plan needed'**
+  String get providerSubtitleCommandCode;
+
+  /// No description provided for @providerSubtitleGroq.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast replies'**
+  String get providerSubtitleGroq;
+
+  /// No description provided for @providerSubtitleMinimax.
+  ///
+  /// In en, this message translates to:
+  /// **'MiniMax models'**
+  String get providerSubtitleMinimax;
+
+  /// No description provided for @providerSubtitleMistral.
+  ///
+  /// In en, this message translates to:
+  /// **'Mistral models'**
+  String get providerSubtitleMistral;
+
+  /// No description provided for @providerSubtitleZai.
+  ///
+  /// In en, this message translates to:
+  /// **'GLM models'**
+  String get providerSubtitleZai;
+
+  /// No description provided for @providerSubtitleKiro.
+  ///
+  /// In en, this message translates to:
+  /// **'Local proxy needed'**
+  String get providerSubtitleKiro;
+
+  /// No description provided for @providerSubtitleCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own service'**
+  String get providerSubtitleCustom;
+
+  /// No description provided for @clineLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with a Cline account'**
+  String get clineLoginTitle;
+
+  /// No description provided for @clineLoginBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with your browser. This window updates by itself.'**
+  String get clineLoginBody;
+
+  /// No description provided for @clinePasteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If the browser doesn\'t come back, paste the link it shows.'**
+  String get clinePasteBody;
+
+  /// No description provided for @clineFieldLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Login link'**
+  String get clineFieldLink;
+
+  /// No description provided for @clineFieldLinkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the link from Cline'**
+  String get clineFieldLinkHint;
+
+  /// No description provided for @clineLinkInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'That link isn\'t valid. Copy it from Cline again.'**
+  String get clineLinkInvalid;
+
+  /// No description provided for @providerDetailTestAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Test account'**
+  String get providerDetailTestAccount;
 
   /// No description provided for @generationTitle.
   ///

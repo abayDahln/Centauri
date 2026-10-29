@@ -5,26 +5,56 @@ import '../../../../app/config/app_palette.dart';
 import '../../../../app/config/theme.dart';
 import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/attachment.dart';
+import '../provider/generation_stream_provider.dart';
 import '../provider/workspace_provider.dart';
-import 'ai_status_indicator.dart';
 import 'attachment_preview_dialog.dart';
 import 'chat_error_card.dart';
+import 'chat_stream_bubble.dart';
 import 'markdown_message.dart';
 
 /// Tampilan awal saat belum ada UI di board: percakapan biasa seperti chatbot.
 /// Board disembunyikan sampai frame pertama selesai digenerate.
-class ChatLanding extends ConsumerWidget {
+class ChatLanding extends ConsumerStatefulWidget {
   const ChatLanding({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatLanding> createState() => _ChatLandingState();
+}
+
+class _ChatLandingState extends ConsumerState<ChatLanding> {
+  final _scrollController = ScrollController();
+  int _lastStreamChars = 0;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Ikuti token baru seperti chat AI biasa, tanpa merebut scroll user.
+  void _followStream(int chars) {
+    if (chars == _lastStreamChars) return;
+    _lastStreamChars = chars;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (position.maxScrollExtent - position.pixels > 120) return;
+      _scrollController.jumpTo(position.maxScrollExtent);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(workspaceProvider);
+    final stream = ref.watch(generationStreamProvider);
     final messages = state.messages;
     final canRetry = messages.any((m) => m.role == ChatRole.user);
+    if (stream.phase.isActive) _followStream(stream.streamedText.length);
 
     return Container(
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
+        borderRadius: AppRadius.panel,
         border: Border.all(color: context.palette.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,
@@ -36,6 +66,7 @@ class ChatLanding extends ConsumerWidget {
         child: messages.isEmpty && !state.isGenerating
             ? const _Welcome()
             : ListView.separated(
+                controller: _scrollController,
                 // Padding bawah ekstra agar pesan terakhir tidak tertimpa
                 // kartu PromptBar yang mengambang di bawah.
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 180),
@@ -43,10 +74,7 @@ class ChatLanding extends ConsumerWidget {
                 separatorBuilder: (_, _) => const SizedBox(height: 14),
                 itemBuilder: (context, index) {
                   if (index >= messages.length) {
-                    return const Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: AiStatusIndicator(),
-                    );
+                    return const ChatStreamBubble();
                   }
                   return _Bubble(
                     message: messages[index],

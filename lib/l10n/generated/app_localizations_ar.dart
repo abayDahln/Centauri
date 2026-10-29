@@ -690,6 +690,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get chatNoMessagesBody => 'اكتب رسالة للبدء.';
 
   @override
+  String chatStreamPage(int page) {
+    return 'جارٍ كتابة الصفحة $page…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return 'جارٍ كتابة الصفحة $page من $total…';
+  }
+
+  @override
+  String get chatStreamFinishing => 'جارٍ تجهيز الصفحات…';
+
+  @override
   String get commonGenericError => 'حدث خطأ. أعد المحاولة.';
 
   @override
@@ -730,6 +743,10 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get errorApiRateLimited =>
       'الخدمة تحدّ من الطلبات. أعد المحاولة بعد قليل.';
+
+  @override
+  String get errorApiInsufficientCredits =>
+      'رصيد الحساب غير كافٍ. اشحن الرصيد ثم حاول مرة أخرى.';
 
   @override
   String get errorApiNotFound =>
@@ -926,6 +943,89 @@ class AppLocalizationsAr extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return 'الصفحة $index';
   }
+
+  @override
+  String get oauthConnect => 'اتصال';
+
+  @override
+  String get oauthConnecting => 'جارٍ الاتصال…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return 'مسجّل الدخول باسم $account';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return 'الرصيد $amount';
+  }
+
+  @override
+  String get oauthDisconnect => 'تسجيل الخروج';
+
+  @override
+  String get oauthLoginRequired => 'سجّل الدخول أولًا للمتابعة.';
+
+  @override
+  String get providerSubtitleOpencode => 'نماذج برمجية مجانية';
+
+  @override
+  String get providerSubtitleOpenrouter => 'نماذج كثيرة بمفتاح واحد';
+
+  @override
+  String get providerSubtitleNvidia => 'حساب مطوّر مجاني';
+
+  @override
+  String get providerSubtitleOllamaCloud => 'يعمل في السحابة';
+
+  @override
+  String get providerSubtitleGemini => 'مفتاح من Google AI Studio';
+
+  @override
+  String get providerSubtitleCline => 'تسجيل الدخول بحساب';
+
+  @override
+  String get providerSubtitleCommandCode => 'يتطلب خطة مدفوعة';
+
+  @override
+  String get providerSubtitleGroq => 'ردود سريعة';
+
+  @override
+  String get providerSubtitleMinimax => 'نماذج MiniMax';
+
+  @override
+  String get providerSubtitleMistral => 'نماذج Mistral';
+
+  @override
+  String get providerSubtitleZai => 'نماذج GLM';
+
+  @override
+  String get providerSubtitleKiro => 'يتطلب وسيطًا محليًا';
+
+  @override
+  String get providerSubtitleCustom => 'خدمتك الخاصة';
+
+  @override
+  String get clineLoginTitle => 'تسجيل الدخول بحساب Cline';
+
+  @override
+  String get clineLoginBody =>
+      'سجّل الدخول من المتصفح وستتحدث هذه النافذة تلقائياً.';
+
+  @override
+  String get clinePasteBody => 'إذا لم يعد المتصفح، الصق الرابط الذي ظهر.';
+
+  @override
+  String get clineFieldLink => 'رابط الدخول';
+
+  @override
+  String get clineFieldLinkHint => 'الصق الرابط من Cline';
+
+  @override
+  String get clineLinkInvalid => 'الرابط غير صالح. انسخه من Cline مرة أخرى.';
+
+  @override
+  String get providerDetailTestAccount => 'اختبار الحساب';
 
   @override
   String get generationTitle => 'جارٍ إنشاء التصميم';

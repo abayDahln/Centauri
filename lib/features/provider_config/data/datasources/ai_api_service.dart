@@ -76,12 +76,18 @@ class AiApiService {
   /// rilis agentic) menolak request dari app yang tidak dikenal dengan 403.
   Map<String, String> _headers(ApiProvider provider) {
     final bearer = provider.bearerToken?.trim() ?? '';
+    // Sesi OAuth Cline hanya diterima dengan prefix `workos:`; API key dan
+    // token provider akun dikirim polos. Prefix salah tempat
+    // membuat request ditolak 401.
+    final token = provider.oauthProvider == kClineOAuthCatalogId
+        ? 'workos:$bearer'
+        : bearer;
     final isOpenRouter = provider.normalizedBaseUrl.toLowerCase().contains(
       'openrouter.ai',
     );
     return {
       'Content-Type': 'application/json',
-      if (bearer.isNotEmpty) 'Authorization': 'Bearer $bearer',
+      if (bearer.isNotEmpty) 'Authorization': 'Bearer $token',
       if (isOpenRouter) ...{
         'HTTP-Referer': AppConstants.appReferer,
         'X-OpenRouter-Title': AppConstants.appName,
@@ -172,10 +178,8 @@ class AiApiService {
         ),
       );
     } on DioException catch (e) {
-      throw ApiConnectionException(
-        mapDioError(e),
-        detail: dioErrorDetail(e, url: url),
-      );
+      final failure = describeDioError(e, url: url);
+      throw ApiConnectionException(failure.code, detail: failure.detail);
     }
 
     if (response.statusCode != 200) {
@@ -293,15 +297,13 @@ class AiApiService {
       // Body dibaca manual agar pesan asli provider (mis. OpenRouter:
       // "No endpoints found for <model>") ikut tampil, bukan pesan generik.
       final errorBody = await _readErrorBody(e);
-      throw ApiConnectionException(
-        mapDioError(e),
-        detail: dioErrorDetail(
-          e,
-          responseBody: errorBody,
-          url: url,
-          model: provider.model,
-        ),
+      final failure = describeDioError(
+        e,
+        responseBody: errorBody,
+        url: url,
+        model: provider.model,
       );
+      throw ApiConnectionException(failure.code, detail: failure.detail);
     }
 
     final contentType =
@@ -454,15 +456,13 @@ class AiApiService {
           return;
         }
         final errorBody = await _readErrorBody(e);
-        throw ApiConnectionException(
-          mapDioError(e),
-          detail: dioErrorDetail(
-            e,
-            responseBody: errorBody,
-            url: url,
-            model: provider.model,
-          ),
+        final failure = describeDioError(
+          e,
+          responseBody: errorBody,
+          url: url,
+          model: provider.model,
         );
+        throw ApiConnectionException(failure.code, detail: failure.detail);
       }
 
       final body = response.data;
@@ -916,6 +916,35 @@ class AiApiService {
   /// Mengklasifikasikan [DioException] jadi [AppErrorCode]. Teksnya disusun
   /// lapisan UI (`localizedAppError`) supaya ikut bahasa UI yang aktif; pesan
   /// mentah provider tetap tersimpan lewat [dioErrorDetail] untuk log.
+  /// Kode + detail siap lempar untuk [DioException].
+  ///
+  /// HTTP 400 berarti isi request salah (paling sering format id model), dan
+  /// penjelasan provider adalah satu-satunya petunjuk yang berguna. Karena itu
+  /// pesannya diteruskan sebagai [AppErrorCode.apiProviderReported] alih-alih
+  /// "layanan menolak permintaan".
+  static ({AppErrorCode code, String? detail}) describeDioError(
+    DioException e, {
+    String? responseBody,
+    String? url,
+    String? model,
+  }) {
+    if (e.response?.statusCode == 400) {
+      final message = _providerErrorMessage(responseBody ?? e.response?.data);
+      if (message != null) {
+        return (code: AppErrorCode.apiProviderReported, detail: message);
+      }
+    }
+    return (
+      code: mapDioError(e),
+      detail: dioErrorDetail(
+        e,
+        responseBody: responseBody,
+        url: url,
+        model: model,
+      ),
+    );
+  }
+
   static AppErrorCode mapDioError(DioException e) {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
@@ -926,6 +955,9 @@ class AiApiService {
         return AppErrorCode.apiUnreachable;
       case DioExceptionType.badResponse:
         final status = e.response?.statusCode;
+        // 402 = saldo akun habis. Kuncinya masih berlaku, jadi jangan
+        // dilaporkan sebagai "kunci tidak berlaku".
+        if (status == 402) return AppErrorCode.apiInsufficientCredits;
         // Kunci bisa valid tetapi ditolak untuk model atau kebijakan tertentu
         // (OpenRouter membalas 403) — kode unauthorized tetap paling dekat.
         if (status == 401 || status == 403) {

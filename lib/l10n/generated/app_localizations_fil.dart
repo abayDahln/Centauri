@@ -698,6 +698,19 @@ class AppLocalizationsFil extends AppLocalizations {
   String get chatNoMessagesBody => 'Mag-type ng mensahe para magsimula.';
 
   @override
+  String chatStreamPage(int page) {
+    return 'Sinusulat ang page $page…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return 'Sinusulat ang page $page ng $total…';
+  }
+
+  @override
+  String get chatStreamFinishing => 'Inihahanda ang mga page…';
+
+  @override
   String get commonGenericError => 'May nangyaring mali. Subukan muli.';
 
   @override
@@ -740,6 +753,10 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String get errorApiRateLimited =>
       'Nililimitahan ng serbisyo ang mga request. Subukan muli maya-maya.';
+
+  @override
+  String get errorApiInsufficientCredits =>
+      'Wala nang laman ang balanse ng account. Mag-load at subukan muli.';
 
   @override
   String get errorApiNotFound =>
@@ -943,6 +960,91 @@ class AppLocalizationsFil extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return 'Pahina $index';
   }
+
+  @override
+  String get oauthConnect => 'Kumonekta';
+
+  @override
+  String get oauthConnecting => 'Kumokonekta…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return 'Naka-sign in bilang $account';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return 'Balanse $amount';
+  }
+
+  @override
+  String get oauthDisconnect => 'Mag-sign out';
+
+  @override
+  String get oauthLoginRequired => 'Mag-sign in muna para magpatuloy.';
+
+  @override
+  String get providerSubtitleOpencode => 'Libreng coding models';
+
+  @override
+  String get providerSubtitleOpenrouter => 'Maraming modelo, isang key';
+
+  @override
+  String get providerSubtitleNvidia => 'Libreng developer account';
+
+  @override
+  String get providerSubtitleOllamaCloud => 'Tumataakbo sa cloud';
+
+  @override
+  String get providerSubtitleGemini => 'Key mula sa Google AI Studio';
+
+  @override
+  String get providerSubtitleCline => 'Mag-sign in gamit ang account';
+
+  @override
+  String get providerSubtitleCommandCode => 'Kailangan ng bayad na plano';
+
+  @override
+  String get providerSubtitleGroq => 'Mabilis sumagot';
+
+  @override
+  String get providerSubtitleMinimax => 'Mga modelong MiniMax';
+
+  @override
+  String get providerSubtitleMistral => 'Mga modelong Mistral';
+
+  @override
+  String get providerSubtitleZai => 'Mga modelong GLM';
+
+  @override
+  String get providerSubtitleKiro => 'Kailangan ng lokal na proxy';
+
+  @override
+  String get providerSubtitleCustom => 'Sariling serbisyo';
+
+  @override
+  String get clineLoginTitle => 'Mag-sign in gamit ang Cline account';
+
+  @override
+  String get clineLoginBody =>
+      'Mag-sign in sa browser. Awtomatikong mag-a-update ito.';
+
+  @override
+  String get clinePasteBody =>
+      'Kung hindi bumalik ang browser, i-paste ang link na lumabas.';
+
+  @override
+  String get clineFieldLink => 'Login link';
+
+  @override
+  String get clineFieldLinkHint => 'I-paste ang link mula sa Cline';
+
+  @override
+  String get clineLinkInvalid =>
+      'Hindi tama ang link. Kopyahin ulit mula sa Cline.';
+
+  @override
+  String get providerDetailTestAccount => 'Subukan ang account';
 
   @override
   String get generationTitle => 'Ginagawa ang disenyo';

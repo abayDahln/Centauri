@@ -359,6 +359,18 @@
   "chatHideCode": "Hide",
   "chatNoMessagesTitle": "No conversations yet",
   "chatNoMessagesBody": "Type a message to get started.",
+"chatStreamPage": "Writing page {page}…",
+"@chatStreamPage": {
+  "placeholders": { "page": { "type": "int" } }
+},
+"chatStreamPageOf": "Writing page {page} of {total}…",
+"@chatStreamPageOf": {
+  "placeholders": {
+    "page": { "type": "int" },
+    "total": { "type": "int" }
+  }
+},
+"chatStreamFinishing": "Preparing pages…",
 
   "commonGenericError": "Something went wrong. Try again.",
   "canvasMentionElementFallback": "Selected element",
@@ -374,6 +386,7 @@
   "errorApiUnreachable": "Couldn't connect. Check the address.",
   "errorApiUnauthorized": "The access key is invalid or has no access.",
   "errorApiRateLimited": "The service is limiting requests. Try again shortly.",
+  "errorApiInsufficientCredits": "Account balance is empty. Top up and try again.",
   "errorApiNotFound": "Address or model not found. Check both.",
   "errorApiRejected": "The service rejected the request.",
   "errorApiCertificate": "The server certificate isn't valid. Check the address.",
@@ -482,6 +495,60 @@
       }
     }
   },
+  "oauthConnect": "Connect",
+  "oauthConnecting": "Connecting…",
+  "oauthConnectedAs": "Signed in as {account}",
+  "@oauthConnectedAs": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthBalance": "Balance {amount}",
+  "@oauthBalance": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthDisconnect": "Sign out",
+  "oauthLoginRequired": "Sign in first to continue.",
+  "providerSubtitleOpencode": "Free coding models",
+  "providerSubtitleOpenrouter": "Many models, one key",
+  "providerSubtitleNvidia": "Free developer account",
+  "providerSubtitleOllamaCloud": "Runs in the cloud",
+  "providerSubtitleGemini": "Key from Google AI Studio",
+  "providerSubtitleCline": "Sign in with an account",
+  "providerSubtitleCommandCode": "Paid plan needed",
+  "providerSubtitleGroq": "Fast replies",
+  "providerSubtitleMinimax": "MiniMax models",
+  "providerSubtitleMistral": "Mistral models",
+  "providerSubtitleZai": "GLM models",
+  "providerSubtitleKiro": "Local proxy needed",
+  "providerSubtitleCustom": "Your own service",
+  "clineLoginTitle": "Sign in with a Cline account",
+  "clineLoginBody": "Sign in with your browser. This window updates by itself.",
+  "clinePasteBody": "If the browser doesn't come back, paste the link it shows.",
+  "clineFieldLink": "Login link",
+  "clineFieldLinkHint": "Paste the link from Cline",
+  "@clineConnectedAs": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "@clineBalance": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "clineLinkInvalid": "That link isn't valid. Copy it from Cline again.",
+  "providerDetailTestAccount": "Test account",
   "generationTitle": "Building your design"
 }
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
+import 'package:centauri/features/provider_config/domain/entities/oauth_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -157,6 +158,94 @@ void main() {
     test('usesTemplate false untuk provider custom', () {
       final custom = provider.copyWith(catalogId: kCustomCatalogId);
       expect(custom.usesTemplate, isFalse);
+    });
+
+    test('authType default apiKey dan ikut tersimpan', () {
+      expect(provider.authType, AuthType.apiKey);
+      expect(provider.usesOAuth, isFalse);
+      expect(provider.toJson()['authType'], 'apiKey');
+    });
+
+    test('provider OAuth menyimpan penanda tanpa token di JSON', () {
+      final oauth = provider.copyWith(
+        authType: AuthType.oauth,
+        oauthProvider: kClineOAuthCatalogId,
+        oauthSession: OAuthSession(
+          accessToken: 'access-rahasia',
+          refreshToken: 'refresh-rahasia',
+          expiresAt: DateTime.utc(2026, 10, 28, 12),
+          userId: 'usr-1',
+        ),
+      );
+
+      final json = oauth.toJson();
+      expect(json['authType'], 'oauth');
+      expect(json['oauthProvider'], kClineOAuthCatalogId);
+      expect(jsonEncode(json), isNot(contains('access-rahasia')));
+      expect(jsonEncode(json), isNot(contains('refresh-rahasia')));
+    });
+
+    test('fromJson memulihkan authType, penanda, dan tanpa sesi', () {
+      final oauth = provider.copyWith(
+        authType: AuthType.oauth,
+        oauthProvider: kClineOAuthCatalogId,
+        oauthSession: OAuthSession(
+          accessToken: 'a',
+          refreshToken: 'r',
+          expiresAt: DateTime.utc(2026, 10, 28, 12),
+        ),
+      );
+      final restored = ApiProvider.fromJson(
+        jsonDecode(jsonEncode(oauth.toJson())) as Map<String, dynamic>,
+      );
+
+      expect(restored.authType, AuthType.oauth);
+      expect(restored.oauthProvider, kClineOAuthCatalogId);
+      expect(restored.usesOAuth, isTrue);
+      expect(restored.oauthSession, isNull);
+      expect(restored.bearerToken, isNull);
+    });
+
+    test('bearerToken memakai sesi OAuth, bukan apiKey', () {
+      final oauth = provider.copyWith(
+        authType: AuthType.oauth,
+        oauthProvider: kClineOAuthCatalogId,
+        oauthSession: OAuthSession(
+          accessToken: 'token-sesi',
+          refreshToken: 'r',
+          expiresAt: DateTime.utc(2026, 10, 28, 12),
+        ),
+      );
+
+      expect(oauth.bearerToken, 'token-sesi');
+      expect(oauth.copyWith(clearOAuthSession: true).bearerToken, isNull);
+    });
+
+    test('authType tak dikenal jatuh ke apiKey', () {
+      final restored = ApiProvider.fromJson({
+        'id': 'x',
+        'name': 'X',
+        'baseUrl': 'https://api.openai.com/v1',
+        'model': 'gpt-4o',
+        'authType': 'samar',
+      });
+
+      expect(restored.authType, AuthType.apiKey);
+    });
+
+    test('bentuk OAuth lama dibaca sebagai API key', () {
+      final legacy = ApiProvider.fromJson({
+        'id': 'old',
+        'name': 'Old',
+        'baseUrl': 'https://api.openai.com/v1',
+        'model': 'gpt-4o',
+        'authType': 'oauth',
+        'oauthConfig': {'clientId': 'client-1'},
+      });
+
+      expect(legacy.authType, AuthType.apiKey);
+      expect(legacy.oauthProvider, isNull);
+      expect(legacy.bearerToken, isNull);
     });
   });
 }

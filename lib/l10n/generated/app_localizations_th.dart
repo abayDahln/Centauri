@@ -685,6 +685,19 @@ class AppLocalizationsTh extends AppLocalizations {
   String get chatNoMessagesBody => 'พิมพ์ข้อความเพื่อเริ่ม';
 
   @override
+  String chatStreamPage(int page) {
+    return 'กำลังเขียนหน้า $page…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return 'กำลังเขียนหน้า $page จาก $total…';
+  }
+
+  @override
+  String get chatStreamFinishing => 'กำลังเตรียมหน้า…';
+
+  @override
   String get commonGenericError => 'เกิดข้อผิดพลาด ลองอีกครั้ง';
 
   @override
@@ -725,6 +738,10 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String get errorApiRateLimited =>
       'บริการกำลังจำกัดคำขอ ลองอีกครั้งในอีกสักครู่';
+
+  @override
+  String get errorApiInsufficientCredits =>
+      'ยอดเงินในบัญชีหมดแล้ว เติมเงินแล้วลองอีกครั้ง';
 
   @override
   String get errorApiNotFound => 'ไม่พบที่อยู่หรือ Model ตรวจสอบทั้งสองอย่าง';
@@ -922,6 +939,89 @@ class AppLocalizationsTh extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return 'หน้า $index';
   }
+
+  @override
+  String get oauthConnect => 'เชื่อมต่อ';
+
+  @override
+  String get oauthConnecting => 'กำลังเชื่อมต่อ…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return 'เข้าสู่ระบบเป็น $account';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return 'ยอดคงเหลือ $amount';
+  }
+
+  @override
+  String get oauthDisconnect => 'ออกจากระบบ';
+
+  @override
+  String get oauthLoginRequired => 'เข้าสู่ระบบก่อนเพื่อดำเนินการต่อ';
+
+  @override
+  String get providerSubtitleOpencode => 'โมเดลเขียนโค้ดฟรี';
+
+  @override
+  String get providerSubtitleOpenrouter => 'หลายโมเดลด้วยคีย์เดียว';
+
+  @override
+  String get providerSubtitleNvidia => 'บัญชีนักพัฒนาฟรี';
+
+  @override
+  String get providerSubtitleOllamaCloud => 'ทำงานบนคลาวด์';
+
+  @override
+  String get providerSubtitleGemini => 'คีย์จาก Google AI Studio';
+
+  @override
+  String get providerSubtitleCline => 'เข้าสู่ระบบด้วยบัญชี';
+
+  @override
+  String get providerSubtitleCommandCode => 'ต้องใช้แพ็กเกจแบบเสียเงิน';
+
+  @override
+  String get providerSubtitleGroq => 'ตอบกลับเร็ว';
+
+  @override
+  String get providerSubtitleMinimax => 'โมเดล MiniMax';
+
+  @override
+  String get providerSubtitleMistral => 'โมเดล Mistral';
+
+  @override
+  String get providerSubtitleZai => 'โมเดล GLM';
+
+  @override
+  String get providerSubtitleKiro => 'ต้องมีพร็อกซีในเครื่อง';
+
+  @override
+  String get providerSubtitleCustom => 'บริการของคุณเอง';
+
+  @override
+  String get clineLoginTitle => 'เข้าสู่ระบบด้วยบัญชี Cline';
+
+  @override
+  String get clineLoginBody =>
+      'เข้าสู่ระบบในเบราว์เซอร์ หน้าต่างนี้จะอัปเดตเอง';
+
+  @override
+  String get clinePasteBody => 'ถ้าเบราว์เซอร์ไม่กลับมา ให้วางลิงก์ที่ขึ้นมา';
+
+  @override
+  String get clineFieldLink => 'ลิงก์เข้าสู่ระบบ';
+
+  @override
+  String get clineFieldLinkHint => 'วางลิงก์จาก Cline';
+
+  @override
+  String get clineLinkInvalid => 'ลิงก์ไม่ถูกต้อง คัดลอกจาก Cline อีกครั้ง';
+
+  @override
+  String get providerDetailTestAccount => 'ทดสอบบัญชี';
 
   @override
   String get generationTitle => 'กำลังสร้างหน้าจอ';

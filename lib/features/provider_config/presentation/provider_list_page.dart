@@ -183,7 +183,7 @@ class ProviderListPage extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
-        borderRadius: AppRadius.md,
+        borderRadius: AppRadius.panel,
         border: Border.all(color: context.palette.borderSubtle),
       ),
       clipBehavior: Clip.antiAlias,

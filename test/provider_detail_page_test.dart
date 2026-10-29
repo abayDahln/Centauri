@@ -1,4 +1,6 @@
+import 'package:centauri/features/provider_config/data/datasources/cline_oauth_service.dart';
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
+import 'package:centauri/features/provider_config/domain/entities/oauth_session.dart';
 import 'package:centauri/features/provider_config/domain/repositories/api_provider_repository.dart';
 import 'package:centauri/features/provider_config/presentation/provider_detail_page.dart';
 import 'package:centauri/features/provider_config/presentation/providers/provider_config_provider.dart';
@@ -199,40 +201,167 @@ void main() {
       expect(repository.saved?.apiKey, isNull);
     });
   });
+
+  group('Cline', () {
+    Future<_FakeProviderRepository> pumpCline(WidgetTester tester) async {
+      final repository = _FakeProviderRepository();
+
+      tester.view
+        ..physicalSize = const Size(1000, 2400)
+        ..devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        testApp(
+          home: const ProviderDetailPage(),
+          overrides: [
+            apiProviderRepositoryProvider.overrideWithValue(repository),
+            clineOAuthServiceProvider.overrideWithValue(_FakeClineOAuth()),
+            // Test tidak membuka socket loopback: langsung ke tempel tautan.
+            clineLoopbackProvider.overrideWithValue(() async => null),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // State provider dimuat seperti saat halaman dibuka dari daftar.
+      final context = tester.element(find.byType(ProviderDetailPage));
+      await ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(providerConfigProvider.future);
+      await tester.pumpAndSettle();
+      return repository;
+    }
+
+    /// Nama sengaja tidak diisi: connect tidak boleh meminta nama.
+    Future<void> connect(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('button-oauth-connect')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('field-cline-link')),
+        'vscode://saoudrizwan.claude-dev/auth?code=abc',
+      );
+      await tester.tap(find.byKey(const ValueKey('button-cline-submit')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('kartu masuk akun tampil, field API Key hilang', (
+      tester,
+    ) async {
+      await pumpCline(tester);
+      await pickFromDialog(tester, 'Cline');
+
+      expect(find.byKey(const ValueKey('oauth-login-card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('field-apiKey')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('button-oauth-connect')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('hubungkan menampilkan nama akun, email, dan saldo', (
+      tester,
+    ) async {
+      final repository = await pumpCline(tester);
+      await pickFromDialog(tester, 'Cline');
+      await connect(tester);
+
+      // Nama provider terisi otomatis supaya hasil connect bisa disimpan.
+      final nameField = tester.widget<TextFormField>(
+        find.byKey(const ValueKey('field-nama')),
+      );
+      expect(nameField.controller?.text, 'Cline');
+      expect(find.text('Masuk sebagai Orang'), findsOneWidget);
+      expect(find.text('o***@contoh.com'), findsOneWidget);
+      expect(find.textContaining('0,01'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('button-oauth-disconnect')),
+        findsOneWidget,
+      );
+      // Provider tersimpan sebagai provider akun, bukan API key.
+      expect(repository.saved?.authType, AuthType.oauth);
+      expect(repository.saved?.oauthProvider, kClineOAuthCatalogId);
+      expect(repository.saved?.oauthSession?.accessToken, 'acc-token');
+    });
+
+    testWidgets('Keluar menghapus sesi dan kembali ke keadaan belum masuk', (
+      tester,
+    ) async {
+      final repository = await pumpCline(tester);
+      await pickFromDialog(tester, 'Cline');
+      await connect(tester);
+
+      await tester.tap(find.byKey(const ValueKey('button-oauth-disconnect')));
+      await tester.pumpAndSettle();
+
+      expect(repository.clearSessionCalls, 1);
+      expect(
+        find.byKey(const ValueKey('button-oauth-connect')),
+        findsOneWidget,
+      );
+      expect(find.text('Masuk sebagai Orang'), findsNothing);
+    });
+
+    testWidgets('tautan kosong tidak dikirim ke penyimpanan', (tester) async {
+      final repository = await pumpCline(tester);
+      await pickFromDialog(tester, 'Cline');
+
+      await tester.tap(find.byKey(const ValueKey('button-oauth-connect')));
+      await tester.pumpAndSettle();
+      // Tombol Hubungkan di dialog tidak menutup dialog saat field kosong.
+      await tester.tap(find.byKey(const ValueKey('button-cline-submit')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('field-cline-link')), findsOneWidget);
+      expect(repository.saved, isNull);
+    });
+  });
 }
 
-/// Repository palsu: menyimpan satu provider dengan key, tanpa Hive/secure
-/// storage, dan mencatat pemanggilan clearApiKey.
+/// Repository palsu: menyimpan provider di memori (tanpa Hive/secure storage)
+/// dan mencatat pemanggilan yang diperiksa test.
 class _FakeProviderRepository implements ApiProviderRepository {
-  _FakeProviderRepository(this.provider);
+  _FakeProviderRepository([ApiProvider? provider]) : _providers = [?provider];
 
-  final ApiProvider provider;
+  final List<ApiProvider> _providers;
+
   int clearCalls = 0;
+  int clearSessionCalls = 0;
   ApiProvider? saved;
 
-  /// Seperti repository asli: daftar provider tidak membawa API Key.
-  ApiProvider get _withoutKey => ApiProvider(
-    id: provider.id,
-    name: provider.name,
-    providerName: provider.providerName,
-    catalogId: provider.catalogId,
-    baseUrl: provider.baseUrl,
-    model: provider.model,
+  /// Seperti repository asli: daftar provider tidak membawa kredensial.
+  ApiProvider _withoutCredentials(ApiProvider p) => ApiProvider(
+    id: p.id,
+    name: p.name,
+    providerName: p.providerName,
+    catalogId: p.catalogId,
+    baseUrl: p.baseUrl,
+    model: p.model,
+    authType: p.authType,
+    oauthProvider: p.oauthProvider,
   );
 
   @override
-  Future<List<ApiProvider>> getProviders() async => [_withoutKey];
+  Future<List<ApiProvider>> getProviders() async => [
+    for (final p in _providers) _withoutCredentials(p),
+  ];
 
   @override
-  Future<ApiProvider?> getActiveProvider() async => provider;
+  Future<ApiProvider?> getActiveProvider() async =>
+      saved ?? _providers.firstOrNull;
 
   @override
   Future<ApiProvider?> getProviderById(String id) async =>
-      provider.id == id ? provider : null;
+      _providers.where((p) => p.id == id).firstOrNull;
 
   @override
   Future<void> saveProvider(ApiProvider provider) async {
     saved = provider;
+    _providers
+      ..removeWhere((p) => p.id == provider.id)
+      ..add(provider);
   }
 
   @override
@@ -241,8 +370,45 @@ class _FakeProviderRepository implements ApiProviderRepository {
   }
 
   @override
-  Future<void> deleteProvider(String id) async {}
+  Future<void> clearOAuthSession(String id) async {
+    clearSessionCalls++;
+  }
+
+  @override
+  Future<void> deleteProvider(String id) async {
+    _providers.removeWhere((p) => p.id == id);
+  }
 
   @override
   Future<void> setActiveProvider(String id) async {}
+}
+
+/// Pengganti [ClineOAuthService] tanpa jaringan.
+class _FakeClineOAuth extends ClineOAuthService {
+  _FakeClineOAuth({OAuthSession? session}) : _session = session ?? _default;
+
+  static final _default = OAuthSession(
+    accessToken: 'acc-token',
+    refreshToken: 'ref-token',
+    expiresAt: DateTime.utc(2026, 12, 1),
+    userId: 'user-1',
+    email: 'orang@contoh.com',
+    displayName: 'Orang',
+  );
+
+  final OAuthSession _session;
+  String? lastLink;
+  int balanceCalls = 0;
+
+  @override
+  Future<OAuthSession> connect(String pasted) async {
+    lastLink = pasted;
+    return _session;
+  }
+
+  @override
+  Future<double> fetchBalance(OAuthSession session) async {
+    balanceCalls++;
+    return -0.01;
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/config/theme.dart';
+import '../../../../app/l10n/l10n.dart';
 import '../../domain/catalog/provider_catalog_entry.dart';
 import '../provider_catalog_view_model.dart';
 import 'provider_card.dart';
@@ -24,8 +25,8 @@ class ProviderCatalogPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final custom = ProviderCatalogViewModel.customCard;
-    final sections = ProviderCatalogViewModel.build();
+    final custom = ProviderCatalogViewModel.customCard(context.l10n);
+    final sections = ProviderCatalogViewModel.build(context.l10n);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

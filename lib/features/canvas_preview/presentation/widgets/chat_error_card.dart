@@ -68,10 +68,13 @@ class ChatErrorCard extends ConsumerWidget {
               onPressed: busy
                   ? null
                   : () async {
-                      await ref
-                          .read(workspaceProvider.notifier)
-                          .retryLastPrompt();
-                      ref.read(historyProvider.notifier).persistCurrent();
+                      // Notifier diambil sebelum await: widget ini bisa sudah
+                      // di-unmount saat generate selesai, dan `ref` tidak boleh
+                      // dipakai lagi setelah itu.
+                      final workspace = ref.read(workspaceProvider.notifier);
+                      final history = ref.read(historyProvider.notifier);
+                      await workspace.retryLastPrompt();
+                      history.persistCurrent();
                     },
               icon: const Icon(Icons.refresh, size: 14),
               label: Text(context.l10n.commonRetry),

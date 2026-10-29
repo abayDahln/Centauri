@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:simple_icons/simple_icons.dart';
 
+import '../../../../app/l10n/l10n.dart';
 import '../data/catalog/provider_catalog.dart';
 import '../domain/catalog/provider_catalog_entry.dart';
 import '../domain/entities/api_provider.dart';
@@ -71,6 +72,7 @@ class ProviderCatalogViewModel {
     (
       title: 'API Key',
       ids: [
+        'cline',
         'command-code',
         'groq',
         'minimax',
@@ -83,34 +85,59 @@ class ProviderCatalogViewModel {
   ];
 
   /// Seluruh kartu (dipakai untuk pencarian lintas section).
-  static List<ProviderCardData> allCards() => [
+  static List<ProviderCardData> allCards(AppLocalizations l10n) => [
     for (final section in _sections)
-      for (final id in section.ids) ?_resolve(id),
+      for (final id in section.ids) ?_resolve(id, l10n),
   ];
 
   /// Kartu provider custom ("Custom API Key"). Ditampilkan paling atas di
   /// dialog pemilih provider, terpisah dari section katalog.
-  static ProviderCardData get customCard => _resolve(kCustomCatalogId)!;
+  static ProviderCardData customCard(AppLocalizations l10n) =>
+      _resolve(kCustomCatalogId, l10n)!;
 
   /// Bangun section terkurasi; section tanpa kartu yang cocok akan kosong.
-  static List<ProviderSection> build() => [
+  static List<ProviderSection> build(AppLocalizations l10n) => [
     for (final section in _sections)
       ProviderSection(
         title: section.title,
-        cards: [for (final id in section.ids) ?_resolve(id)],
+        cards: [for (final id in section.ids) ?_resolve(id, l10n)],
       ),
   ];
 
-  static ProviderCardData? _resolve(String id) {
+  static ProviderCardData? _resolve(String id, AppLocalizations l10n) {
     final entry = ProviderCatalog.byId(id);
     if (entry == null) return null;
     return ProviderCardData(
       id: entry.id,
       name: _displayName(entry.id, entry.name),
-      subtitle: entry.note ?? _hostOf(entry.baseUrl),
+      subtitle: _subtitleFor(l10n, entry),
       logo: _logoFor(entry.id),
       entry: entry,
     );
+  }
+
+  /// Subtitle pendek yang menjelaskan gunanya, bukan mengulang nama section.
+  /// Id tanpa teks jatuh ke host Base URL agar tidak pernah kosong.
+  static String _subtitleFor(
+    AppLocalizations l10n,
+    ProviderCatalogEntry entry,
+  ) {
+    return switch (entry.id) {
+      'opencode' => l10n.providerSubtitleOpencode,
+      'openrouter' => l10n.providerSubtitleOpenrouter,
+      'nvidia' => l10n.providerSubtitleNvidia,
+      'ollama-cloud' => l10n.providerSubtitleOllamaCloud,
+      'gemini' => l10n.providerSubtitleGemini,
+      'cline' => l10n.providerSubtitleCline,
+      'command-code' => l10n.providerSubtitleCommandCode,
+      'groq' => l10n.providerSubtitleGroq,
+      'minimax' => l10n.providerSubtitleMinimax,
+      'mistral' => l10n.providerSubtitleMistral,
+      'zai' => l10n.providerSubtitleZai,
+      'kiro-ai' => l10n.providerSubtitleKiro,
+      'custom-api' => l10n.providerSubtitleCustom,
+      _ => _hostOf(entry.baseUrl),
+    };
   }
 
   static String _displayName(String id, String fallback) =>
@@ -188,6 +215,12 @@ class ProviderCatalogViewModel {
           color: Color(0xFFF55036),
           textIcon: 'GQ',
           assetPath: 'assets/icons/groq.png',
+        );
+      case 'cline':
+        return const ProviderLogoData(
+          color: Color(0xFF0F1115),
+          textIcon: 'CL',
+          assetPath: 'assets/icons/cline.png',
         );
       case 'custom-api':
         return const ProviderLogoData(color: Color(0xFF5F6368), textIcon: 'CU');

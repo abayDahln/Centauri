@@ -4,6 +4,7 @@ import 'package:centauri/core/errors/app_error.dart';
 import 'package:centauri/core/utils/app_constants.dart';
 import 'package:centauri/features/provider_config/data/datasources/ai_api_service.dart';
 import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
+import 'package:centauri/features/provider_config/domain/entities/oauth_session.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -445,6 +446,108 @@ void main() {
       final headers = adapter.lastRequest!.headers;
       expect(headers.containsKey('HTTP-Referer'), isFalse);
       expect(headers.containsKey('X-OpenRouter-Title'), isFalse);
+    });
+  });
+
+  group('OAuth Cline', () {
+    ApiProvider oauthProvider() => ApiProvider(
+      id: 'cline-1',
+      name: 'Cline',
+      baseUrl: 'https://api.cline.bot/api/v1',
+      model: 'anthropic/claude-sonnet-4.5',
+      authType: AuthType.oauth,
+      oauthProvider: 'cline',
+      oauthSession: OAuthSession(
+        accessToken: 'acc-token',
+        refreshToken: 'ref-token',
+        expiresAt: DateTime.utc(2026, 12, 1),
+        userId: 'user-1',
+      ),
+    );
+
+    test('sesi OAuth dikirim dengan prefix workos:', () async {
+      final adapter = _FakeAdapter(
+        '{"choices":[{"message":{"content":"<html></html>"}}]}',
+      );
+      final service = AiApiService(
+        clientFactory: (_) => Dio()..httpClientAdapter = adapter,
+      );
+
+      await service.generateUI(
+        provider: oauthProvider(),
+        messages: const [
+          {'role': 'user', 'content': 'halo'},
+        ],
+      );
+
+      expect(
+        adapter.lastRequest!.headers['Authorization'],
+        'Bearer workos:acc-token',
+      );
+    });
+
+    test('API key tetap dikirim tanpa prefix', () async {
+      final adapter = _FakeAdapter(
+        '{"choices":[{"message":{"content":"<html></html>"}}]}',
+      );
+      final service = AiApiService(
+        clientFactory: (_) => Dio()..httpClientAdapter = adapter,
+      );
+
+      await service.generateUI(
+        provider: const ApiProvider(
+          id: 'p1',
+          name: 'Groq',
+          baseUrl: 'https://api.groq.com/openai/v1',
+          model: 'llama3',
+          apiKey: 'gsk-test',
+        ),
+        messages: const [
+          {'role': 'user', 'content': 'halo'},
+        ],
+      );
+
+      expect(adapter.lastRequest!.headers['Authorization'], 'Bearer gsk-test');
+    });
+
+    test('400 meneruskan pesan provider, bukan pesan generik', () async {
+      final service = AiApiService(
+        clientFactory: (_) => Dio()
+          ..httpClientAdapter = _FakeAdapter(
+            '{"error":"invalid model format. Expected format: modelType/model"}',
+            statusCode: 400,
+          ),
+      );
+
+      await expectLater(
+        service.testConnection(oauthProvider()),
+        throwsA(
+          isA<ApiConnectionException>()
+              .having((e) => e.code, 'code', AppErrorCode.apiProviderReported)
+              .having((e) => e.detail, 'detail', contains('modelType/model')),
+        ),
+      );
+    });
+
+    test('402 dipetakan ke saldo habis, bukan kunci tidak berlaku', () async {
+      final service = AiApiService(
+        clientFactory: (_) => Dio()
+          ..httpClientAdapter = _FakeAdapter(
+            '{"error":"insufficient_credits"}',
+            statusCode: 402,
+          ),
+      );
+
+      await expectLater(
+        service.testConnection(oauthProvider()),
+        throwsA(
+          isA<ApiConnectionException>().having(
+            (e) => e.code,
+            'code',
+            AppErrorCode.apiInsufficientCredits,
+          ),
+        ),
+      );
     });
   });
 }

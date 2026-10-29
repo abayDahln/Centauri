@@ -33,7 +33,6 @@ class ProviderCatalogEntry {
     required this.textIcon,
     this.website,
     this.apiKeyUrl,
-    this.note,
   });
 
   final String id;
@@ -54,7 +53,4 @@ class ProviderCatalogEntry {
 
   /// Halaman untuk membuat API key. Null untuk provider lokal tanpa key.
   final String? apiKeyUrl;
-
-  /// Catatan singkat (mis. "Lewat endpoint OpenAI-compat").
-  final String? note;
 }

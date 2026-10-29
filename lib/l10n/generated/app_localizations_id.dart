@@ -693,6 +693,19 @@ class AppLocalizationsId extends AppLocalizations {
   String get chatNoMessagesBody => 'Ketik pesan untuk memulai.';
 
   @override
+  String chatStreamPage(int page) {
+    return 'Menulis halaman $page…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return 'Menulis halaman $page dari $total…';
+  }
+
+  @override
+  String get chatStreamFinishing => 'Menyiapkan halaman…';
+
+  @override
   String get commonGenericError => 'Terjadi kesalahan. Coba lagi.';
 
   @override
@@ -736,6 +749,10 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get errorApiRateLimited =>
       'Layanan sedang membatasi permintaan. Coba lagi sebentar.';
+
+  @override
+  String get errorApiInsufficientCredits =>
+      'Saldo akun habis. Isi saldo lalu coba lagi.';
 
   @override
   String get errorApiNotFound =>
@@ -936,6 +953,91 @@ class AppLocalizationsId extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return 'Halaman $index';
   }
+
+  @override
+  String get oauthConnect => 'Hubungkan';
+
+  @override
+  String get oauthConnecting => 'Menghubungkan…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return 'Masuk sebagai $account';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return 'Saldo $amount';
+  }
+
+  @override
+  String get oauthDisconnect => 'Keluar';
+
+  @override
+  String get oauthLoginRequired => 'Masuk dulu untuk melanjutkan.';
+
+  @override
+  String get providerSubtitleOpencode => 'Model coding gratis';
+
+  @override
+  String get providerSubtitleOpenrouter => 'Banyak model, satu kunci';
+
+  @override
+  String get providerSubtitleNvidia => 'Akun developer gratis';
+
+  @override
+  String get providerSubtitleOllamaCloud => 'Berjalan di cloud';
+
+  @override
+  String get providerSubtitleGemini => 'Kunci dari Google AI Studio';
+
+  @override
+  String get providerSubtitleCline => 'Masuk dengan akun';
+
+  @override
+  String get providerSubtitleCommandCode => 'Perlu paket berbayar';
+
+  @override
+  String get providerSubtitleGroq => 'Balasan cepat';
+
+  @override
+  String get providerSubtitleMinimax => 'Model MiniMax';
+
+  @override
+  String get providerSubtitleMistral => 'Model Mistral';
+
+  @override
+  String get providerSubtitleZai => 'Model GLM';
+
+  @override
+  String get providerSubtitleKiro => 'Perlu proxy lokal';
+
+  @override
+  String get providerSubtitleCustom => 'Layanan sendiri';
+
+  @override
+  String get clineLoginTitle => 'Masuk dengan akun Cline';
+
+  @override
+  String get clineLoginBody =>
+      'Masuk lewat browser. Jendela ini ikut diperbarui.';
+
+  @override
+  String get clinePasteBody =>
+      'Kalau browser tidak kembali ke sini, tempel tautan yang muncul.';
+
+  @override
+  String get clineFieldLink => 'Tautan login';
+
+  @override
+  String get clineFieldLinkHint => 'Tempel tautan dari Cline';
+
+  @override
+  String get clineLinkInvalid =>
+      'Tautan tidak dikenali. Salin ulang dari Cline.';
+
+  @override
+  String get providerDetailTestAccount => 'Uji akun';
 
   @override
   String get generationTitle => 'Membuat desain';

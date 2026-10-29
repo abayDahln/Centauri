@@ -205,7 +205,7 @@ class _PromptBarState extends ConsumerState<PromptBar> {
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 decoration: BoxDecoration(
                   color: context.palette.bgSurface,
-                  borderRadius: AppRadius.md,
+                  borderRadius: AppRadius.panel,
                   border: Border.all(
                     color: _dragging
                         ? context.palette.primary

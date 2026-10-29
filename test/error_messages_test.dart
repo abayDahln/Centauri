@@ -103,6 +103,20 @@ void main() {
     );
   });
 
+  test('saldo habis punya pesan sendiri, bukan pesan kunci tidak berlaku', () {
+    final message = localizedAppError(
+      id,
+      const AppErrorDetails(
+        AppErrorCode.apiInsufficientCredits,
+        detail: 'HTTP 402 | insufficient_credits',
+      ),
+    );
+
+    expect(message, id.errorApiInsufficientCredits);
+    expect(message, isNot(id.errorApiUnauthorized));
+    expect(message, isNot(contains('402')));
+  });
+
   test('debugLabel memuat kode dan detail untuk log', () {
     expect(
       const AppErrorDetails(AppErrorCode.exportTimeout).debugLabel,

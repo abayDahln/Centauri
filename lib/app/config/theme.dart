@@ -10,7 +10,7 @@ import 'app_palette.dart';
 /// Prinsip:
 ///  - Kanvas netral dingin, panel solid, garis 1 px. Tanpa bayangan dekoratif.
 ///  - Satu aksen per layar; warna semantik hanya untuk status.
-///  - Bentuk tegas: kontrol 6, kartu/panel 10, bingkai 14.
+///  - Bentuk tegas: kontrol 6, kartu 10, bingkai 14, panel mengambang 16.
 ///  - Tipografi Instrument Sans; JetBrains Mono untuk kode dan label teknis.
 ///  - Warna diambil dari [AppPalette] lewat `context.palette` supaya mode
 ///    terang/gelap dan warna kustom pengguna bisa berubah saat aplikasi jalan.
@@ -22,6 +22,12 @@ class AppMetrics {
   static const double sideBarWidth = 340;
   static const double titleBarHeight = 40;
   static const double topBarHeight = 52;
+
+  /// Jarak antar panel mengambang.
+  static const double panelGutter = 12;
+
+  /// Jarak panel mengambang dari tepi jendela.
+  static const double windowInset = 16;
   static const double toolbarHeight = 40;
   static const double statusBarHeight = 0;
 }
@@ -41,6 +47,11 @@ class AppRadius {
 
   /// Bingkai layar, dialog, sheet.
   static const BorderRadius xl = BorderRadius.all(Radius.circular(14));
+
+  /// Panel & toolbar yang mengambang di atas kanvas (sidebar chat, riwayat,
+  /// panel kode, bar atas). Sudutnya lebih besar dari kartu biasa karena
+  /// panel tidak menempel ke tepi jendela.
+  static const BorderRadius panel = BorderRadius.all(Radius.circular(16));
 
   /// Pil penuh.
   static const BorderRadius pill = BorderRadius.all(Radius.circular(999));

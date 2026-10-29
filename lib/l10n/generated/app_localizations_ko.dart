@@ -680,6 +680,19 @@ class AppLocalizationsKo extends AppLocalizations {
   String get chatNoMessagesBody => '메시지를 보내 시작해 보세요.';
 
   @override
+  String chatStreamPage(int page) {
+    return '$page페이지 작성 중…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return '$total페이지 중 $page페이지 작성 중…';
+  }
+
+  @override
+  String get chatStreamFinishing => '페이지 준비 중…';
+
+  @override
   String get commonGenericError => '문제가 발생했어요. 다시 시도해 주세요.';
 
   @override
@@ -717,6 +730,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get errorApiRateLimited => '서비스가 요청을 제한하고 있어요. 잠시 후 다시 시도해 주세요.';
+
+  @override
+  String get errorApiInsufficientCredits => '계정 잔액이 부족합니다. 충전 후 다시 시도해 주세요.';
 
   @override
   String get errorApiNotFound => '주소나 Model을 찾을 수 없어요. 둘 다 확인해 주세요.';
@@ -910,6 +926,88 @@ class AppLocalizationsKo extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return '$index페이지';
   }
+
+  @override
+  String get oauthConnect => '연결';
+
+  @override
+  String get oauthConnecting => '연결 중…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return '$account(으)로 로그인됨';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return '잔액 $amount';
+  }
+
+  @override
+  String get oauthDisconnect => '로그아웃';
+
+  @override
+  String get oauthLoginRequired => '계속하려면 먼저 로그인하세요.';
+
+  @override
+  String get providerSubtitleOpencode => '무료 코딩 모델';
+
+  @override
+  String get providerSubtitleOpenrouter => '여러 모델, 하나의 키';
+
+  @override
+  String get providerSubtitleNvidia => '무료 개발자 계정';
+
+  @override
+  String get providerSubtitleOllamaCloud => '클라우드에서 실행';
+
+  @override
+  String get providerSubtitleGemini => 'Google AI Studio 키';
+
+  @override
+  String get providerSubtitleCline => '계정으로 로그인';
+
+  @override
+  String get providerSubtitleCommandCode => '유료 플랜 필요';
+
+  @override
+  String get providerSubtitleGroq => '빠른 응답';
+
+  @override
+  String get providerSubtitleMinimax => 'MiniMax 모델';
+
+  @override
+  String get providerSubtitleMistral => 'Mistral 모델';
+
+  @override
+  String get providerSubtitleZai => 'GLM 모델';
+
+  @override
+  String get providerSubtitleKiro => '로컬 프록시 필요';
+
+  @override
+  String get providerSubtitleCustom => '직접 운영하는 서비스';
+
+  @override
+  String get clineLoginTitle => 'Cline 계정으로 로그인';
+
+  @override
+  String get clineLoginBody => '브라우저에서 로그인하면 여기가 자동으로 업데이트돼요.';
+
+  @override
+  String get clinePasteBody => '브라우저가 돌아오지 않으면 표시된 링크를 붙여넣으세요.';
+
+  @override
+  String get clineFieldLink => '로그인 링크';
+
+  @override
+  String get clineFieldLinkHint => 'Cline에서 복사한 링크 붙여넣기';
+
+  @override
+  String get clineLinkInvalid => '링크가 올바르지 않아요. Cline에서 다시 복사하세요.';
+
+  @override
+  String get providerDetailTestAccount => '계정 테스트';
 
   @override
   String get generationTitle => '화면 생성 중';

@@ -22,6 +22,10 @@ abstract class ApiProviderRepository {
   /// tetap mempertahankan key lama.
   Future<void> clearApiKey(String id);
 
+  /// Menghapus sesi OAuth tersimpan milik [id] (tombol Keluar). Metadata
+  /// provider tetap ada supaya pengguna bisa masuk lagi kapan saja.
+  Future<void> clearOAuthSession(String id);
+
   Future<void> deleteProvider(String id);
 
   Future<void> setActiveProvider(String id);

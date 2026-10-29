@@ -116,7 +116,7 @@ class ProviderLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assetPath = logo.assetPath;
-    final logoColor = logo.color ?? context.palette.textSecondary;
+    final logoColor = _readableColor(context);
     return Container(
       width: 40,
       height: 40,
@@ -133,23 +133,30 @@ class ProviderLogo extends StatelessWidget {
                 width: 28,
                 height: 28,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _fallbackText(context),
+                errorBuilder: (_, _, _) => _fallbackText(logoColor),
               ),
             )
           : logo.brandIcon != null
           ? Icon(logo.brandIcon, size: 22, color: logoColor)
-          : _fallbackText(context),
+          : _fallbackText(logoColor),
     );
   }
 
-  Widget _fallbackText(BuildContext context) {
+  /// Brand yang nyaris hitam (Ollama, OpenCode, Cline) atau nyaris putih tidak
+  /// terbaca di salah satu mode. Untuk itu dipakai warna teks palet aktif,
+  /// sehingga logo dan latar tile-nya tetap kontras di mode terang maupun
+  /// gelap.
+  Color _readableColor(BuildContext context) {
+    final base = logo.color ?? context.palette.textSecondary;
+    final luminance = base.computeLuminance();
+    final unreadable = luminance < 0.05 || luminance > 0.95;
+    return unreadable ? context.palette.textPrimary : base;
+  }
+
+  Widget _fallbackText(Color color) {
     return Text(
       logo.textIcon,
-      style: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: logo.color ?? context.palette.textSecondary,
-      ),
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color),
     );
   }
 }

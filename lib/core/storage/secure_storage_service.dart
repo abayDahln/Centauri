@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../features/provider_config/domain/entities/oauth_session.dart';
 import '../errors/app_error.dart';
 import '../utils/app_constants.dart';
 
@@ -95,6 +98,70 @@ class SecureStorageService {
       throw SecureStorageException(
         AppErrorCode.storageFailed,
         detail: 'delete: $e',
+      );
+    }
+  }
+
+  // ------------------------------------------------------------- sesi oauth --
+
+  String _sessionKeyFor(String providerId) =>
+      '${AppConstants.oauthSessionPrefix}$providerId';
+
+  /// Simpan sesi OAuth (token + identitas akun) sebagai satu nilai JSON.
+  /// Melempar [SecureStorageException] bila native storage gagal, agar sesi
+  /// yang tidak tersimpan tidak lolos diam-diam.
+  Future<void> saveOAuthSession(String providerId, OAuthSession session) async {
+    try {
+      await _storage.write(
+        key: _sessionKeyFor(providerId),
+        value: jsonEncode(session.toJson()),
+      );
+    } catch (e) {
+      throw SecureStorageException(
+        AppErrorCode.storageFailed,
+        detail: 'write session: $e',
+      );
+    }
+  }
+
+  /// Baca sesi OAuth milik [providerId].
+  ///
+  /// Null bila belum ada, JSON-nya rusak, atau tokennya kosong — pengguna
+  /// dianggap belum masuk dan bisa menghubungkan ulang tanpa crash.
+  Future<OAuthSession?> readOAuthSession(String providerId) async {
+    final String? raw;
+    try {
+      raw = await _storage.read(key: _sessionKeyFor(providerId));
+    } catch (e) {
+      throw SecureStorageException(
+        AppErrorCode.storageFailed,
+        detail: 'read session: $e',
+      );
+    }
+    if (raw == null || raw.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return null;
+      final session = OAuthSession.fromJson(decoded);
+      if (session.accessToken.isEmpty || session.refreshToken.isEmpty) {
+        return null;
+      }
+      return session;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Hapus sesi OAuth milik [providerId] (dipakai saat provider dihapus atau
+  /// pengguna menekan Keluar).
+  Future<void> deleteOAuthSession(String providerId) async {
+    try {
+      await _storage.delete(key: _sessionKeyFor(providerId));
+    } catch (e) {
+      throw SecureStorageException(
+        AppErrorCode.storageFailed,
+        detail: 'delete session: $e',
       );
     }
   }

@@ -700,6 +700,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chatNoMessagesBody => 'Введите сообщение, чтобы начать.';
 
   @override
+  String chatStreamPage(int page) {
+    return 'Пишу страницу $page…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return 'Пишу страницу $page из $total…';
+  }
+
+  @override
+  String get chatStreamFinishing => 'Готовлю страницы…';
+
+  @override
   String get commonGenericError => 'Что-то пошло не так. Повторите попытку.';
 
   @override
@@ -742,6 +755,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get errorApiRateLimited =>
       'Сервис ограничивает запросы. Повторите попытку позже.';
+
+  @override
+  String get errorApiInsufficientCredits =>
+      'На балансе аккаунта нет средств. Пополните баланс и повторите попытку.';
 
   @override
   String get errorApiNotFound =>
@@ -947,6 +964,90 @@ class AppLocalizationsRu extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return 'Страница $index';
   }
+
+  @override
+  String get oauthConnect => 'Подключить';
+
+  @override
+  String get oauthConnecting => 'Подключение…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return 'Вы вошли как $account';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return 'Баланс $amount';
+  }
+
+  @override
+  String get oauthDisconnect => 'Выйти';
+
+  @override
+  String get oauthLoginRequired => 'Сначала войдите, чтобы продолжить.';
+
+  @override
+  String get providerSubtitleOpencode => 'Бесплатные модели для кода';
+
+  @override
+  String get providerSubtitleOpenrouter => 'Много моделей, один ключ';
+
+  @override
+  String get providerSubtitleNvidia => 'Бесплатный аккаунт разработчика';
+
+  @override
+  String get providerSubtitleOllamaCloud => 'Работает в облаке';
+
+  @override
+  String get providerSubtitleGemini => 'Ключ из Google AI Studio';
+
+  @override
+  String get providerSubtitleCline => 'Вход через аккаунт';
+
+  @override
+  String get providerSubtitleCommandCode => 'Нужен платный план';
+
+  @override
+  String get providerSubtitleGroq => 'Быстрые ответы';
+
+  @override
+  String get providerSubtitleMinimax => 'Модели MiniMax';
+
+  @override
+  String get providerSubtitleMistral => 'Модели Mistral';
+
+  @override
+  String get providerSubtitleZai => 'Модели GLM';
+
+  @override
+  String get providerSubtitleKiro => 'Нужен локальный прокси';
+
+  @override
+  String get providerSubtitleCustom => 'Свой сервис';
+
+  @override
+  String get clineLoginTitle => 'Вход с аккаунтом Cline';
+
+  @override
+  String get clineLoginBody => 'Войдите в браузере — здесь всё обновится само.';
+
+  @override
+  String get clinePasteBody =>
+      'Если браузер не вернулся, вставьте ссылку, которую он показал.';
+
+  @override
+  String get clineFieldLink => 'Ссылка для входа';
+
+  @override
+  String get clineFieldLinkHint => 'Вставьте ссылку из Cline';
+
+  @override
+  String get clineLinkInvalid =>
+      'Ссылка не подходит. Скопируйте её из Cline заново.';
+
+  @override
+  String get providerDetailTestAccount => 'Проверить аккаунт';
 
   @override
   String get generationTitle => 'Создание дизайна';

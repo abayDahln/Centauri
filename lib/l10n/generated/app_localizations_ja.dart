@@ -680,6 +680,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get chatNoMessagesBody => 'メッセージを送って始めましょう。';
 
   @override
+  String chatStreamPage(int page) {
+    return 'ページ $page を書き込み中…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return 'ページ $page/$total を書き込み中…';
+  }
+
+  @override
+  String get chatStreamFinishing => 'ページを準備中…';
+
+  @override
   String get commonGenericError => '問題が発生しました。もう一度お試しください。';
 
   @override
@@ -717,6 +730,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get errorApiRateLimited => 'サービスがリクエストを制限しています。しばらくしてからもう一度お試しください。';
+
+  @override
+  String get errorApiInsufficientCredits =>
+      'アカウントの残高が不足しています。チャージしてからもう一度お試しください。';
 
   @override
   String get errorApiNotFound => 'アドレスまたは Model が見つかりません。両方を確認してください。';
@@ -909,6 +926,88 @@ class AppLocalizationsJa extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return '$index ページ';
   }
+
+  @override
+  String get oauthConnect => '接続';
+
+  @override
+  String get oauthConnecting => '接続中…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return '$account でサインイン中';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return '残高 $amount';
+  }
+
+  @override
+  String get oauthDisconnect => 'サインアウト';
+
+  @override
+  String get oauthLoginRequired => '続けるには先にサインインしてください。';
+
+  @override
+  String get providerSubtitleOpencode => '無料のコーディングモデル';
+
+  @override
+  String get providerSubtitleOpenrouter => '多数のモデルを1つのキーで';
+
+  @override
+  String get providerSubtitleNvidia => '無料の開発者アカウント';
+
+  @override
+  String get providerSubtitleOllamaCloud => 'クラウドで動作';
+
+  @override
+  String get providerSubtitleGemini => 'Google AI Studio のキー';
+
+  @override
+  String get providerSubtitleCline => 'アカウントでサインイン';
+
+  @override
+  String get providerSubtitleCommandCode => '有料プランが必要';
+
+  @override
+  String get providerSubtitleGroq => '応答が速い';
+
+  @override
+  String get providerSubtitleMinimax => 'MiniMax のモデル';
+
+  @override
+  String get providerSubtitleMistral => 'Mistral のモデル';
+
+  @override
+  String get providerSubtitleZai => 'GLM のモデル';
+
+  @override
+  String get providerSubtitleKiro => 'ローカルプロキシが必要';
+
+  @override
+  String get providerSubtitleCustom => '自前のサービス';
+
+  @override
+  String get clineLoginTitle => 'Cline アカウントでサインイン';
+
+  @override
+  String get clineLoginBody => 'ブラウザでサインインすると、ここが自動で更新されます。';
+
+  @override
+  String get clinePasteBody => 'ブラウザが戻ってこない場合は、表示されたリンクを貼り付けてください。';
+
+  @override
+  String get clineFieldLink => 'ログインリンク';
+
+  @override
+  String get clineFieldLinkHint => 'Cline のリンクを貼り付け';
+
+  @override
+  String get clineLinkInvalid => 'リンクが正しくありません。Cline からコピーし直してください。';
+
+  @override
+  String get providerDetailTestAccount => 'アカウントをテスト';
 
   @override
   String get generationTitle => '画面を生成中';

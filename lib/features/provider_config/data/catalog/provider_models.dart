@@ -70,6 +70,17 @@ class ProviderModelCatalog {
     ],
   );
 
+  static const _cline = ProviderModelSet(
+    alias: 'cline',
+    models: [
+      ProviderModel('anthropic/claude-sonnet-4.5', 'Claude Sonnet 4.5'),
+      ProviderModel('anthropic/claude-haiku-4.5', 'Claude Haiku 4.5'),
+      ProviderModel('openai/gpt-5.1', 'GPT-5.1'),
+      ProviderModel('google/gemini-3.8-flash', 'Gemini 3.8 Flash'),
+      ProviderModel('deepseek/deepseek-v4.1-flash', 'DeepSeek V4.1 Flash'),
+    ],
+  );
+
   static const _kiro = ProviderModelSet(
     alias: 'kr',
     models: [
@@ -396,6 +407,7 @@ class ProviderModelCatalog {
   /// 9router).
   static const Map<String, ProviderModelSet> _byProvider = {
     // API key
+    'cline': _cline,
     'kiro-ai': _kiro,
     'zai': _zaiGlm,
     'command-code': _commandCode,

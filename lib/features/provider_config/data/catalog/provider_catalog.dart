@@ -29,7 +29,6 @@ class ProviderCatalog {
       textIcon: 'GE',
       website: 'https://ai.google.dev',
       apiKeyUrl: 'https://aistudio.google.com/app/apikey',
-      note: 'Lewat endpoint OpenAI-compat',
     ),
     ProviderCatalogEntry(
       id: 'nvidia',
@@ -42,7 +41,6 @@ class ProviderCatalog {
       textIcon: 'NV',
       website: 'https://build.nvidia.com',
       apiKeyUrl: 'https://build.nvidia.com/settings/api-keys',
-      note: 'Gratis untuk anggota NVIDIA Developer Program',
     ),
     ProviderCatalogEntry(
       id: 'openrouter',
@@ -55,7 +53,6 @@ class ProviderCatalog {
       textIcon: 'OR',
       website: 'https://openrouter.ai',
       apiKeyUrl: 'https://openrouter.ai/keys',
-      note: 'Ada banyak model gratis',
     ),
     ProviderCatalogEntry(
       id: 'opencode',
@@ -68,7 +65,6 @@ class ProviderCatalog {
       textIcon: 'OC',
       website: 'https://opencode.ai',
       apiKeyUrl: 'https://opencode.ai/auth',
-      note: 'OpenCode Zen gateway (OpenAI-compat)',
     ),
     ProviderCatalogEntry(
       id: 'ollama-cloud',
@@ -81,7 +77,6 @@ class ProviderCatalog {
       textIcon: 'OL',
       website: 'https://ollama.com',
       apiKeyUrl: 'https://ollama.com/settings/keys',
-      note: 'Model cloud terhosting via endpoint OpenAI-compat',
     ),
     ProviderCatalogEntry(
       id: 'groq',
@@ -94,7 +89,6 @@ class ProviderCatalog {
       textIcon: 'GQ',
       website: 'https://groq.com',
       apiKeyUrl: 'https://console.groq.com/keys',
-      note: 'Ada tier gratis',
     ),
     ProviderCatalogEntry(
       id: 'cerebras',
@@ -107,10 +101,22 @@ class ProviderCatalog {
       textIcon: 'CB',
       website: 'https://www.cerebras.ai',
       apiKeyUrl: 'https://cloud.cerebras.ai/platform',
-      note: 'Ada tier gratis',
     ),
 
     // ------------------------------------------------------------ api key --
+    // Cline satu-satunya provider yang punya dua jalur kredensial: masuk
+    // dengan akun (OAuth, lihat `ClineOAuthService`) atau API key biasa.
+    ProviderCatalogEntry(
+      id: kClineOAuthCatalogId,
+      name: 'Cline',
+      category: ProviderCategory.apiKey,
+      baseUrl: 'https://api.cline.bot/api/v1',
+      defaultModel: 'anthropic/claude-sonnet-4.5',
+      icon: Icons.code,
+      brandColor: Color(0xFF0F1115),
+      textIcon: 'CL',
+      website: 'https://cline.bot',
+    ),
     ProviderCatalogEntry(
       id: 'openai',
       name: 'OpenAI',
@@ -134,7 +140,6 @@ class ProviderCatalog {
       textIcon: 'AN',
       website: 'https://console.anthropic.com',
       apiKeyUrl: 'https://console.anthropic.com/settings/keys',
-      note: 'Lewat endpoint OpenAI-compat',
     ),
     ProviderCatalogEntry(
       id: 'mistral',
@@ -315,7 +320,6 @@ class ProviderCatalog {
       textIcon: 'L7',
       website: 'https://llm7.io',
       apiKeyUrl: 'https://token.llm7.io',
-      note: 'Ada akses gratis',
     ),
     ProviderCatalogEntry(
       id: 'chutes',
@@ -353,7 +357,6 @@ class ProviderCatalog {
       textIcon: 'CC',
       website: 'https://commandcode.ai',
       apiKeyUrl: 'https://commandcode.ai/studio/',
-      note: 'Provider API OpenAI-compat (butuh paket berbayar)',
     ),
     ProviderCatalogEntry(
       id: 'kiro-ai',
@@ -365,7 +368,6 @@ class ProviderCatalog {
       brandColor: Color(0xFF9046FF),
       textIcon: 'KR',
       website: 'https://kiro.dev',
-      note: 'Via kiro-openai-proxy lokal (OpenAI-compat)',
     ),
 
     // -------------------------------------------------------------- lokal --
@@ -379,7 +381,6 @@ class ProviderCatalog {
       brandColor: Color(0xFF1A1A1A),
       textIcon: 'OL',
       website: 'https://ollama.com',
-      note: 'Tanpa API key',
     ),
     ProviderCatalogEntry(
       id: 'lmstudio',
@@ -391,7 +392,6 @@ class ProviderCatalog {
       brandColor: Color(0xFF4B5563),
       textIcon: 'LM',
       website: 'https://lmstudio.ai',
-      note: 'Tanpa API key',
     ),
     ProviderCatalogEntry(
       id: 'llamacpp',
@@ -403,7 +403,6 @@ class ProviderCatalog {
       brandColor: Color(0xFF374151),
       textIcon: 'LC',
       website: 'https://github.com/ggml-org/llama.cpp',
-      note: 'Tanpa API key',
     ),
     ProviderCatalogEntry(
       id: 'vllm',
@@ -415,7 +414,6 @@ class ProviderCatalog {
       brandColor: Color(0xFF4B5563),
       textIcon: 'VL',
       website: 'https://docs.vllm.ai',
-      note: 'Tanpa API key',
     ),
   ];
 
@@ -430,7 +428,6 @@ class ProviderCatalog {
     icon: Icons.tune,
     brandColor: Color(0xFF5F6368),
     textIcon: 'CU',
-    note: 'Isi Base URL & model sendiri',
   );
 
   static ProviderCatalogEntry? byId(String id) {

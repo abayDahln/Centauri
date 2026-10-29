@@ -1,5 +1,7 @@
 import 'package:centauri/features/provider_config/data/catalog/provider_catalog.dart';
+import 'package:centauri/features/provider_config/data/catalog/provider_models.dart';
 import 'package:centauri/features/provider_config/domain/catalog/provider_catalog_entry.dart';
+import 'package:centauri/features/provider_config/domain/entities/api_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -97,6 +99,17 @@ void main() {
           .map((c) => ProviderCatalog.byCategory(c).length)
           .reduce((a, b) => a + b);
       expect(total, ProviderCatalog.all.length);
+    });
+
+    test('entri Cline memakai id OAuth dan model default-nya terdaftar', () {
+      final cline = ProviderCatalog.byId(kClineOAuthCatalogId);
+      expect(cline, isNotNull);
+      expect(cline!.category, ProviderCategory.apiKey);
+      expect(cline.baseUrl, 'https://api.cline.bot/api/v1');
+
+      final models = ProviderModelCatalog.forProvider(kClineOAuthCatalogId);
+      expect(models, isNotNull);
+      expect(models!.models.map((m) => m.id), contains(cline.defaultModel));
     });
 
     test('customApi berada di luar all dan bisa di-resolve', () {

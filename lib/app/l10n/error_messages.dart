@@ -20,6 +20,7 @@ String localizedAppError(AppLocalizations l10n, AppErrorDetails error) {
     AppErrorCode.apiTimeout => l10n.errorApiTimeout,
     AppErrorCode.apiUnreachable => l10n.errorApiUnreachable,
     AppErrorCode.apiUnauthorized => l10n.errorApiUnauthorized,
+    AppErrorCode.apiInsufficientCredits => l10n.errorApiInsufficientCredits,
     AppErrorCode.apiRateLimited => l10n.errorApiRateLimited,
     AppErrorCode.apiNotFound => l10n.errorApiNotFound,
     AppErrorCode.apiRejected => l10n.errorApiRejected,

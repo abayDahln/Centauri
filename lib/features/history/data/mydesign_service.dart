@@ -91,13 +91,19 @@ class MydesignService {
 
   /// Simpan proyek ke file `.mydesign` pilihan pengguna.
   /// Return path bila berhasil, null bila pengguna membatalkan.
-  Future<String?> saveToFile(Project project) async {
+  ///
+  /// [dialogTitle] dikirim dari UI agar judul dialog mengikuti bahasa aktif;
+  /// lapisan data tidak menyimpan teks yang terlihat pengguna.
+  Future<String?> saveToFile(
+    Project project, {
+    required String dialogTitle,
+  }) async {
     final safeTitle = project.title
         .replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
         .trim();
     final fallback = safeTitle.isEmpty ? 'centauri-project' : safeTitle;
     final outputPath = await FilePicker.saveFile(
-      dialogTitle: 'Simpan proyek Centauri',
+      dialogTitle: dialogTitle,
       fileName: '$fallback.$fileExtension',
       type: FileType.custom,
       allowedExtensions: [fileExtension],
@@ -119,9 +125,9 @@ class MydesignService {
   /// Buka dialog pilih file lalu parse menjadi [Project].
   /// Return null bila pengguna membatalkan. Melempar [MydesignException]
   /// bila file tidak valid.
-  Future<Project?> pickAndLoad() async {
+  Future<Project?> pickAndLoad({required String dialogTitle}) async {
     final result = await FilePicker.pickFiles(
-      dialogTitle: 'Buka proyek Centauri',
+      dialogTitle: dialogTitle,
       type: FileType.custom,
       allowedExtensions: [fileExtension, 'json'],
       withData: true,

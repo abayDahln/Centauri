@@ -676,6 +676,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatNoMessagesBody => '输入消息即可开始。';
 
   @override
+  String chatStreamPage(int page) {
+    return '正在写第 $page 页…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return '正在写第 $page 页，共 $total 页…';
+  }
+
+  @override
+  String get chatStreamFinishing => '正在准备页面…';
+
+  @override
   String get commonGenericError => '出现错误。请重试。';
 
   @override
@@ -713,6 +726,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errorApiRateLimited => '服务正在限制请求。请稍后再试。';
+
+  @override
+  String get errorApiInsufficientCredits => '账户余额不足。请充值后重试。';
 
   @override
   String get errorApiNotFound => '找不到地址或 Model。请检查两者。';
@@ -905,6 +921,88 @@ class AppLocalizationsZh extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return '第 $index 页';
   }
+
+  @override
+  String get oauthConnect => '连接';
+
+  @override
+  String get oauthConnecting => '正在连接…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return '已登录为 $account';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return '余额 $amount';
+  }
+
+  @override
+  String get oauthDisconnect => '退出登录';
+
+  @override
+  String get oauthLoginRequired => '请先登录再继续。';
+
+  @override
+  String get providerSubtitleOpencode => '免费编程模型';
+
+  @override
+  String get providerSubtitleOpenrouter => '多个模型，一个密钥';
+
+  @override
+  String get providerSubtitleNvidia => '免费开发者账号';
+
+  @override
+  String get providerSubtitleOllamaCloud => '云端运行';
+
+  @override
+  String get providerSubtitleGemini => 'Google AI Studio 密钥';
+
+  @override
+  String get providerSubtitleCline => '使用账号登录';
+
+  @override
+  String get providerSubtitleCommandCode => '需要付费套餐';
+
+  @override
+  String get providerSubtitleGroq => '回复更快';
+
+  @override
+  String get providerSubtitleMinimax => 'MiniMax 模型';
+
+  @override
+  String get providerSubtitleMistral => 'Mistral 模型';
+
+  @override
+  String get providerSubtitleZai => 'GLM 模型';
+
+  @override
+  String get providerSubtitleKiro => '需要本地代理';
+
+  @override
+  String get providerSubtitleCustom => '自有服务';
+
+  @override
+  String get clineLoginTitle => '使用 Cline 账户登录';
+
+  @override
+  String get clineLoginBody => '在浏览器中登录，完成后这里会自动更新。';
+
+  @override
+  String get clinePasteBody => '如果浏览器没有自动返回，请粘贴它显示的链接。';
+
+  @override
+  String get clineFieldLink => '登录链接';
+
+  @override
+  String get clineFieldLinkHint => '粘贴来自 Cline 的链接';
+
+  @override
+  String get clineLinkInvalid => '链接无效。请从 Cline 重新复制。';
+
+  @override
+  String get providerDetailTestAccount => '测试账户';
 
   @override
   String get generationTitle => '正在生成界面';

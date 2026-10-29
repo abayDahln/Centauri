@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/config/routes.dart';
 import '../../../app/config/app_palette.dart';
@@ -13,9 +14,13 @@ import '../../../core/utils/app_constants.dart';
 import '../data/catalog/provider_catalog.dart';
 import '../data/catalog/provider_models.dart';
 import '../data/datasources/ai_api_service.dart';
+import '../data/datasources/cline_oauth_loopback.dart';
+import '../data/datasources/cline_oauth_service.dart';
 import '../domain/catalog/provider_catalog_entry.dart';
 import '../domain/entities/api_provider.dart';
+import '../domain/entities/oauth_session.dart';
 import 'providers/provider_config_provider.dart';
+import 'widgets/oauth_login_card.dart';
 import 'widgets/delete_provider_dialog.dart';
 import 'widgets/model_picker_dialog.dart';
 import 'widgets/picker_field.dart';
@@ -68,7 +73,20 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   /// belum disimpan key lama tetap utuh, sehingga Batal tidak menghapus apa pun.
   bool _apiKeyCleared = false;
 
+  /// Sesi akun Cline untuk provider ini (null = belum masuk).
+  OAuthSession? _oauthSession;
+
+  /// True selama hubungkan/keluar akun Cline berjalan.
+  bool _isConnecting = false;
+
+  /// Server callback yang sedang menunggu browser, dan penanda batal.
+  ClineLoopbackServer? _loopback;
+  bool _cancelRequested = false;
+
   bool get _hasProvider => _catalogId != null;
+
+  /// Provider yang masuk dengan akun, bukan API key.
+  bool get _isCline => _catalogId == kClineOAuthCatalogId;
 
   /// Pengguna memilih "Custom API Key" → semua field bisa diisi sendiri.
   bool get _isCustom => _catalogId == kCustomCatalogId;
@@ -122,6 +140,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
     _apiKeyController.clear();
     _hasStoredApiKey = (provider.apiKey ?? '').trim().isNotEmpty;
     _apiKeyCleared = false;
+    _oauthSession = provider.oauthSession;
     _catalogId = provider.catalogId ?? kCustomCatalogId;
     _model = provider.model;
     _customModels
@@ -170,6 +189,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       baseUrl: _baseUrlController.text.trim(),
       model: _model.trim(),
       apiKey: apiKey.isNotEmpty ? apiKey : null,
+      authType: _isCline ? AuthType.oauth : AuthType.apiKey,
+      oauthProvider: _isCline ? kClineOAuthCatalogId : null,
+      oauthSession: _oauthSession,
     );
   }
 
@@ -210,6 +232,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   /// (terkunci); Custom membiarkan pengguna mengisi keduanya sendiri.
   void _applyCatalogEntry(ProviderCatalogEntry entry) {
     _catalogId = entry.id;
+    // Sesi akun terikat ke provider tempat ia dibuat: pindah provider berarti
+    // kredensialnya berbeda juga, jadi sesi lama tidak boleh terbawa.
+    _oauthSession = null;
     _customModels.clear();
     // Provider baru memakai template apa adanya: penghapusan model di provider
     // lain tidak boleh ikut terbawa.
@@ -279,6 +304,9 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
           baseUrl: provider.baseUrl,
           model: provider.model,
           apiKey: provider.apiKey,
+          authType: provider.authType,
+          oauthProvider: provider.oauthProvider,
+          oauthSession: provider.oauthSession,
           customModels: _customModels,
           removedModels: _removedModels,
         );
@@ -331,6 +359,10 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
 
   Future<void> _testConnection() async {
     if (!_validateSelection()) return;
+    if (_isCline) {
+      await _testAccount();
+      return;
+    }
 
     setState(() => _isTesting = true);
     try {
@@ -344,6 +376,174 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       _showSnackBar(localizedAppError(context.l10n, e), isError: true);
     } finally {
       if (mounted) setState(() => _isTesting = false);
+    }
+  }
+
+  /// Test untuk provider akun: `GET /users/me` lewat saldo akun, karena
+  /// `/models` Cline publik dan tidak membuktikan sesinya berlaku.
+  Future<void> _testAccount() async {
+    final session = _oauthSession;
+    if (session == null) {
+      _showSnackBar(context.l10n.oauthLoginRequired, isError: true);
+      return;
+    }
+
+    setState(() => _isTesting = true);
+    try {
+      await ref.read(clineOAuthServiceProvider).fetchBalance(session);
+      if (mounted) {
+        _showSnackBar(context.l10n.providerDetailTestOk, isError: false);
+      }
+    } on AppErrorDetails catch (e) {
+      if (!mounted) return;
+      _showSnackBar(localizedAppError(context.l10n, e), isError: true);
+    } finally {
+      if (mounted) setState(() => _isTesting = false);
+    }
+  }
+
+  /// Validasi sebelum masuk akun.
+  ///
+  /// Nama baru dipakai saat Simpan, jadi tidak diminta di sini; diisi nama
+  /// provider supaya hasil connect langsung bisa disimpan.
+  bool _prepareConnect() {
+    if (_model.trim().isEmpty) {
+      _showSnackBar(context.l10n.providerDetailPickModel, isError: true);
+      return false;
+    }
+    if (_nameController.text.trim().isEmpty) {
+      _nameController.text = _providerLabel;
+    }
+    _cancelRequested = false;
+    return true;
+  }
+
+  /// Masuk dengan akun Cline dalam satu klik.
+  ///
+  /// Browser dibuka langsung ke halaman login Cline dengan `callback_url`
+  /// menunjuk server loopback sementara. Kalau Cline menghormati alamat itu,
+  /// kode sesi diterima tanpa copy-paste. Bila browser tetap diarahkan ke
+  /// `vscode://`, dialog tempel tautan muncul sebagai jalan lain.
+  Future<void> _connectCline() async {
+    if (!_prepareConnect()) return;
+    setState(() => _isConnecting = true);
+
+    final notifier = ref.read(providerConfigProvider.notifier);
+    ClineLoopbackServer? server;
+    try {
+      server = await ref.read(clineLoopbackProvider)();
+      if (!mounted) return;
+
+      final String? link;
+      if (server == null) {
+        // Tanpa loopback (mis. di test): langsung tempel tautan.
+        link = await showClinePasteLinkDialog(context);
+      } else {
+        _loopback = server;
+        final opened = await _openClineLogin(server.callbackUrl);
+        if (!mounted) return;
+
+        final code = opened ? await server.waitForCode() : null;
+        if (!mounted || _cancelRequested) return;
+        link = code ?? await showClinePasteLinkDialog(context);
+      }
+      if (link == null || !mounted) return;
+
+      await _finishConnect(
+        () => notifier.connectCline(
+          id: _editingProviderId,
+          name: _nameController.text.trim(),
+          providerName: _providerNameController.text.trim(),
+          catalogId: _catalogId!,
+          baseUrl: _baseUrlController.text.trim(),
+          model: _model.trim(),
+          link: link!,
+          customModels: _customModels,
+          removedModels: _removedModels,
+        ),
+      );
+    } finally {
+      _loopback = null;
+      await server?.close();
+      if (mounted) setState(() => _isConnecting = false);
+    }
+  }
+
+  Future<bool> _openClineLogin(String callbackUrl) async {
+    final uri = Uri.parse(
+      ClineOAuthService.authorizeUrl(callbackUrl: callbackUrl),
+    );
+    try {
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Browser tidak tersedia: pengguna masih bisa menempel tautan.
+      return false;
+    }
+  }
+
+  /// Hentikan penantian browser tanpa menutup kartu.
+  void _cancelConnect() {
+    _cancelRequested = true;
+    _loopback?.close();
+  }
+
+  /// Tunggu [connect] selesai, lalu tampilkan akunnya di kartu.
+  Future<void> _finishConnect(
+    Future<({String id, OAuthSession session})> Function() connect,
+  ) async {
+    try {
+      final connected = await connect();
+      if (!mounted) return;
+
+      final result = ref.read(providerConfigProvider);
+      if (result.hasError) {
+        _showSnackBar(
+          context.l10n.providerDetailSaveFailed(_errorText(result.error)),
+          isError: true,
+        );
+        return;
+      }
+      // Provider baru kini punya id: halaman beralih ke mode edit supaya
+      // Keluar/Hapus bisa dipakai tanpa menyimpan ulang.
+      setState(() {
+        _editingProviderId = connected.id;
+        _oauthSession = connected.session;
+      });
+    } on ApiConnectionException catch (e) {
+      // Batal oleh pengguna bukan kegagalan yang perlu diberitahukan.
+      if (!mounted || e.code == AppErrorCode.cancelled) return;
+      // Tautan Cline kedaluwarsa dan tautan salah sama-sama berarti "salin
+      // ulang"; provider lain memakai pesan umum.
+      _showSnackBar(
+        _isCline && e.code == AppErrorCode.apiUnauthorized
+            ? context.l10n.clineLinkInvalid
+            : localizedAppError(context.l10n, e),
+        isError: true,
+      );
+    }
+  }
+
+  /// Keluar dari akun: sesi dihapus, provider tetap tersimpan.
+  Future<void> _disconnectAccount() async {
+    final id = _editingProviderId;
+    if (id == null) return;
+
+    setState(() => _isConnecting = true);
+    try {
+      await ref.read(providerConfigProvider.notifier).disconnectAccount(id);
+      if (!mounted) return;
+
+      final result = ref.read(providerConfigProvider);
+      if (result.hasError) {
+        _showSnackBar(
+          context.l10n.providerDetailSaveFailed(_errorText(result.error)),
+          isError: true,
+        );
+        return;
+      }
+      setState(() => _oauthSession = null);
+    } finally {
+      if (mounted) setState(() => _isConnecting = false);
     }
   }
 
@@ -444,7 +644,7 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
         border: Border.all(color: context.palette.borderSubtle),
-        borderRadius: AppRadius.md,
+        borderRadius: AppRadius.panel,
       ),
       child: Form(
         key: _formKey,
@@ -495,9 +695,25 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
             const SizedBox(height: 8),
             _buildBaseUrlField(),
             const SizedBox(height: 20),
-            FieldLabel(l10n.commonApiKey),
-            const SizedBox(height: 8),
-            _buildApiKeyField(),
+            // Provider akun tidak punya field API Key: kredensialnya sesi
+            // login akun.
+            if (_isCline)
+              OAuthLoginCard(
+                title: l10n.clineLoginTitle,
+                body: l10n.clineLoginBody,
+                session: _oauthSession,
+                busy: _isConnecting,
+                fallbackAccount: _providerLabel,
+                onConnect: _connectCline,
+                onCancel: _cancelConnect,
+                onDisconnect: _disconnectAccount,
+                loadBalance: ref.read(clineOAuthServiceProvider).fetchBalance,
+              )
+            else ...[
+              FieldLabel(l10n.commonApiKey),
+              const SizedBox(height: 8),
+              _buildApiKeyField(),
+            ],
             const SizedBox(height: 20),
             PickerField(
               key: const ValueKey('picker-model'),
@@ -527,7 +743,11 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
                           color: context.palette.primary,
                         ),
                       )
-                    : Text(l10n.providerDetailTestAction),
+                    : Text(
+                        _isCline
+                            ? l10n.providerDetailTestAccount
+                            : l10n.providerDetailTestAction,
+                      ),
               ),
             ),
             const SizedBox(height: 24),

@@ -11,6 +11,10 @@ class AppConstants {
   // Secure storage: API key disimpan per-provider, tidak pernah di Hive.
   static const String apiKeyPrefix = 'centauri_provider_api_key_';
 
+  /// Sesi OAuth (JSON: token + identitas akun) per provider. Dipisah dari
+  /// [apiKeyPrefix] karena bentuk dan siklus hidupnya berbeda.
+  static const String oauthSessionPrefix = 'centauri_provider_oauth_session_';
+
   // Hive boxes.
   static const String providersBoxName = 'centauri_providers';
   static const String metaBoxName = 'centauri_meta';

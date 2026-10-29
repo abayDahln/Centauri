@@ -331,166 +331,212 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
           Expanded(
             child: Stack(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AnimatedSidePanel(
-                      visible: historyInline,
-                      width: historyWidth,
-                      alignment: AlignmentDirectional.centerStart,
-                      child: const _HistorySidebar(),
-                    ),
-                    // Panel chat melebar saat pratinjau disembunyikan, dan
-                    // pratinjau menyempit mengikuti lebar chat. Tidak ada
-                    // perpindahan layar; hanya lebar panel yang berubah.
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final focus = !canvasVisible;
-                                final panelDuration = reduceMotion
-                                    ? Duration.zero
-                                    : AppMotion.panel;
-                                final chatTargetWidth =
-                                    (focus
-                                            ? constraints.maxWidth
-                                            : (showChat ? chatWidth : 0.0))
-                                        .toDouble();
-                                final chatVisible = focus || showChat;
-                                // Isi pratinjau memakai lebar saat panelnya
-                                // terlihat. Saat panel menyempit, isi tidak
-                                // ikut mengecil; sisanya dipotong ClipRect.
-                                final previewContentWidth = math
-                                    .max(
-                                      _previewMinWidth,
-                                      showChat
-                                          ? constraints.maxWidth - chatWidth
-                                          : constraints.maxWidth,
-                                    )
-                                    .toDouble();
-                                return Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Batasi lebar saat jendela mengecil agar
-                                    // animasi tidak mendorong panel pratinjau
-                                    // keluar dari Row.
-                                    ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        maxWidth: constraints.maxWidth,
-                                      ),
-                                      child: AnimatedContainer(
-                                        duration: panelDuration,
-                                        curve: AppMotion.panelCurve,
-                                        width: chatTargetWidth,
-                                        child: ExcludeFocus(
-                                          excluding: !chatVisible,
-                                          child: ExcludeSemantics(
+                Padding(
+                  padding: const EdgeInsets.all(AppMetrics.windowInset),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AnimatedSidePanel(
+                        visible: historyInline,
+                        width: historyWidth,
+                        alignment: AlignmentDirectional.centerStart,
+                        // Jarak ke panel chat; panel ini menempel di tepi kiri.
+                        child: Padding(
+                          padding: const EdgeInsetsDirectional.only(
+                            end: AppMetrics.panelGutter,
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: context.palette.bgSurface,
+                              borderRadius: AppRadius.panel,
+                            ),
+                            foregroundDecoration: BoxDecoration(
+                              borderRadius: AppRadius.panel,
+                              border: Border.all(
+                                color: context.palette.borderSubtle,
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: const _HistorySidebar(),
+                          ),
+                        ),
+                      ),
+                      // Panel chat melebar saat pratinjau disembunyikan, dan
+                      // pratinjau menyempit mengikuti lebar chat. Tidak ada
+                      // perpindahan layar; hanya lebar panel yang berubah.
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final focus = !canvasVisible;
+                                  final panelDuration = reduceMotion
+                                      ? Duration.zero
+                                      : AppMotion.panel;
+                                  final chatTargetWidth =
+                                      (focus
+                                              ? constraints.maxWidth
+                                              : (showChat ? chatWidth : 0.0))
+                                          .toDouble();
+                                  final chatVisible = focus || showChat;
+                                  // Jarak hanya dipakai saat pratinjau ikut
+                                  // tampil; di mode fokus panel chat memenuhi
+                                  // layar supaya tepi kanan tetap simetris.
+                                  final chatGutter =
+                                      canvasVisible && chatVisible
+                                      ? AppMetrics.panelGutter
+                                      : 0.0;
+                                  // Isi pratinjau memakai lebar saat panelnya
+                                  // terlihat. Saat panel menyempit, isi tidak
+                                  // ikut mengecil; sisanya dipotong ClipRect.
+                                  final previewContentWidth = math
+                                      .max(
+                                        _previewMinWidth,
+                                        showChat
+                                            ? constraints.maxWidth -
+                                                  chatWidth -
+                                                  chatGutter
+                                            : constraints.maxWidth - chatGutter,
+                                      )
+                                      .toDouble();
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      // Batasi lebar saat jendela mengecil agar
+                                      // animasi tidak mendorong panel pratinjau
+                                      // keluar dari Row.
+                                      ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: constraints.maxWidth,
+                                        ),
+                                        child: AnimatedContainer(
+                                          duration: panelDuration,
+                                          curve: AppMotion.panelCurve,
+                                          width: chatTargetWidth,
+                                          // Jarak ke panel pratinjau.
+                                          margin: EdgeInsetsDirectional.only(
+                                            end: chatGutter,
+                                          ),
+                                          child: ExcludeFocus(
                                             excluding: !chatVisible,
-                                            child: IgnorePointer(
-                                              ignoring: !chatVisible,
-                                              child: LayoutBuilder(
-                                                builder: (context, constraints) {
-                                                  final contentWidth = math
-                                                      .max(
-                                                        chatWidth,
-                                                        constraints.maxWidth,
-                                                      )
-                                                      .toDouble();
-                                                  return ClipRect(
-                                                    child: OverflowBox(
-                                                      alignment:
-                                                          AlignmentDirectional
-                                                              .centerStart,
-                                                      minWidth: contentWidth,
-                                                      maxWidth: contentWidth,
-                                                      child: DecoratedBox(
-                                                        decoration: BoxDecoration(
-                                                          color: context
-                                                              .palette
-                                                              .bgSurface,
-                                                          border: Border(
-                                                            right: canvasVisible
-                                                                ? BorderSide(
-                                                                    color: context
-                                                                        .palette
-                                                                        .borderSubtle,
-                                                                  )
-                                                                : BorderSide
-                                                                      .none,
+                                            child: ExcludeSemantics(
+                                              excluding: !chatVisible,
+                                              child: IgnorePointer(
+                                                ignoring: !chatVisible,
+                                                child: LayoutBuilder(
+                                                  builder: (context, constraints) {
+                                                    final contentWidth = math
+                                                        .max(
+                                                          chatWidth,
+                                                          constraints.maxWidth,
+                                                        )
+                                                        .toDouble();
+                                                    return ClipRect(
+                                                      child: OverflowBox(
+                                                        alignment:
+                                                            AlignmentDirectional
+                                                                .centerStart,
+                                                        minWidth: contentWidth,
+                                                        maxWidth: contentWidth,
+                                                        child: Container(
+                                                          decoration:
+                                                              BoxDecoration(
+                                                                color: context
+                                                                    .palette
+                                                                    .bgSurface,
+                                                                borderRadius:
+                                                                    AppRadius
+                                                                        .panel,
+                                                              ),
+                                                          // Garis digambar di
+                                                          // atas isi agar tidak
+                                                          // tertutup clip sudut.
+                                                          foregroundDecoration:
+                                                              BoxDecoration(
+                                                                borderRadius:
+                                                                    AppRadius
+                                                                        .panel,
+                                                                border: Border.all(
+                                                                  color: context
+                                                                      .palette
+                                                                      .borderSubtle,
+                                                                ),
+                                                              ),
+                                                          clipBehavior:
+                                                              Clip.antiAlias,
+                                                          child: _ChatPane(
+                                                            focus: focus,
                                                           ),
                                                         ),
-                                                        child: _ChatPane(
-                                                          focus: focus,
-                                                        ),
                                                       ),
-                                                    ),
-                                                  );
-                                                },
+                                                    );
+                                                  },
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    // Panel pratinjau mengambil sisa ruang;
-                                    // lebar chat yang beranimasi membuat
-                                    // panel ini menyempit/melebar.
-                                    Expanded(
-                                      child: ExcludeFocus(
-                                        excluding: !canvasVisible,
-                                        child: ExcludeSemantics(
+                                      // Panel pratinjau mengambil sisa ruang;
+                                      // lebar chat yang beranimasi membuat
+                                      // panel ini menyempit/melebar.
+                                      Expanded(
+                                        child: ExcludeFocus(
                                           excluding: !canvasVisible,
-                                          child: IgnorePointer(
-                                            ignoring: !canvasVisible,
-                                            child: ClipRect(
-                                              child: OverflowBox(
-                                                alignment: AlignmentDirectional
-                                                    .centerEnd,
-                                                minWidth: previewContentWidth,
-                                                maxWidth: previewContentWidth,
-                                                child: SizedBox(
-                                                  width: previewContentWidth,
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .stretch,
-                                                    children: [
-                                                      if (hasUi)
-                                                        const _PreviewToolbar(),
-                                                      Expanded(
-                                                        child: Stack(
-                                                          children: [
-                                                            if (hasUi)
-                                                              const _CanvasSurface(
-                                                                child:
-                                                                    _PreviewFrame(),
-                                                              )
-                                                            else if (!showChat)
-                                                              const ChatLanding()
-                                                            else
-                                                              const _EmptyPreviewHint(),
-                                                            if (hasUi)
+                                          child: ExcludeSemantics(
+                                            excluding: !canvasVisible,
+                                            child: IgnorePointer(
+                                              ignoring: !canvasVisible,
+                                              child: ClipRect(
+                                                child: OverflowBox(
+                                                  alignment:
+                                                      AlignmentDirectional
+                                                          .centerEnd,
+                                                  minWidth: previewContentWidth,
+                                                  maxWidth: previewContentWidth,
+                                                  child: SizedBox(
+                                                    width: previewContentWidth,
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .stretch,
+                                                      children: [
+                                                        if (hasUi)
+                                                          const _PreviewToolbar(),
+                                                        Expanded(
+                                                          child: Stack(
+                                                            children: [
+                                                              if (hasUi)
+                                                                const _CanvasSurface(
+                                                                  child:
+                                                                      _PreviewFrame(),
+                                                                )
+                                                              else if (!showChat)
+                                                                const ChatLanding()
+                                                              else
+                                                                const _EmptyPreviewHint(),
+                                                              if (hasUi)
+                                                                const Positioned(
+                                                                  left: 24,
+                                                                  top: 24,
+                                                                  child:
+                                                                      _AiStatusPill(),
+                                                                ),
                                                               const Positioned(
                                                                 left: 24,
-                                                                top: 24,
+                                                                right: 24,
+                                                                bottom: 24,
                                                                 child:
-                                                                    _AiStatusPill(),
+                                                                    PromptBar(),
                                                               ),
-                                                            const Positioned(
-                                                              left: 24,
-                                                              right: 24,
-                                                              bottom: 24,
-                                                              child:
-                                                                  PromptBar(),
-                                                            ),
-                                                          ],
+                                                            ],
+                                                          ),
                                                         ),
-                                                      ),
-                                                    ],
+                                                      ],
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -498,37 +544,45 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                );
-                              },
+                                    ],
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                          AnimatedSidePanel(
-                            visible: codeInline,
-                            width: codeWidth,
-                            alignment: AlignmentDirectional.centerEnd,
-                            // Di jendela sempit panel kode memakai mode
-                            // mengambang; jangan bangun salinan kedua
-                            // yang tersembunyi.
-                            child: width >= _codeInlineWidth
-                                ? DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: context.palette.bgSurface,
-                                      border: Border(
-                                        left: BorderSide(
-                                          color: context.palette.borderSubtle,
-                                        ),
+                            AnimatedSidePanel(
+                              visible: codeInline,
+                              width: codeWidth,
+                              alignment: AlignmentDirectional.centerEnd,
+                              // Di jendela sempit panel kode memakai mode
+                              // mengambang; jangan bangun salinan kedua
+                              // yang tersembunyi.
+                              child: width >= _codeInlineWidth
+                                  ? Padding(
+                                      padding: const EdgeInsetsDirectional.only(
+                                        start: AppMetrics.panelGutter,
                                       ),
-                                    ),
-                                    child: const CodePanel(),
-                                  )
-                                : const SizedBox.expand(),
-                          ),
-                        ],
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: context.palette.bgSurface,
+                                          borderRadius: AppRadius.panel,
+                                        ),
+                                        foregroundDecoration: BoxDecoration(
+                                          borderRadius: AppRadius.panel,
+                                          border: Border.all(
+                                            color: context.palette.borderSubtle,
+                                          ),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: const CodePanel(),
+                                      ),
+                                    )
+                                  : const SizedBox.expand(),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 // Jendela sempit: panel kode mengambang agar kanvas tidak
                 // terhimpit jadi beberapa puluh piksel.
@@ -596,11 +650,8 @@ class _HistorySidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: context.palette.bgSurface,
-        border: Border(right: BorderSide(color: context.palette.borderSubtle)),
-      ),
+    return ColoredBox(
+      color: context.palette.bgSurface,
       child: HistoryPanel(
         // Buka proyek dari sidebar: pastikan percakapannya terlihat.
         onOpenProject: () {
@@ -624,11 +675,14 @@ class _FloatingPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
+      margin: const EdgeInsets.all(AppMetrics.panelGutter),
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
+        borderRadius: AppRadius.panel,
         border: Border.all(color: context.palette.borderSubtle),
         boxShadow: context.palette.shadowRaised,
       ),
+      clipBehavior: Clip.antiAlias,
       child: child,
     );
   }
@@ -860,10 +914,13 @@ class _PreviewToolbar extends ConsumerWidget {
     final l10n = context.l10n;
     return Container(
       height: AppMetrics.toolbarHeight,
-      padding: const EdgeInsetsDirectional.only(start: 4, end: 8),
+      // Toolbar mengambang: panel bersudut di atas kanvas.
+      margin: const EdgeInsets.only(bottom: AppMetrics.panelGutter),
+      padding: const EdgeInsetsDirectional.only(start: 8, end: 8),
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
-        border: Border(bottom: BorderSide(color: context.palette.borderSubtle)),
+        borderRadius: AppRadius.panel,
+        border: Border.all(color: context.palette.borderSubtle),
       ),
       child: Row(
         children: [
@@ -977,7 +1034,7 @@ class _PreviewFrame extends ConsumerWidget {
     final frame = Container(
       decoration: BoxDecoration(
         color: context.palette.bgSurface,
-        borderRadius: isMobile ? AppRadius.xl : null,
+        borderRadius: AppRadius.panel,
         border: Border.all(color: context.palette.borderSubtle),
         boxShadow: context.palette.shadowSoft,
       ),
@@ -1284,7 +1341,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                           child: Container(
                             decoration: BoxDecoration(
                               color: context.palette.bgSurface,
-                              borderRadius: AppRadius.md,
+                              borderRadius: AppRadius.panel,
                               border: Border.all(
                                 color: context.palette.borderSubtle,
                               ),

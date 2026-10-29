@@ -36,6 +36,7 @@ class GenerationStreamState {
     this.knownScreenCount,
     this.startedAt,
     this.uiRequest = false,
+    this.streamedText = '',
   });
 
   final GenerationPhase phase;
@@ -63,6 +64,13 @@ class GenerationStreamState {
   /// menampilkan pratinjau. Percakapan biasa tidak menyentuh kanvas.
   final bool uiRequest;
 
+  /// Teks penjelasan yang sudah diterima, untuk bubble chat live.
+  ///
+  /// Saat permintaan UI, blok kode ```...``` (HTML) dibuang sehingga yang
+  /// tampil hanya kalimat di luar blok kode. Untuk balasan chat, isinya teks
+  /// penuh yang sedang mengalir.
+  final String streamedText;
+
   GenerationStreamState copyWith({
     GenerationPhase? phase,
     bool? streaming,
@@ -73,6 +81,7 @@ class GenerationStreamState {
     int? knownScreenCount,
     DateTime? startedAt,
     bool? uiRequest,
+    String? streamedText,
     bool clearPreview = false,
   }) {
     return GenerationStreamState(
@@ -85,6 +94,7 @@ class GenerationStreamState {
       knownScreenCount: knownScreenCount ?? this.knownScreenCount,
       startedAt: startedAt ?? this.startedAt,
       uiRequest: uiRequest ?? this.uiRequest,
+      streamedText: streamedText ?? this.streamedText,
     );
   }
 }
@@ -95,7 +105,7 @@ class GenerationStreamState {
 /// ratus milidetik, sedangkan WorkspaceState ikut di-snapshot untuk undo dan
 /// dibaca banyak panel. Teks parsial tidak boleh masuk ke sana.
 class GenerationStreamNotifier extends Notifier<GenerationStreamState> {
-  static const Duration _tickInterval = Duration(milliseconds: 160);
+  static const Duration _tickInterval = Duration(milliseconds: 80);
   static const Duration _settleDelay = Duration(milliseconds: 900);
   static const int _minNewChars = 400;
 
@@ -150,20 +160,32 @@ class GenerationStreamNotifier extends Notifier<GenerationStreamState> {
 
   void _publish() {
     final raw = _raw.toString();
+
+    // Pratinjau kanvas cukup diperbarui tiap ~400 karakter: ekstraksi HTML
+    // jauh lebih mahal daripada memotong teks penjelasan.
+    String? previewHtml = state.previewHtml;
+    String? previewSlug = state.previewSlug;
+    var previewPageIndex = state.previewPageIndex;
     if (raw.length - _publishedChars >= _minNewChars) {
       _publishedChars = raw.length;
       final html = extractPartialHtml(raw);
       if (html != null && html != state.previewHtml) {
-        state = state.copyWith(
-          previewHtml: html,
-          previewSlug: slugOfPartial(html) ?? state.previewSlug,
-          previewPageIndex: _pageIndex(raw),
-        );
+        previewHtml = html;
+        previewSlug = slugOfPartial(html) ?? previewSlug;
       }
+      previewPageIndex = _pageIndex(raw);
     }
-    if (state.charCount != raw.length) {
-      state = state.copyWith(charCount: raw.length);
-    }
+
+    // Teks chat ikut tiap tick supaya token terasa mengalir, bukan menunggu
+    // ambang 400 karakter seperti pratinjau kanvas.
+    final prose = streamProse(raw);
+    state = state.copyWith(
+      charCount: raw.length,
+      streamedText: prose,
+      previewHtml: previewHtml,
+      previewSlug: previewSlug,
+      previewPageIndex: previewPageIndex,
+    );
   }
 
   /// Nomor halaman yang sedang ditulis: tiap pasangan fence = satu halaman.

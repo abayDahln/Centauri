@@ -703,6 +703,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chatNoMessagesBody => 'Nachricht eingeben, um zu starten.';
 
   @override
+  String chatStreamPage(int page) {
+    return 'Seite $page wird geschrieben…';
+  }
+
+  @override
+  String chatStreamPageOf(int page, int total) {
+    return 'Seite $page von $total wird geschrieben…';
+  }
+
+  @override
+  String get chatStreamFinishing => 'Seiten werden vorbereitet…';
+
+  @override
   String get commonGenericError =>
       'Etwas ist schiefgelaufen. Erneut versuchen.';
 
@@ -747,6 +760,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get errorApiRateLimited =>
       'Der Dienst begrenzt Anfragen. Versuchen Sie es gleich noch einmal.';
+
+  @override
+  String get errorApiInsufficientCredits =>
+      'Das Guthaben des Kontos ist aufgebraucht. Lade es auf und versuche es erneut.';
 
   @override
   String get errorApiNotFound =>
@@ -953,6 +970,91 @@ class AppLocalizationsDe extends AppLocalizations {
   String generationPageProgressUnknown(int index) {
     return 'Seite $index';
   }
+
+  @override
+  String get oauthConnect => 'Verbinden';
+
+  @override
+  String get oauthConnecting => 'Verbinden…';
+
+  @override
+  String oauthConnectedAs(String account) {
+    return 'Angemeldet als $account';
+  }
+
+  @override
+  String oauthBalance(String amount) {
+    return 'Guthaben $amount';
+  }
+
+  @override
+  String get oauthDisconnect => 'Abmelden';
+
+  @override
+  String get oauthLoginRequired => 'Zum Fortfahren zuerst anmelden.';
+
+  @override
+  String get providerSubtitleOpencode => 'Kostenlose Coding-Modelle';
+
+  @override
+  String get providerSubtitleOpenrouter => 'Viele Modelle, ein Schlüssel';
+
+  @override
+  String get providerSubtitleNvidia => 'Kostenloses Entwicklerkonto';
+
+  @override
+  String get providerSubtitleOllamaCloud => 'Läuft in der Cloud';
+
+  @override
+  String get providerSubtitleGemini => 'Schlüssel aus Google AI Studio';
+
+  @override
+  String get providerSubtitleCline => 'Mit Konto anmelden';
+
+  @override
+  String get providerSubtitleCommandCode => 'Kostenpflichtiger Plan';
+
+  @override
+  String get providerSubtitleGroq => 'Schnelle Antworten';
+
+  @override
+  String get providerSubtitleMinimax => 'MiniMax-Modelle';
+
+  @override
+  String get providerSubtitleMistral => 'Mistral-Modelle';
+
+  @override
+  String get providerSubtitleZai => 'GLM-Modelle';
+
+  @override
+  String get providerSubtitleKiro => 'Lokaler Proxy nötig';
+
+  @override
+  String get providerSubtitleCustom => 'Eigener Dienst';
+
+  @override
+  String get clineLoginTitle => 'Mit Cline-Konto anmelden';
+
+  @override
+  String get clineLoginBody =>
+      'Melde dich im Browser an. Dieses Fenster aktualisiert sich selbst.';
+
+  @override
+  String get clinePasteBody =>
+      'Kommt der Browser nicht zurück, füge den angezeigten Link ein.';
+
+  @override
+  String get clineFieldLink => 'Anmeldelink';
+
+  @override
+  String get clineFieldLinkHint => 'Link aus Cline einfügen';
+
+  @override
+  String get clineLinkInvalid =>
+      'Der Link passt nicht. Kopiere ihn erneut aus Cline.';
+
+  @override
+  String get providerDetailTestAccount => 'Konto testen';
 
   @override
   String get generationTitle => 'Design wird generiert';
