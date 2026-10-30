@@ -125,10 +125,9 @@
   "exportFigmaSaved": "Данные Figma ({count} элем.) сохранены: {path}",
   "exportFailed": "Не удалось экспортировать. Повторите попытку.",
   "exportPageTooltip": "Экспорт страницы",
-  "exportPageTooltipCompact": "Экспорт страницы (PNG/SVG/PDF/Figma)",
+  "exportPageTooltipCompact": "Экспорт страницы (PNG/SVG/Figma)",
   "exportPng": "PNG (изображение)",
   "exportSvg": "SVG (вектор)",
-  "exportPdf": "PDF (документ)",
   "exportAction": "Экспорт",
 
   "codePanelCopied": "HTML скопирован.",

@@ -787,7 +787,7 @@ abstract class AppLocalizations {
   /// No description provided for @exportPageTooltipCompact.
   ///
   /// In en, this message translates to:
-  /// **'Export page (PNG/SVG/PDF/Figma)'**
+  /// **'Export page (PNG/SVG/Figma)'**
   String get exportPageTooltipCompact;
 
   /// No description provided for @exportPng.
@@ -801,12 +801,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'SVG (vector)'**
   String get exportSvg;
-
-  /// No description provided for @exportPdf.
-  ///
-  /// In en, this message translates to:
-  /// **'PDF (document)'**
-  String get exportPdf;
 
   /// No description provided for @exportAction.
   ///

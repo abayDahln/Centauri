@@ -377,16 +377,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get exportPageTooltip => 'تصدير الصفحة';
 
   @override
-  String get exportPageTooltipCompact => 'تصدير الصفحة (PNG/SVG/PDF/Figma)';
+  String get exportPageTooltipCompact => 'تصدير الصفحة (PNG/SVG/Figma)';
 
   @override
   String get exportPng => 'PNG (صورة)';
 
   @override
   String get exportSvg => 'SVG (متجه)';
-
-  @override
-  String get exportPdf => 'PDF (مستند)';
 
   @override
   String get exportAction => 'تصدير';

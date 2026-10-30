@@ -371,16 +371,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportPageTooltip => '导出页面';
 
   @override
-  String get exportPageTooltipCompact => '导出页面（PNG/SVG/PDF/Figma）';
+  String get exportPageTooltipCompact => '导出页面（PNG/SVG/Figma）';
 
   @override
   String get exportPng => 'PNG（图片）';
 
   @override
   String get exportSvg => 'SVG（矢量）';
-
-  @override
-  String get exportPdf => 'PDF（文档）';
 
   @override
   String get exportAction => '导出';

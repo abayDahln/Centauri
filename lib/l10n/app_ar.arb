@@ -125,10 +125,9 @@
   "exportFigmaSaved": "تم حفظ بيانات Figma ({count} عناصر): {path}",
   "exportFailed": "فشل التصدير. أعد المحاولة.",
   "exportPageTooltip": "تصدير الصفحة",
-  "exportPageTooltipCompact": "تصدير الصفحة (PNG/SVG/PDF/Figma)",
+  "exportPageTooltipCompact": "تصدير الصفحة (PNG/SVG/Figma)",
   "exportPng": "PNG (صورة)",
   "exportSvg": "SVG (متجه)",
-  "exportPdf": "PDF (مستند)",
   "exportAction": "تصدير",
 
   "codePanelCopied": "تم نسخ HTML.",

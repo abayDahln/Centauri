@@ -125,10 +125,9 @@
   "exportFigmaSaved": "Figma 데이터({count}개 요소)를 저장했어요: {path}",
   "exportFailed": "내보내지 못했어요. 다시 시도해 주세요.",
   "exportPageTooltip": "페이지 내보내기",
-  "exportPageTooltipCompact": "페이지 내보내기 (PNG/SVG/PDF/Figma)",
+  "exportPageTooltipCompact": "페이지 내보내기 (PNG/SVG/Figma)",
   "exportPng": "PNG(이미지)",
   "exportSvg": "SVG(벡터)",
-  "exportPdf": "PDF(문서)",
   "exportAction": "내보내기",
 
   "codePanelCopied": "HTML을 복사했어요.",

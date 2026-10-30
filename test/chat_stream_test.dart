@@ -87,8 +87,7 @@ void main() {
 
     testWidgets('sebelum token pertama tampil titik tunggu', (tester) async {
       final container = await pump(tester);
-      container.read(generationStreamProvider.notifier)
-          .begin(uiRequest: false);
+      container.read(generationStreamProvider.notifier).begin(uiRequest: false);
 
       await tester.pump();
       expect(find.byType(ChatTypingBubble), findsOneWidget);

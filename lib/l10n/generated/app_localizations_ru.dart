@@ -383,16 +383,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get exportPageTooltip => 'Экспорт страницы';
 
   @override
-  String get exportPageTooltipCompact => 'Экспорт страницы (PNG/SVG/PDF/Figma)';
+  String get exportPageTooltipCompact => 'Экспорт страницы (PNG/SVG/Figma)';
 
   @override
   String get exportPng => 'PNG (изображение)';
 
   @override
   String get exportSvg => 'SVG (вектор)';
-
-  @override
-  String get exportPdf => 'PDF (документ)';
 
   @override
   String get exportAction => 'Экспорт';

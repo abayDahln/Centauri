@@ -372,16 +372,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exportPageTooltip => 'ページを書き出す';
 
   @override
-  String get exportPageTooltipCompact => 'ページを書き出す（PNG/SVG/PDF/Figma）';
+  String get exportPageTooltipCompact => 'ページを書き出す（PNG/SVG/Figma）';
 
   @override
   String get exportPng => 'PNG（画像）';
 
   @override
   String get exportSvg => 'SVG（ベクター）';
-
-  @override
-  String get exportPdf => 'PDF（文書）';
 
   @override
   String get exportAction => '書き出す';

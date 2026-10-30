@@ -205,10 +205,9 @@
   },
   "exportFailed": "Export failed. Try again.",
   "exportPageTooltip": "Export page",
-  "exportPageTooltipCompact": "Export page (PNG/SVG/PDF/Figma)",
+  "exportPageTooltipCompact": "Export page (PNG/SVG/Figma)",
   "exportPng": "PNG (image)",
   "exportSvg": "SVG (vector)",
-  "exportPdf": "PDF (document)",
   "exportAction": "Export",
 
   "codePanelCopied": "HTML copied.",

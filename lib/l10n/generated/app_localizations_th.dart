@@ -375,16 +375,13 @@ class AppLocalizationsTh extends AppLocalizations {
   String get exportPageTooltip => 'ส่งออกหน้า';
 
   @override
-  String get exportPageTooltipCompact => 'ส่งออกหน้า (PNG/SVG/PDF/Figma)';
+  String get exportPageTooltipCompact => 'ส่งออกหน้า (PNG/SVG/Figma)';
 
   @override
   String get exportPng => 'PNG (รูปภาพ)';
 
   @override
   String get exportSvg => 'SVG (เวกเตอร์)';
-
-  @override
-  String get exportPdf => 'PDF (เอกสาร)';
 
   @override
   String get exportAction => 'ส่งออก';

@@ -372,16 +372,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get exportPageTooltip => '페이지 내보내기';
 
   @override
-  String get exportPageTooltipCompact => '페이지 내보내기 (PNG/SVG/PDF/Figma)';
+  String get exportPageTooltipCompact => '페이지 내보내기 (PNG/SVG/Figma)';
 
   @override
   String get exportPng => 'PNG(이미지)';
 
   @override
   String get exportSvg => 'SVG(벡터)';
-
-  @override
-  String get exportPdf => 'PDF(문서)';
 
   @override
   String get exportAction => '내보내기';

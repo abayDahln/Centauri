@@ -205,10 +205,9 @@
   },
   "exportFailed": "Ekspor gagal. Coba lagi.",
   "exportPageTooltip": "Ekspor halaman",
-  "exportPageTooltipCompact": "Ekspor halaman (PNG/SVG/PDF/Figma)",
+  "exportPageTooltipCompact": "Ekspor halaman (PNG/SVG/Figma)",
   "exportPng": "PNG (gambar)",
   "exportSvg": "SVG (vektor)",
-  "exportPdf": "PDF (dokumen)",
   "exportAction": "Ekspor",
 
   "codePanelCopied": "HTML disalin.",

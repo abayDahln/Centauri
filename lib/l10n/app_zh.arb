@@ -125,10 +125,9 @@
   "exportFigmaSaved": "Figma 数据（{count} 个元素）已保存：{path}",
   "exportFailed": "导出失败。请重试。",
   "exportPageTooltip": "导出页面",
-  "exportPageTooltipCompact": "导出页面（PNG/SVG/PDF/Figma）",
+  "exportPageTooltipCompact": "导出页面（PNG/SVG/Figma）",
   "exportPng": "PNG（图片）",
   "exportSvg": "SVG（矢量）",
-  "exportPdf": "PDF（文档）",
   "exportAction": "导出",
 
   "codePanelCopied": "HTML 已复制。",

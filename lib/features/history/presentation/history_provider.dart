@@ -116,7 +116,9 @@ class HistoryNotifier extends Notifier<HistoryState> {
       title: title ?? _deriveTitle(canvas),
       state: canvas,
       createdAt: isNew ? _createdAt : _existingCreatedAt(id),
-      updatedAt: (isNew || touchUpdatedAt) ? DateTime.now() : _existingUpdatedAt(id),
+      updatedAt: (isNew || touchUpdatedAt)
+          ? DateTime.now()
+          : _existingUpdatedAt(id),
     );
 
     repo.save(project);

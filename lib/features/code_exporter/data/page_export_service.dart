@@ -6,8 +6,6 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 
 import '../../canvas_preview/data/services/canvas_service_registry.dart';
 import '../../../core/errors/app_error.dart';
@@ -20,10 +18,9 @@ class PageExportException extends AppErrorDetails implements Exception {
   String toString() => debugLabel;
 }
 
-/// Ekspor halaman aktif ke PNG/SVG/PDF (offline-first).
+/// Ekspor halaman aktif ke PNG/SVG (offline-first).
 /// - SVG: murni Dart (bungkus HTML dalam foreignObject), tanpa WebView.
 /// - PNG: render via WebView halaman (`centauriExportPng`) → data URL.
-/// - PDF: bungkus PNG dalam satu halaman PDF (paket `pdf`, murni Dart).
 class PageExportService {
   /// Bungkus HTML halaman menjadi SVG standalone.
   String buildStandaloneSvg({
@@ -204,19 +201,6 @@ class PageExportService {
     }
   }
 
-  Future<Uint8List> buildPdfFromPng(Uint8List pngBytes) async {
-    final doc = pw.Document();
-    final image = pw.MemoryImage(pngBytes);
-    doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: pw.EdgeInsets.zero,
-        build: (context) => pw.Center(child: pw.Image(image)),
-      ),
-    );
-    return doc.save();
-  }
-
   Future<String?> _saveBytes({
     required String dialogTitle,
     required String fileName,
@@ -286,17 +270,6 @@ class PageExportService {
       dialogTitle: 'Ekspor halaman sebagai PNG',
       fileName: '${_safeName(pageName)}.png',
       bytes: pngBytes,
-    );
-  }
-
-  Future<String?> savePdf({
-    required String pageName,
-    required Uint8List pdfBytes,
-  }) {
-    return _saveBytes(
-      dialogTitle: 'Ekspor halaman sebagai PDF',
-      fileName: '${_safeName(pageName)}.pdf',
-      bytes: pdfBytes,
     );
   }
 

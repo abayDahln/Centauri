@@ -837,11 +837,8 @@ const String canvasBridgeScript = r'''
   // Ukuran dokumen (dipakai ekspor SVG tanpa viewport fixed).
   function centauriGetSize() {
     try {
-      var w = Math.max(document.body ? document.body.scrollWidth : 0,
-        document.documentElement ? document.documentElement.scrollWidth : 0);
-      var h = Math.max(document.body ? document.body.scrollHeight : 0,
-        document.documentElement ? document.documentElement.scrollHeight : 0);
-      sendToHost({ type: 'size', width: w, height: h });
+      var size = __centauriContentSize();
+      sendToHost({ type: 'size', width: size.width, height: size.height });
     } catch (e) {}
   }
 
@@ -964,126 +961,205 @@ const String canvasBridgeScript = r'''
   }
 
   // Ekspor PNG dokumen via SVG foreignObject → canvas.
+  //
+  // Ukuran gambar mengikuti ISI halaman (lebar & tinggi konten), bukan
+  // viewport, jadi hasilnya utuh dari atas sampai bawah. Gambar eksternal
+  // di-inline jadi data URL lebih dulu: SVG yang dimuat sebagai <img>
+  // memblokir resource jaringan, sehingga tanpa inline semua foto kosong.
   function centauriExportPng(pixelRatio) {
     if (!document.documentElement) {
       sendToHost({ type: 'pngError', message: 'Dokumen belum siap.' });
       return;
     }
-    try {
-      var scale = pixelRatio || 2;
-      if (scale < 1) scale = 1;
-      if (scale > 3) scale = 3;
-      var w = Math.max(document.body ? document.body.scrollWidth : 0,
-        document.documentElement.scrollWidth || 0);
-      var h = Math.max(document.body ? document.body.scrollHeight : 0,
-        document.documentElement.scrollHeight || 0);
-      if (!w || !h) {
-        sendToHost({ type: 'pngError', message: 'Ukuran dokumen nol.' });
-        return;
-      }
-      var maxPixels = 4096 * 4096;
-      while (w * scale * h * scale > maxPixels && scale > 1) scale -= 0.25;
 
-      var serializer = new XMLSerializer();
-      var clone = __centauriCleanClone();
+    var size = __centauriContentSize();
+    var w = size.width;
+    var h = size.height;
+    if (!w || !h) {
+      sendToHost({ type: 'pngError', message: 'Ukuran dokumen nol.' });
+      return;
+    }
 
-      var blobUrl = null;
-      var guard = function (fn) {
-        return function () {
-          var args = arguments;
-          try { return fn.apply(null, args); }
-          catch (e) {
-            if (blobUrl) URL.revokeObjectURL(blobUrl);
-            sendToHost({ type: 'pngError',
-              message: 'Ekspor PNG gagal: ' + (e && e.message ? e.message : e) });
-          }
-        };
-      };
+    // Batas aman canvas Chromium: ±16000 px per sisi dan ±40 MP total.
+    // Halaman yang lebih besar tetap diekspor utuh dengan skala diturunkan,
+    // bukan dipotong.
+    var maxSide = 16000;
+    var maxArea = 40000000;
+    var scale = pixelRatio || 2;
+    if (scale < 0.25) scale = 0.25;
+    if (scale > 3) scale = 3;
+    while (scale > 0.25 &&
+        (w * scale > maxSide || h * scale > maxSide ||
+         w * scale * h * scale > maxArea)) {
+      scale -= 0.25;
+    }
 
-      var rasterize = guard(function () {
-        var xhtml = serializer.serializeToString(clone);
-        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w +
-          '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
-          '<foreignObject width="100%" height="100%">' + xhtml +
-          '</foreignObject></svg>';
-        var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        blobUrl = URL.createObjectURL(blob);
-        var img = new Image();
-        img.onload = guard(function () {
-          var canvas = document.createElement('canvas');
-          canvas.width = Math.round(w * scale);
-          canvas.height = Math.round(h * scale);
-          var ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          URL.revokeObjectURL(blobUrl);
-          blobUrl = null;
-          var dataUrl = canvas.toDataURL('image/png');
-          sendToHost({ type: 'png', dataUrl: dataUrl });
-        });
-        img.onerror = guard(function () {
-          sendToHost({ type: 'pngError', message: 'Gagal memuat SVG dokumen.' });
-        });
-        img.src = blobUrl;
-      });
-
-      var urls = {};
-      var nodes = clone.querySelectorAll('img, [style]');
-      for (var j = 0; j < nodes.length; j++) {
-        var el = nodes[j];
-        var candidates = [];
-        var src = el.getAttribute && el.getAttribute('src');
-        if (src && /^https?:/i.test(src)) candidates.push(src);
-        var st = el.getAttribute && el.getAttribute('style');
-        if (st) {
-          var re = /url\(["']?(https?:[^"')]+)["']?\)/gi;
-          var m;
-          while ((m = re.exec(st)) !== null) candidates.push(m[1]);
-        }
-        for (var k = 0; k < candidates.length; k++) urls[candidates[k]] = true;
-      }
-      var externalUrls = Object.keys(urls);
-      if (!externalUrls.length) { rasterize(); return; }
-
-      var swapImage = function (url, dataUrl) {
-        var sel = url.replace(/"/g, '\\"');
-        var els = clone.querySelectorAll('img[src="' + sel + '"]');
-        for (var q = 0; q < els.length; q++) els[q].setAttribute('src', dataUrl);
-        var styled = clone.querySelectorAll('[style*="' + sel + '"]');
-        for (var r = 0; r < styled.length; r++) {
-          styled[r].setAttribute(
-            'style', styled[r].getAttribute('style').split(url).join(dataUrl));
-        }
-      };
-
-      var pending = externalUrls.length;
-      var finishOne = function () {
-        if (--pending === 0) rasterize();
-      };
-      externalUrls.forEach(function (url) {
-        fetch(url, { mode: 'cors' })
-          .then(function (resp) {
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            return resp.blob();
-          })
-          .then(function (blob) {
-            return new Promise(function (resolve) {
-              var reader = new FileReader();
-              reader.onloadend = function () { resolve(reader.result); };
-              reader.readAsDataURL(blob);
-            });
-          })
-          .then(guard(function (dataUrl) {
-            if (dataUrl) swapImage(url, dataUrl);
-          }))
-          .catch(function () { /* biarkan apa adanya */ })
-          .then(finishOne, finishOne);
-      });
-    } catch (e) {
+    var clone = __centauriCleanClone();
+    __centauriInlineImages(clone).then(function () {
+      __centauriRasterize(clone, w, h, scale);
+    }).catch(function (e) {
       sendToHost({ type: 'pngError',
         message: 'Ekspor PNG gagal: ' + (e && e.message ? e.message : e) });
+    });
+  }
+
+  // Ukuran isi dokumen (bukan viewport): lebar & tinggi konten sebenarnya.
+  function __centauriContentSize() {
+    var docEl = document.documentElement;
+    var body = document.body;
+    var w = Math.max(
+      docEl ? docEl.scrollWidth : 0,
+      body ? body.scrollWidth : 0,
+      docEl ? docEl.clientWidth : 0);
+    var h = Math.max(
+      docEl ? docEl.scrollHeight : 0,
+      body ? body.scrollHeight : 0,
+      docEl ? docEl.clientHeight : 0);
+    return { width: w, height: h };
+  }
+
+  // Ganti gambar eksternal di [clone] dengan data URL. Fetch yang gagal tidak
+  // menggagalkan ekspor: gambarnya diganti kotak netral.
+  function __centauriInlineImages(clone) {
+    var jobs = [];
+    var imgs = Array.prototype.slice.call(clone.querySelectorAll('img'));
+    for (var i = 0; i < imgs.length; i++) {
+      (function (img) {
+        // srcset menang atas src saat SVG dirender: buang agar data URL dipakai.
+        img.removeAttribute('srcset');
+        img.removeAttribute('sizes');
+        img.removeAttribute('crossorigin');
+        img.removeAttribute('loading');
+        var src = img.getAttribute('src') || '';
+        if (!src || /^data:/i.test(src)) return;
+        jobs.push(__centauriFetchDataUrl(src).then(function (dataUrl) {
+          img.setAttribute('src', dataUrl);
+        }).catch(function () {
+          var ph = document.createElement('div');
+          ph.setAttribute('style',
+            'width:' + (img.getAttribute('width') || '100%') +
+            ';height:' + (img.getAttribute('height') || '160px') +
+            ';background:#E4E5E9;');
+          if (img.parentNode) img.parentNode.replaceChild(ph, img);
+        }));
+      })(imgs[i]);
     }
+
+    // Background-image lewat atribut style juga ikut di-inline.
+    var styled = Array.prototype.slice.call(clone.querySelectorAll('[style]'));
+    for (var s = 0; s < styled.length; s++) {
+      (function (el) {
+        var style = el.getAttribute('style') || '';
+        var re = /url\(["']?(https?:[^"')]+)["']?\)/gi;
+        var urls = [];
+        var m;
+        while ((m = re.exec(style)) !== null) urls.push(m[1]);
+        for (var u = 0; u < urls.length; u++) {
+          (function (url) {
+            jobs.push(__centauriFetchDataUrl(url).then(function (dataUrl) {
+              var current = el.getAttribute('style') || '';
+              el.setAttribute('style', current.split(url).join(dataUrl));
+            }).catch(function () {}));
+          })(urls[u]);
+        }
+      })(styled[s]);
+    }
+
+    return Promise.all(jobs);
+  }
+
+  function __centauriFetchDataUrl(url) {
+    return fetch(url, { mode: 'cors', credentials: 'omit' })
+      .then(function (resp) {
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.blob();
+      })
+      .then(function (blob) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () { resolve(String(reader.result)); };
+          reader.onerror = function () { reject(new Error('baca gambar gagal')); };
+          reader.readAsDataURL(blob);
+        });
+      });
+  }
+
+  // Bungkus dokumen dalam foreignObject, muat sebagai gambar, gambar ke
+  // canvas, lalu kirim data URL PNG ke host.
+  //
+  // Sumber gambar WAJIB data URL: Chromium menandai canvas "tercemar" bila
+  // SVG ber-foreignObject dimuat dari blob:/http:, sehingga toDataURL() gagal
+  // (SecurityError). Dengan data URL canvas tetap bersih.
+  function __centauriRasterize(clone, w, h, scale) {
+    var fail = function (message) {
+      sendToHost({ type: 'pngError', message: message });
+    };
+
+    try {
+      var xhtml = new XMLSerializer().serializeToString(clone);
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w +
+        '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
+        '<foreignObject width="100%" height="100%">' + xhtml +
+        '</foreignObject></svg>';
+
+      var source = null;
+      try {
+        source = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      } catch (e) {
+        source = null;
+      }
+      if (!source) {
+        fail('Dokumen memuat karakter yang tidak bisa diekspor.');
+        return;
+      }
+
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(w * scale));
+          canvas.height = Math.max(1, Math.round(h * scale));
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = __centauriBackgroundColor();
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          var dataUrl = null;
+          try {
+            dataUrl = canvas.toDataURL('image/png');
+          } catch (e) {
+            fail('Gambar tidak bisa dibaca: ada foto lintas situs.');
+            return;
+          }
+          if (!dataUrl || dataUrl.indexOf('data:image/png') !== 0) {
+            fail('Kanvas PNG kosong.');
+            return;
+          }
+          sendToHost({ type: 'png', dataUrl: dataUrl });
+        } catch (e) {
+          fail('Ekspor PNG gagal: ' + (e && e.message ? e.message : e));
+        }
+      };
+      img.onerror = function () { fail('Gagal memuat dokumen untuk diekspor.'); };
+      img.src = source;
+    } catch (e) {
+      fail('Ekspor PNG gagal: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  // Warna latar dokumen, supaya PNG tidak selalu putih di tema gelap.
+  function __centauriBackgroundColor() {
+    try {
+      var body = document.body;
+      var docEl = document.documentElement;
+      var isClear = function (c) {
+        return !c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)';
+      };
+      var bodyBg = body ? getComputedStyle(body).backgroundColor : '';
+      if (!isClear(bodyBg)) return bodyBg;
+      var htmlBg = docEl ? getComputedStyle(docEl).backgroundColor : '';
+      if (!isClear(htmlBg)) return htmlBg;
+    } catch (e) {}
+    return '#FFFFFF';
   }
 
   // Ekspor struktur halaman ke payload Figma (dipakai plugin companion dan

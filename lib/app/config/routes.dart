@@ -49,9 +49,6 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.codeExport,
       builder: (_, _) => const CodeExporterPage(),
     ),
-    GoRoute(
-      path: AppRoutes.mcpGuide,
-      builder: (_, _) => const McpGuidePage(),
-    ),
+    GoRoute(path: AppRoutes.mcpGuide, builder: (_, _) => const McpGuidePage()),
   ],
 );

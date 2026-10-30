@@ -17,11 +17,11 @@ class _PageSwitcherScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.stylus,
-        PointerDeviceKind.trackpad,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.trackpad,
+  };
 }
 
 /// Tab strip untuk berpindah halaman (navigasi cadangan selain link di HTML).
@@ -98,7 +98,9 @@ class _PageSwitcherBarState extends ConsumerState<PageSwitcherBar> {
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is PointerScrollEvent && _controller.hasClients) {
       // Izinkan scroll vertikal mouse wheel digeser ke horizontal jika deltaX bernilai 0
-      final delta = event.scrollDelta.dx != 0 ? event.scrollDelta.dx : event.scrollDelta.dy;
+      final delta = event.scrollDelta.dx != 0
+          ? event.scrollDelta.dx
+          : event.scrollDelta.dy;
       if (delta != 0) {
         final newOffset = (_controller.offset + delta).clamp(
           _controller.position.minScrollExtent,
@@ -142,7 +144,8 @@ class _PageSwitcherBarState extends ConsumerState<PageSwitcherBar> {
           }
 
           if (showRight) {
-            final rightEdge = 1.0 - (24.0 / bounds.width.clamp(1.0, double.infinity));
+            final rightEdge =
+                1.0 - (24.0 / bounds.width.clamp(1.0, double.infinity));
             colors.add(Colors.black);
             stops.add(rightEdge.clamp(0.0, 1.0));
             colors.add(Colors.transparent);

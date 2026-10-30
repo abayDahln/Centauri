@@ -125,10 +125,9 @@
   "exportFigmaSaved": "บันทึกข้อมูล Figma แล้ว ({count} องค์ประกอบ): {path}",
   "exportFailed": "ส่งออกไม่ได้ ลองอีกครั้ง",
   "exportPageTooltip": "ส่งออกหน้า",
-  "exportPageTooltipCompact": "ส่งออกหน้า (PNG/SVG/PDF/Figma)",
+  "exportPageTooltipCompact": "ส่งออกหน้า (PNG/SVG/Figma)",
   "exportPng": "PNG (รูปภาพ)",
   "exportSvg": "SVG (เวกเตอร์)",
-  "exportPdf": "PDF (เอกสาร)",
   "exportAction": "ส่งออก",
 
   "codePanelCopied": "คัดลอก HTML แล้ว",

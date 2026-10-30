@@ -163,9 +163,8 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
                                   child: _AgentOption(
                                     name: clients[i].name,
                                     selected: i == _selectedClient,
-                                    onTap: () => setState(
-                                      () => _selectedClient = i,
-                                    ),
+                                    onTap: () =>
+                                        setState(() => _selectedClient = i),
                                   ),
                                 ),
                             ],
@@ -174,8 +173,9 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
                       ),
                       const SizedBox(height: 14),
                       _CodeSnippetCard(
-                        headerTitle:
-                            l10n.mcpGuideWhere(clients[_selectedClient].path),
+                        headerTitle: l10n.mcpGuideWhere(
+                          clients[_selectedClient].path,
+                        ),
                         code: clients[_selectedClient].json,
                       ),
                     ],
@@ -216,10 +216,11 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
   }
 
   List<_GuideClient> _clients(String endpoint) => [
-        _GuideClient(
-          name: 'Claude Code · CodeBuddy',
-          path: '.mcp.json',
-          json: '''{
+    _GuideClient(
+      name: 'Claude Code · CodeBuddy',
+      path: '.mcp.json',
+      json:
+          '''{
   "mcpServers": {
     "centauri": {
       "type": "http",
@@ -227,20 +228,22 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
     }
   }
 }''',
-        ),
-        _GuideClient(
-          name: 'Cursor',
-          path: '.cursor/mcp.json',
-          json: '''{
+    ),
+    _GuideClient(
+      name: 'Cursor',
+      path: '.cursor/mcp.json',
+      json:
+          '''{
   "mcpServers": {
     "centauri": { "url": "$endpoint" }
   }
 }''',
-        ),
-        _GuideClient(
-          name: 'OpenCode',
-          path: 'opencode.jsonc',
-          json: '''{
+    ),
+    _GuideClient(
+      name: 'OpenCode',
+      path: 'opencode.jsonc',
+      json:
+          '''{
   "mcp": {
     "servers": {
       "centauri": {
@@ -251,11 +254,12 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
     }
   }
 }''',
-        ),
-        _GuideClient(
-          name: 'Qoder',
-          path: '.qoder/settings.json',
-          json: '''{
+    ),
+    _GuideClient(
+      name: 'Qoder',
+      path: '.qoder/settings.json',
+      json:
+          '''{
   "mcpServers": {
     "centauri": {
       "type": "http",
@@ -264,11 +268,12 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
     }
   }
 }''',
-        ),
-        _GuideClient(
-          name: 'Antigravity',
-          path: '.agents/mcp_config.json',
-          json: '''{
+    ),
+    _GuideClient(
+      name: 'Antigravity',
+      path: '.agents/mcp_config.json',
+      json:
+          '''{
   "mcpServers": {
     "centauri": {
       "serverUrl": "$endpoint",
@@ -276,11 +281,12 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
     }
   }
 }''',
-        ),
-        _GuideClient(
-          name: 'Cline',
-          path: 'cline_mcp_settings.json',
-          json: '''{
+    ),
+    _GuideClient(
+      name: 'Cline',
+      path: 'cline_mcp_settings.json',
+      json:
+          '''{
   "mcpServers": {
     "centauri": {
       "type": "streamableHttp",
@@ -289,8 +295,8 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
     }
   }
 }''',
-        ),
-      ];
+    ),
+  ];
 
   static const String _testPayload = '''{
   "jsonrpc": "2.0",
@@ -317,7 +323,9 @@ class _HeaderBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.palette.primarySoft,
         borderRadius: AppRadius.md,
-        border: Border.all(color: context.palette.primary.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: context.palette.primary.withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,10 +443,7 @@ class _GuideCard extends StatelessWidget {
           ),
           Divider(height: 1, color: context.palette.borderSubtle),
           // Card Content
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: content,
-          ),
+          Padding(padding: const EdgeInsets.all(18), child: content),
         ],
       ),
     );
@@ -599,10 +604,7 @@ class _AgentOption extends StatelessWidget {
 // ────────────────────────────────────────────────────────────────────────────
 
 class _CodeSnippetCard extends StatelessWidget {
-  const _CodeSnippetCard({
-    required this.headerTitle,
-    required this.code,
-  });
+  const _CodeSnippetCard({required this.headerTitle, required this.code});
 
   final String headerTitle;
   final String code;
@@ -786,13 +788,13 @@ class _ToolsSection extends StatelessWidget {
   }
 
   Map<String, String> _toolDescriptions(AppLocalizations l10n) => {
-        'list_sessions': l10n.mcpToolListSessions,
-        'get_session': l10n.mcpToolGetSession,
-        'get_page_html': l10n.mcpToolGetPageHtml,
-        'write_page': l10n.mcpToolWritePage,
-        'delete_page': l10n.mcpToolDeletePage,
-        'post_to_chat': l10n.mcpToolPostToChat,
-      };
+    'list_sessions': l10n.mcpToolListSessions,
+    'get_session': l10n.mcpToolGetSession,
+    'get_page_html': l10n.mcpToolGetPageHtml,
+    'write_page': l10n.mcpToolWritePage,
+    'delete_page': l10n.mcpToolDeletePage,
+    'post_to_chat': l10n.mcpToolPostToChat,
+  };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -895,9 +897,9 @@ class _GuideClient {
 /// [AppPalette.bgElevated]: masih lebih dalam dari permukaan kartu, tapi
 /// tidak lagi menyamai latar.
 Color _insetSurface(AppPalette palette) => Color.alphaBlend(
-      palette.bgElevated.withValues(alpha: 0.35),
-      palette.bgSunken,
-    );
+  palette.bgElevated.withValues(alpha: 0.35),
+  palette.bgSunken,
+);
 
 Future<void> _copy(BuildContext context, String text) async {
   await Clipboard.setData(ClipboardData(text: text));

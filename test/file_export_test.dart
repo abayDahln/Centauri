@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:centauri/features/code_exporter/data/page_export_service.dart';
 import 'package:centauri/features/history/data/mydesign_service.dart';
 import 'package:centauri/features/history/domain/project.dart';
@@ -158,18 +155,4 @@ void main() {
       expect(svg, contains('height="2000"'));
     });
   });
-
-  group('PageExportService.buildPdfFromPng', () {
-    test('produces a non-empty PDF from a 1x1 PNG', () async {
-      final png = _tinyPng();
-      final pdf = await PageExportService().buildPdfFromPng(png);
-      expect(pdf, isNotEmpty);
-      expect(String.fromCharCodes(pdf.take(5)), '%PDF-');
-    });
-  });
 }
-
-/// PNG 1x1 (base64) agar test tidak butuh WebView.
-Uint8List _tinyPng() => base64Decode(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-);

@@ -125,10 +125,9 @@
   "exportFigmaSaved": "Nai-save ang Figma data ({count} elemento): {path}",
   "exportFailed": "Nabigo ang pag-export. Subukan muli.",
   "exportPageTooltip": "I-export ang page",
-  "exportPageTooltipCompact": "I-export ang page (PNG/SVG/PDF/Figma)",
+  "exportPageTooltipCompact": "I-export ang page (PNG/SVG/Figma)",
   "exportPng": "PNG (larawan)",
   "exportSvg": "SVG (vector)",
-  "exportPdf": "PDF (dokumento)",
   "exportAction": "I-export",
 
   "codePanelCopied": "Nakopya ang HTML.",

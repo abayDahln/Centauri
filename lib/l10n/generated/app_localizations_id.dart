@@ -376,16 +376,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get exportPageTooltip => 'Ekspor halaman';
 
   @override
-  String get exportPageTooltipCompact => 'Ekspor halaman (PNG/SVG/PDF/Figma)';
+  String get exportPageTooltipCompact => 'Ekspor halaman (PNG/SVG/Figma)';
 
   @override
   String get exportPng => 'PNG (gambar)';
 
   @override
   String get exportSvg => 'SVG (vektor)';
-
-  @override
-  String get exportPdf => 'PDF (dokumen)';
 
   @override
   String get exportAction => 'Ekspor';

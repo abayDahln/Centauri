@@ -383,16 +383,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get exportPageTooltip => 'Exporter la page';
 
   @override
-  String get exportPageTooltipCompact => 'Exporter la page (PNG/SVG/PDF/Figma)';
+  String get exportPageTooltipCompact => 'Exporter la page (PNG/SVG/Figma)';
 
   @override
   String get exportPng => 'PNG (image)';
 
   @override
   String get exportSvg => 'SVG (vectoriel)';
-
-  @override
-  String get exportPdf => 'PDF (document)';
 
   @override
   String get exportAction => 'Exporter';

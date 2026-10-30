@@ -125,10 +125,9 @@
   "exportFigmaSaved": "Figma データ（{count} 個の要素）を保存しました: {path}",
   "exportFailed": "書き出しに失敗しました。もう一度お試しください。",
   "exportPageTooltip": "ページを書き出す",
-  "exportPageTooltipCompact": "ページを書き出す（PNG/SVG/PDF/Figma）",
+  "exportPageTooltipCompact": "ページを書き出す（PNG/SVG/Figma）",
   "exportPng": "PNG（画像）",
   "exportSvg": "SVG（ベクター）",
-  "exportPdf": "PDF（文書）",
   "exportAction": "書き出す",
 
   "codePanelCopied": "HTML をコピーしました。",

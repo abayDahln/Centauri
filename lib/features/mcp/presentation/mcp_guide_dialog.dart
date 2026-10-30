@@ -625,9 +625,9 @@ class _Tip extends StatelessWidget {
 /// gelapnya dengan kanvas, jadi diangkat sedikit agar tidak menyatu dengan
 /// latar hitam.
 Color _insetSurface(AppPalette palette) => Color.alphaBlend(
-      palette.bgElevated.withValues(alpha: 0.35),
-      palette.bgSunken,
-    );
+  palette.bgElevated.withValues(alpha: 0.35),
+  palette.bgSunken,
+);
 
 Future<void> _copy(BuildContext context, String text) async {
   await Clipboard.setData(ClipboardData(text: text));

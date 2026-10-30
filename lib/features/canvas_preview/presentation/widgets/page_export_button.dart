@@ -32,7 +32,7 @@ class PageExportButton extends ConsumerStatefulWidget {
   ConsumerState<PageExportButton> createState() => _PageExportButtonState();
 }
 
-enum _PageExportKind { png, svg, pdf, figma, figmaPlugin }
+enum _PageExportKind { png, svg, figma, figmaPlugin }
 
 /// Lebar minimum render untuk ekspor Figma supaya hasilnya layout desktop,
 /// bukan versi sempit dari pratinjau yang sedang Split View.
@@ -42,6 +42,15 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
   final PageExportService _service = PageExportService();
   final FigmaExportService _figma = FigmaExportService();
   bool _busy = false;
+
+  /// Ukuran render desktop untuk ekspor, bukan ukuran pratinjau Split View.
+  ({int width, int height}) get _exportSize {
+    final size = MediaQuery.sizeOf(context);
+    return (
+      width: math.max(_figmaMinWidth, size.width.round()),
+      height: math.max(600, size.height.round()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,20 +87,11 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
               pngBytes: bytes,
             );
             if (path != null) snack(l10n.exportSaved(path));
-          case _PageExportKind.pdf:
-            final bytes = await _service.capturePngBytes(page.id);
-            final pdf = await _service.buildPdfFromPng(bytes);
-            final path = await _service.savePdf(
-              pageName: page.name,
-              pdfBytes: pdf,
-            );
-            if (path != null) snack(l10n.exportSaved(path));
           case _PageExportKind.figma:
             // Satu halaman saja, dan selalu dirender pada ukuran desktop
             // supaya hasilnya rapi walau pratinjau sedang sempit.
-            final size = MediaQuery.sizeOf(context);
-            final width = math.max(_figmaMinWidth, size.width.round());
-            final height = math.max(600, size.height.round());
+            final width = _exportSize.width;
+            final height = _exportSize.height;
             final payload = await _figma.collectPayload(
               page.id,
               width: width,
@@ -148,10 +148,6 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
             child: Text(l10n.exportSvg),
           ),
           PopupMenuItem(
-            value: _PageExportKind.pdf,
-            child: Text(l10n.exportPdf),
-          ),
-          PopupMenuItem(
             value: _PageExportKind.figma,
             child: Text(l10n.exportFigma),
           ),
@@ -170,7 +166,6 @@ class _PageExportButtonState extends ConsumerState<PageExportButton> {
       itemBuilder: (_) => [
         PopupMenuItem(value: _PageExportKind.png, child: Text(l10n.exportPng)),
         PopupMenuItem(value: _PageExportKind.svg, child: Text(l10n.exportSvg)),
-        PopupMenuItem(value: _PageExportKind.pdf, child: Text(l10n.exportPdf)),
         PopupMenuItem(
           value: _PageExportKind.figma,
           child: Text(l10n.exportFigma),
