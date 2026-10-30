@@ -146,17 +146,31 @@ class _McpGuidePageState extends ConsumerState<McpGuidePage> {
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (var i = 0; i < clients.length; i++)
-                            _AgentSelectorChip(
-                              name: clients[i].name,
-                              selected: i == _selectedClient,
-                              onTap: () => setState(() => _selectedClient = i),
-                            ),
-                        ],
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final columns = constraints.maxWidth >= 520 ? 2 : 1;
+                          const gap = 8.0;
+                          final width =
+                              (constraints.maxWidth - gap * (columns - 1)) /
+                              columns;
+                          return Wrap(
+                            spacing: gap,
+                            runSpacing: gap,
+                            children: [
+                              for (var i = 0; i < clients.length; i++)
+                                SizedBox(
+                                  width: width,
+                                  child: _AgentOption(
+                                    name: clients[i].name,
+                                    selected: i == _selectedClient,
+                                    onTap: () => setState(
+                                      () => _selectedClient = i,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 14),
                       _CodeSnippetCard(
@@ -451,7 +465,7 @@ class _EndpointTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: context.palette.bgSunken,
+        color: _insetSurface(context.palette),
         borderRadius: AppRadius.sm,
         border: Border.all(color: context.palette.borderSubtle),
       ),
@@ -510,11 +524,16 @@ class _EndpointTile extends StatelessWidget {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Agent Selector Chip
+// Agent Selector
 // ────────────────────────────────────────────────────────────────────────────
 
-class _AgentSelectorChip extends StatelessWidget {
-  const _AgentSelectorChip({
+/// Satu pilihan agent: petak selebar setengah kartu dengan penanda terpilih.
+///
+/// Sebelumnya pil di dalam `Wrap`; `Container` ber-`alignment` memaksa lebar
+/// penuh sehingga semua agent membentang selebar kartu dan pilihannya sulit
+/// dibaca. Sekarang tiap agent jadi petak yang bisa dibandingkan.
+class _AgentOption extends StatelessWidget {
+  const _AgentOption({
     required this.name,
     required this.selected,
     required this.onTap,
@@ -526,32 +545,47 @@ class _AgentSelectorChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? context.palette.primarySoft : context.palette.bgSurface,
-      borderRadius: AppRadius.pill,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.pill,
-        child: Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.pill,
-            border: Border.all(
-              color: selected
-                  ? context.palette.primary
-                  : context.palette.borderSubtle,
-              width: selected ? 1.4 : 1,
+    final palette = context.palette;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? palette.primarySoft : palette.bgSurface,
+        borderRadius: AppRadius.sm,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.sm,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 40),
+            padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 12, 8),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.sm,
+              border: Border.all(
+                color: selected ? palette.primary : palette.borderSubtle,
+                width: selected ? 1.4 : 1,
+              ),
             ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            name,
-            style: context.text.label.copyWith(
-              color: selected
-                  ? context.palette.primary
-                  : context.palette.textSecondary,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            child: Row(
+              children: [
+                Icon(
+                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  size: 16,
+                  color: selected ? palette.primary : palette.textDisabled,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.label.copyWith(
+                      fontSize: 13,
+                      color: selected ? palette.primary : palette.textPrimary,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -578,7 +612,7 @@ class _CodeSnippetCard extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: context.palette.bgSunken,
+        color: _insetSurface(context.palette),
         borderRadius: AppRadius.md,
         border: Border.all(color: context.palette.borderSubtle),
       ),
@@ -702,7 +736,7 @@ class _ToolsSection extends StatelessWidget {
             return Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: context.palette.bgSunken,
+                color: _insetSurface(context.palette),
                 borderRadius: AppRadius.sm,
                 border: Border.all(color: context.palette.borderSubtle),
               ),
@@ -853,6 +887,17 @@ class _GuideClient {
   final String path;
   final String json;
 }
+
+/// Latar elemen yang berada di dalam kartu (blok kode, tile kecil).
+///
+/// [AppPalette.bgSunken] di mode gelap sama gelapnya dengan kanvas, jadi isi
+/// kartu menyatu dengan latar hitam. Warnanya diangkat sedikit ke arah
+/// [AppPalette.bgElevated]: masih lebih dalam dari permukaan kartu, tapi
+/// tidak lagi menyamai latar.
+Color _insetSurface(AppPalette palette) => Color.alphaBlend(
+      palette.bgElevated.withValues(alpha: 0.35),
+      palette.bgSunken,
+    );
 
 Future<void> _copy(BuildContext context, String text) async {
   await Clipboard.setData(ClipboardData(text: text));

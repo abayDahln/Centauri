@@ -20,12 +20,20 @@ import 'chat_side_panel.dart';
 import 'element_edit_menu.dart';
 import 'generation_canvas_overlay.dart';
 import 'element_text_editor.dart';
-import 'page_switch_tracker.dart';
+import 'page_view_cache.dart';
 
-/// Host preview halaman: SATU WebView untuk seluruh app yang selalu
-/// menampilkan halaman aktif. Fluid — mengisi penuh kontainer, tanpa lebar
-/// CSS yang di-pin. Klik `<a href>` di-intercept oleh bridge JS lalu dipetakan
-/// ke halaman yang cocok (atau dibuka di browser untuk link eksternal).
+/// Host preview halaman. Setiap halaman punya WebView sendiri yang disimpan
+/// di [PageViewCache]: halaman yang pernah dibuka tetap hidup di belakang
+/// (dokumen, skrip, posisi gulir), jadi berpindah kembali ke halaman itu
+/// seketika tanpa memuat ulang dokumen.
+///
+/// Halaman yang belum pernah dibuka tetap perlu render pertama; selama itu
+/// halaman yang sedang tampil dibiarkan terlihat (bukan ditimpa scrim) dan
+/// indikator baru muncul bila render terasa lambat.
+///
+/// Fluid — mengisi penuh kontainer, tanpa lebar CSS yang di-pin. Klik
+/// `<a href>` di-intercept oleh bridge JS lalu dipetakan ke halaman yang cocok
+/// (atau dibuka di browser untuk link eksternal).
 class PagePreview extends ConsumerStatefulWidget {
   const PagePreview({super.key});
 
@@ -34,16 +42,32 @@ class PagePreview extends ConsumerStatefulWidget {
 }
 
 class _PagePreviewState extends ConsumerState<PagePreview> {
-  final CanvasWebviewService _service = createCanvasWebviewService();
-  StreamSubscription<CanvasSelectEvent>? _subscription;
-  bool _ready = false;
-  String? _error;
-  String? _registeredPageId;
+  /// Batas WebView yang disimpan hidup. Halaman aktif + halaman yang sedang
+  /// tampil selalu dilindungi dari penggusuran.
+  static const int _cachedPages = 3;
 
-  /// Overlay "Memuat…" hanya untuk pergantian halaman (bukan mutasi HTML
-  /// halaman yang sama) — lihat [PageSwitchTracker].
-  final PageSwitchTracker _switchTracker = PageSwitchTracker();
+  final PageViewCache<_PageSlot> _slots = PageViewCache<_PageSlot>(
+    maxEntries: _cachedPages,
+  );
+
+  /// Halaman yang sedang dituju (sumber listener halaman aktif).
+  String? _activeId;
+
+  /// Halaman yang WebView-nya sedang terpasang di layar. Bisa tertinggal satu
+  /// langkah di belakang [_activeId] selama render pertama halaman baru,
+  /// supaya halaman lama tidak berkedip hilang.
+  String? _displayId;
+
+  bool _ready = false;
+
+  /// Overlay "Memuat…" — hanya tampil bila render pertama halaman baru
+  /// melebihi [_switchOverlayDelay], bukan untuk halaman dari cache.
   bool _switching = false;
+  Timer? _switchTimer;
+  static const Duration _switchOverlayDelay = Duration(milliseconds: 160);
+
+  /// Nomor urut render halaman; render lama yang selesai belakangan diabaikan.
+  int _renderSeq = 0;
 
   /// Geometri node yang menunya sedang terbuka. Null = menu tertutup.
   NodeGeometry? _menuGeometry;
@@ -75,19 +99,11 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   /// Warna aksen terakhir yang dikirim ke JS (hindari kiriman berulang).
   String? _accentHex;
 
-  /// Posisi gulir terakhir di dokumen aktif (CSS px). Dipulihkan setelah
-  /// dokumen dirender ulang karena mutasi (hapus komponen / edit teks),
-  /// supaya user tidak terlempar ke paling atas.
-  double _scrollX = 0;
-  double _scrollY = 0;
-
-  /// HTML yang benar-benar sedang tampil di WebView. Dipakai untuk membedakan
-  /// "dokumen parsial" dari halaman asli saat pratinjau berakhir.
-  String? _displayedHtml;
-
-  /// Dokumen parsial terakhir yang sudah dikirim ke WebView.
-  String? _appliedPreview;
   Timer? _previewTimer;
+
+  _PageSlot? get _activeSlot => _activeId == null ? null : _slots[_activeId!];
+  _PageSlot? get _displaySlot =>
+      _displayId == null ? null : _slots[_displayId!];
 
   @override
   void initState() {
@@ -103,110 +119,200 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     final hex = _hexOf(context.palette.primary);
     if (hex == _accentHex) return;
     _accentHex = hex;
-    _service.setSelectionAccent(hex);
+    _activeSlot?.service.setSelectionAccent(hex);
   }
 
   Future<void> _initialize() async {
-    try {
-      await _service.init();
-      _subscription = _service.selectionEvents.listen(
-        _onEvent,
-        onError: (Object e) => debugPrint('[workspace] bridge error: $e'),
-      );
-      final page = ref.read(workspaceProvider).activePage;
-      if (page != null) {
-        _registeredPageId = page.id;
-        CanvasServiceRegistry.register(page.id, _service);
-        await _service.renderHtml(page.html.isEmpty ? null : page.html);
-        await _service.setSelectionMode(
-          ref.read(workspaceProvider).selectionMode,
-        );
-        final accent = _accentHex;
-        if (accent != null) await _service.setSelectionAccent(accent);
-      } else {
-        await _service.renderHtml(null);
-      }
-    } catch (e) {
-      debugPrint('[workspace] WebView gagal init/render: $e');
-      _error = '$e';
-    }
+    final page = ref.read(workspaceProvider).activePage;
+    if (page != null) await _renderPage(page.id, page.html);
     if (mounted) setState(() => _ready = true);
   }
 
-  Future<void> _retryRender() async {
-    if (mounted) setState(() => _error = null);
-    try {
-      final page = ref.read(workspaceProvider).activePage;
-      await _service.renderHtml(
-        page == null || page.html.isEmpty ? null : page.html,
-      );
-      await _service.setSelectionMode(
-        ref.read(workspaceProvider).selectionMode,
-      );
-      final accent = _accentHex;
-      if (accent != null) await _service.setSelectionAccent(accent);
-    } catch (e) {
-      debugPrint('[workspace] retry render gagal: $e');
-      if (mounted) setState(() => _error = '$e');
-    }
+  /// Buat WebView baru untuk [pageId] dan langsung mulai inisialisasi di
+  /// belakang. Event bridge halaman ini tetap terdaftar walau nanti tidak
+  /// sedang tampil.
+  _PageSlot _openSlot(String pageId) {
+    final service = createCanvasWebviewService();
+    final slot = _PageSlot(pageId: pageId, service: service);
+    slot.subscription = service.selectionEvents.listen(
+      (event) => _onEvent(slot, event),
+      onError: (Object e) => debugPrint('[workspace] bridge error: $e'),
+    );
+    slot.initFuture = service
+        .init()
+        .then((_) {
+          slot.ready = true;
+          if (mounted) setState(() {});
+        })
+        .catchError((Object e) {
+          debugPrint('[workspace] WebView gagal init: $e');
+          slot.error = '$e';
+          if (mounted) setState(() {});
+        });
+    // MCP/exporter menemukan WebView halaman lewat registry ini — termasuk
+    // halaman yang sedang tersimpan di cache.
+    CanvasServiceRegistry.register(pageId, service);
+    return slot;
   }
 
-  /// Registrasi service di bawah id halaman aktif (agar MCP/exporter bisa
-  /// menemukannya) dan muat HTML-nya.
+  Future<void> _retryRender() async {
+    final id = _activeId;
+    if (id == null) return;
+    final old = _slots.remove(id);
+    if (_displayId == id) _displayId = null;
+    _activeId = null;
+    if (mounted) {
+      setState(() {
+        _switching = false;
+        _ready = true;
+      });
+    }
+    old?.dispose();
+    final page = ref.read(workspaceProvider).activePage;
+    await _renderPage(page?.id, page?.html);
+  }
+
+  /// Tampilkan halaman [pageId] dengan memakai WebView dari cache bila ada.
+  ///
+  /// Hanya pemuatan pertama sebuah halaman (atau saat HTML-nya berubah) yang
+  /// memuat dokumen baru; selebihnya cuma menukar WebView yang terpasang.
   Future<void> _renderPage(String? pageId, String? html) async {
     // Dokumen baru = koordinat lama tidak berlaku lagi; tutup menu/editor.
     _resetSelectionUi();
-    // Mutasi pada halaman yang SAMA (hapus komponen / edit teks) memuat ulang
-    // dokumen. Posisi gulir lama disimpan agar tidak kembali ke paling atas.
-    final samePage = pageId != null && _registeredPageId == pageId;
-    final restoreScroll = samePage ? Offset(_scrollX, _scrollY) : null;
-    if (!samePage) {
-      _scrollX = 0;
-      _scrollY = 0;
-    }
-    // Berpindah halaman → tindih preview dengan indikator memuat selagi
-    // WebView memuat dokumen baru (klik tab langsung terasa responsif).
-    final switching = _switchTracker.isSwitching(pageId);
-    if (switching && mounted && _ready) setState(() => _switching = true);
-    if (_registeredPageId != null && _registeredPageId != pageId) {
-      CanvasServiceRegistry.unregister(_registeredPageId!);
-      _registeredPageId = null;
-    }
-    if (pageId != null) {
-      CanvasServiceRegistry.register(pageId, _service);
-      _registeredPageId = pageId;
-    }
-    // Error halaman sebelumnya tidak relevan lagi.
-    if (mounted && _error != null) setState(() => _error = null);
-    try {
-      await _service.renderHtml(html == null || html.isEmpty ? null : html);
-      _displayedHtml = html;
-      _appliedPreview = null;
-      // Dokumen baru selalu mulai di mode interaksi; terapkan ulang.
-      await _service.setSelectionMode(
-        ref.read(workspaceProvider).selectionMode,
-      );
-      final accent = _accentHex;
-      if (accent != null) await _service.setSelectionAccent(accent);
-      // Seleksi dipertahankan lintas render (mis. setelah edit teks / hapus)
-      // supaya menu elemen muncul lagi dengan geometri terbaru.
-      final selected = ref.read(workspaceProvider).selectedNodeId;
-      if (selected != null) await _service.selectNode(selected);
-      // Dipulihkan setelah seleksi (selectNode bisa memicu scrollIntoView).
-      if (restoreScroll != null &&
-          (restoreScroll.dx > 0 || restoreScroll.dy > 0)) {
-        await _service.scrollTo(restoreScroll.dx, restoreScroll.dy);
+    _pruneSlots();
+
+    if (pageId == null) {
+      _activeId = null;
+      _displayId = null;
+      _clearSwitchOverlay();
+      for (final slot in _slots.clear()) {
+        slot.dispose();
       }
-      if (mounted && _error != null) setState(() => _error = null);
+      if (mounted) setState(() {});
+      return;
+    }
+
+    // Penanda render terbaru: hasil render lama yang selesai belakangan
+    // (user pindah halaman lagi) tidak boleh menimpa halaman yang aktif.
+    final seq = ++_renderSeq;
+    final nextHtml = (html == null || html.isEmpty) ? null : html;
+    final switching = _activeId != pageId;
+
+    var slot = _slots.touch(pageId);
+    final isNew = slot == null;
+    slot ??= _openSlot(pageId);
+    // Halaman tujuan + halaman yang sedang tampil tidak boleh tergusur.
+    final evicted = _slots.store(pageId, slot, keep: [pageId, ?_displayId]);
+    for (final gone in evicted) {
+      gone.dispose();
+    }
+
+    _activeId = pageId;
+    final needsRender = isNew || !slot.rendered || slot.html != nextHtml;
+
+    // Bukan pindah halaman dan HTML tidak berubah: tidak ada yang perlu
+    // dirender (mis. listener terpicu karena halaman lain dimutasi).
+    if (!switching && !needsRender) {
+      if (mounted) setState(() {});
+      return;
+    }
+
+    // Mutasi halaman yang sama memuat ulang dokumen; posisi baca dipertahankan
+    // supaya user tidak terlempar ke paling atas.
+    final restoreScroll = needsRender && !switching
+        ? Offset(slot.scrollX, slot.scrollY)
+        : null;
+
+    // Halaman cache tampil seketika; halaman baru baru memunculkan indikator
+    // setelah [_switchOverlayDelay] agar pemuatan cepat tidak berkedip.
+    if (switching && needsRender) _scheduleSwitchOverlay();
+
+    try {
+      await slot.initFuture;
+      if (seq != _renderSeq) return;
+      if (slot.error != null) {
+        if (mounted) setState(() {});
+        return;
+      }
+      if (needsRender) {
+        await slot.service.renderHtml(nextHtml);
+        if (seq != _renderSeq) return;
+        slot
+          ..html = nextHtml
+          ..displayedHtml = nextHtml
+          ..appliedPreview = null
+          ..rendered = true;
+      }
+      // Tampilkan sebelum sinkronisasi JS: pergantian halaman tidak menunggu
+      // mode seleksi / aksen / seleksi node.
+      _showSlot(slot);
+      await _syncSlot(slot, restoreScroll: restoreScroll);
+      slot.error = null;
     } catch (e) {
       debugPrint('[workspace] renderHtml gagal: $e');
-      if (mounted) setState(() => _error = '$e');
+      slot.error = '$e';
+      if (mounted) setState(() {});
     } finally {
-      if (mounted && _switching) setState(() => _switching = false);
+      if (seq == _renderSeq) _clearSwitchOverlay();
     }
   }
 
-  void _onEvent(CanvasSelectEvent event) {
+  /// Pasang WebView [slot] di layar (tanpa memuat ulang dokumennya).
+  void _showSlot(_PageSlot slot) {
+    if (_displayId == slot.pageId) return;
+    _displayId = slot.pageId;
+    if (mounted) setState(() {});
+  }
+
+  /// Terapkan state aplikasi yang hidup di luar dokumen: mode seleksi, warna
+  /// aksen, node terpilih, dan posisi gulir.
+  Future<void> _syncSlot(_PageSlot slot, {Offset? restoreScroll}) async {
+    final state = ref.read(workspaceProvider);
+    await slot.service.setSelectionMode(state.selectionMode);
+    final accent = _accentHex;
+    if (accent != null) await slot.service.setSelectionAccent(accent);
+    // Seleksi dipertahankan lintas render (mis. setelah edit teks / hapus)
+    // supaya menu elemen muncul lagi dengan geometri terbaru.
+    await slot.service.selectNode(state.selectedNodeId);
+    // Dipulihkan setelah seleksi (selectNode bisa memicu scrollIntoView).
+    if (restoreScroll != null &&
+        (restoreScroll.dx > 0 || restoreScroll.dy > 0)) {
+      await slot.service.scrollTo(restoreScroll.dx, restoreScroll.dy);
+    }
+  }
+
+  /// Buang WebView halaman yang sudah tidak ada di proyek.
+  void _pruneSlots() {
+    final ids = ref.read(workspaceProvider).pages.map((p) => p.id).toSet();
+    for (final id in _slots.ids) {
+      if (id == _activeId || ids.contains(id)) continue;
+      _slots.remove(id)?.dispose();
+    }
+  }
+
+  void _scheduleSwitchOverlay() {
+    _switchTimer?.cancel();
+    _switchTimer = Timer(_switchOverlayDelay, () {
+      if (!mounted || _switching) return;
+      setState(() => _switching = true);
+    });
+  }
+
+  void _clearSwitchOverlay() {
+    _switchTimer?.cancel();
+    _switchTimer = null;
+    if (_switching && mounted) setState(() => _switching = false);
+  }
+
+  void _onEvent(_PageSlot slot, CanvasSelectEvent event) {
+    // Halaman latar tidak boleh mengubah UI halaman aktif; simpan errornya
+    // saja supaya tetap terlihat saat halaman itu dibuka.
+    if (slot.pageId != _activeId) {
+      if (event.type == 'error') {
+        slot.error = event.errorMessage ?? 'WebView error';
+      }
+      return;
+    }
     switch (event.type) {
       case 'png':
       case 'pngError':
@@ -217,10 +323,11 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       case 'error':
         final message = event.errorMessage ?? context.l10n.previewGenericError;
         debugPrint('[workspace] bridge error: $message');
-        if (mounted) setState(() => _error = message);
+        slot.error = message;
+        if (mounted) setState(() {});
         return;
       case 'ready':
-        if (mounted && _error != null) setState(() => _error = null);
+        if (mounted && slot.error != null) setState(() => slot.error = null);
         return;
       case 'navigate':
         _onNavigate(event.href ?? '');
@@ -261,13 +368,14 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
         if (event.id == null) _closeMenu();
         return;
       case 'scroll':
-        // Simpan posisi baca sebelum dokumen mungkin dimuat ulang.
-        _scrollX = event.scrollX ?? _scrollX;
-        _scrollY = event.scrollY ?? _scrollY;
+        // Simpan posisi baca halaman ini sebelum dokumennya mungkin dimuat
+        // ulang (mutasi halaman) atau saat ditinggalkan.
+        slot.scrollX = event.scrollX ?? slot.scrollX;
+        slot.scrollY = event.scrollY ?? slot.scrollY;
         // Saat edit, editor ikut bergeser bersama teks (sesi edit tidak
         // dibatalkan hanya karena halaman digulir).
         if (_editingNodeId != null) {
-          _service.requestNodeGeometry(_editingNodeId!);
+          slot.service.requestNodeGeometry(_editingNodeId!);
           return;
         }
         // Menu native tidak ikut tergulir bersama halaman.
@@ -395,7 +503,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   Future<void> _selectAncestor(String id) async {
     if (id == _menuGeometry?.id) return;
     ref.read(workspaceProvider.notifier).selectNode(id);
-    await _service.selectNode(id);
+    await _activeSlot?.service.selectNode(id);
   }
 
   /// Buka editor teks inline di atas teks elemen.
@@ -426,7 +534,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     });
     // Ring digambar di elemen terpilih (bentuk komponen asli), bukan di
     // kotak teks kecil di dalamnya.
-    _service.setTextEditing(targetId, true, ringId: geometry.id);
+    _activeSlot?.service.setTextEditing(targetId, true, ringId: geometry.id);
   }
 
   /// Kotak editor: lebar dari kotak isi elemen (agar wrap sama dengan
@@ -453,30 +561,32 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     );
   }
 
-  /// Terapkan dokumen parsial ke WebView (throttle 200 ms, minimal 300 char
-  /// baru). `null` = pratinjau berakhir: pulihkan halaman asli bila yang
-  /// tampil memang dokumen parsial.
+  /// Terapkan dokumen parsial ke WebView halaman aktif (throttle 200 ms,
+  /// minimal 300 char baru). `null` = pratinjau berakhir: pulihkan halaman
+  /// asli bila yang tampil memang dokumen parsial.
   void _schedulePreview(String? html) {
+    final slot = _activeSlot;
+    if (slot == null) return;
     if (html == null) {
       _previewTimer?.cancel();
       _previewTimer = null;
-      final applied = _appliedPreview;
-      _appliedPreview = null;
+      final applied = slot.appliedPreview;
+      slot.appliedPreview = null;
       if (applied == null) return;
       final page = ref.read(workspaceProvider).activePage;
-      if (_displayedHtml != (page?.html ?? '')) {
+      if (slot.displayedHtml != (page?.html ?? '')) {
         _renderPage(page?.id, page?.html);
       }
       return;
     }
-    if (html == _appliedPreview) return;
-    if (html.length - (_appliedPreview?.length ?? 0) < 300) return;
+    if (html == slot.appliedPreview) return;
+    if (html.length - (slot.appliedPreview?.length ?? 0) < 300) return;
     _previewTimer?.cancel();
     _previewTimer = Timer(const Duration(milliseconds: 200), () {
       if (!mounted) return;
-      _appliedPreview = html;
-      _displayedHtml = html;
-      _service.previewHtml(html);
+      slot.appliedPreview = html;
+      slot.displayedHtml = html;
+      slot.service.previewHtml(html);
     });
   }
 
@@ -490,7 +600,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     _liveTextTimer = Timer(const Duration(milliseconds: 16), () {
       final target = _editingNodeId;
       if (target == null) return;
-      _service.liveTextUpdate(target, _liveText);
+      _activeSlot?.service.liveTextUpdate(target, _liveText);
     });
   }
 
@@ -511,7 +621,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       _editingRect = null;
       _editingElementRect = null;
     });
-    await _service.setTextEditing(id, false);
+    await _activeSlot?.service.setTextEditing(id, false);
     final ok = await ref
         .read(workspaceProvider.notifier)
         .commitCanvasTextEdit(id, trimmed);
@@ -533,14 +643,14 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     });
     // DOM sudah ikut berubah selama mengetik; kembalikan teks aslinya.
     if (_liveText != _editingText) {
-      await _service.liveTextUpdate(id, _editingText);
+      await _activeSlot?.service.liveTextUpdate(id, _editingText);
       _liveText = _editingText;
     }
-    await _service.setTextEditing(id, false);
+    await _activeSlot?.service.setTextEditing(id, false);
     // Geometri diminta untuk elemen TERPILIH (bisa induk dari target teks).
     final selected = ref.read(workspaceProvider).selectedNodeId;
     if (reopenMenu && selected != null) {
-      await _service.requestNodeGeometry(selected);
+      await _activeSlot?.service.requestNodeGeometry(selected);
     }
   }
 
@@ -573,13 +683,12 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
 
   @override
   void dispose() {
-    if (_registeredPageId != null) {
-      CanvasServiceRegistry.unregister(_registeredPageId!);
-    }
     _liveTextTimer?.cancel();
     _previewTimer?.cancel();
-    _subscription?.cancel();
-    _service.dispose();
+    _switchTimer?.cancel();
+    for (final slot in _slots.clear()) {
+      slot.dispose();
+    }
     super.dispose();
   }
 
@@ -600,15 +709,15 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
 
     ref.listen<String?>(
       workspaceProvider.select((s) => s.selectedNodeId),
-      (_, id) => _service.selectNode(id),
+      (_, id) => _activeSlot?.service.selectNode(id),
     );
     ref.listen<String?>(
       workspaceProvider.select((s) => s.hoveredNodeId),
-      (_, id) => _service.hoverNode(id),
+      (_, id) => _activeSlot?.service.hoverNode(id),
     );
     ref.listen<bool>(
       workspaceProvider.select((s) => s.selectionMode),
-      (_, enabled) => _service.setSelectionMode(enabled),
+      (_, enabled) => _activeSlot?.service.setSelectionMode(enabled),
     );
 
     // Pratinjau live saat generate: dokumen parsial diganti di tempat tanpa
@@ -618,15 +727,24 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
       (_, html) => _schedulePreview(html),
     );
 
+    final display = _displaySlot;
+    final active = _activeSlot;
+    final activeError = active?.error;
     Widget content;
     if (!_ready) {
       content = const _WebviewLoading();
-    } else if (html == null || html.isEmpty) {
-      content = const _PreviewEmptyState();
-    } else if (_error != null) {
-      content = _WebviewError(message: _error!, onRetry: _retryRender);
+    } else if (activeError != null) {
+      content = _WebviewError(message: activeError, onRetry: _retryRender);
+    } else if (display != null) {
+      // WebView halaman yang tampil; dokumennya sudah hidup di cache.
+      content = KeyedSubtree(
+        key: ValueKey(display.pageId),
+        child: display.service.buildView(),
+      );
+    } else if (active != null) {
+      content = const _WebviewLoading();
     } else {
-      content = _service.buildView();
+      content = const _PreviewEmptyState();
     }
 
     // Bingkai (border, radius, bilah browser) disediakan pemanggil agar
@@ -634,22 +752,33 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
+        // Halaman tanpa HTML tetap menampilkan empty state di atas WebView-nya
+        // (dokumen kosong itu perlu hidup untuk pratinjau saat generate).
+        final showEmpty =
+            display != null &&
+            display.pageId == _activeId &&
+            (html == null || html.isEmpty);
         return ColoredBox(
           color: Colors.white,
           child: Stack(
             fit: StackFit.expand,
             children: [
               RepaintBoundary(child: content),
+              if (showEmpty) const _PreviewEmptyState(),
               if (_menuGeometry != null && _editingNodeId == null)
                 _positionMenu(size),
               if (_editingNodeId != null && _editingRect != null)
                 _positionEditor(size),
-              // Selagi dokumen baru dimuat, halaman lama tetap terlihat dan
-              // ditindih scrim + spinner supaya pindah halaman terasa responsif.
+              // Halaman lama tetap terlihat selama render pertama halaman
+              // baru; indikator hanya muncul bila render terasa lambat.
               if (_switching) const _PageSwitchLoading(),
               // Selama generate halaman read-only: klik & gulir tidak
               // diteruskan ke WebView.
               if (generating) const AbsorbPointer(child: SizedBox.expand()),
+              // Saat berpindah halaman, klik ke halaman lama ditahan supaya
+              // tidak memicu navigasi/editor di dokumen yang akan ditinggal.
+              if (_switching && !generating)
+                const AbsorbPointer(child: SizedBox.expand()),
               const GenerationCanvasOverlay(),
             ],
           ),
@@ -704,7 +833,7 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
           onClose: () {
             _closeMenu();
             ref.read(workspaceProvider.notifier).selectNode(null);
-            _service.selectNode(null);
+            _activeSlot?.service.selectNode(null);
           },
         ),
       ),
@@ -763,38 +892,60 @@ class _PagePreviewState extends ConsumerState<PagePreview> {
   }
 }
 
+/// Satu halaman yang punya WebView sendiri.
+///
+/// Selama tersimpan di [PageViewCache], dokumennya tetap hidup: skrip, gambar,
+/// dan posisi gulir tidak hilang, jadi kembali ke halaman ini tidak memuat
+/// ulang apa pun.
+class _PageSlot {
+  _PageSlot({required this.pageId, required this.service});
+
+  final String pageId;
+  final CanvasWebviewService service;
+  StreamSubscription<CanvasSelectEvent>? subscription;
+  late Future<void> initFuture;
+
+  bool ready = false;
+  String? error;
+
+  /// HTML yang benar-benar sudah dimuat. `null` = dokumen kosong.
+  String? html;
+  bool rendered = false;
+
+  /// HTML yang sedang tampil di WebView (bisa dokumen parsial saat generate).
+  String? displayedHtml;
+
+  /// Dokumen parsial terakhir yang sudah dikirim ke WebView.
+  String? appliedPreview;
+
+  /// Posisi gulir terakhir di dokumen ini (CSS px).
+  double scrollX = 0;
+  double scrollY = 0;
+
+  void dispose() {
+    CanvasServiceRegistry.unregister(pageId);
+    unawaited(subscription?.cancel());
+    unawaited(service.dispose());
+  }
+}
+
 class _PageSwitchLoading extends StatelessWidget {
   const _PageSwitchLoading();
 
   @override
   Widget build(BuildContext context) {
+    // Halaman lama tetap terlihat utuh; yang muncul hanya garis progres tipis
+    // di tepi atas kanvas, seperti bilah pemuatan browser.
     return IgnorePointer(
-      child: ColoredBox(
-        color: Colors.white.withValues(alpha: 0.72),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: context.palette.primary,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                context.l10n.previewLoading,
-                style: TextStyle(
-                  fontFamily: AppFonts.uiFamily,
-                  fontFamilyFallback: AppFonts.uiFallback,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: context.palette.textSecondary,
-                ),
-              ),
-            ],
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          height: 2.5,
+          width: double.infinity,
+          child: LinearProgressIndicator(
+            minHeight: 2.5,
+            color: context.palette.primary,
+            backgroundColor: Colors.transparent,
           ),
         ),
       ),

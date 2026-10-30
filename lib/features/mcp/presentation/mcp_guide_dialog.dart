@@ -456,8 +456,7 @@ class _ClientChip extends StatelessWidget {
           onTap: onTap,
           borderRadius: AppRadius.pill,
           child: Container(
-            height: 28,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: AppRadius.pill,
               border: Border.all(
@@ -466,7 +465,6 @@ class _ClientChip extends StatelessWidget {
                     : context.palette.borderSubtle,
               ),
             ),
-            alignment: Alignment.center,
             child: Text(
               label,
               style: context.text.label.copyWith(
@@ -493,7 +491,7 @@ class _Snippet extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: context.palette.bgSunken,
+        color: _insetSurface(context.palette),
         borderRadius: AppRadius.md,
         border: Border.all(color: context.palette.borderSubtle),
       ),
@@ -622,6 +620,14 @@ class _Tip extends StatelessWidget {
     );
   }
 }
+
+/// Latar elemen di dalam kartu. Di mode gelap [AppPalette.bgSunken] sama
+/// gelapnya dengan kanvas, jadi diangkat sedikit agar tidak menyatu dengan
+/// latar hitam.
+Color _insetSurface(AppPalette palette) => Color.alphaBlend(
+      palette.bgElevated.withValues(alpha: 0.35),
+      palette.bgSunken,
+    );
 
 Future<void> _copy(BuildContext context, String text) async {
   await Clipboard.setData(ClipboardData(text: text));
