@@ -91,6 +91,14 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
   /// Pengguna memilih "Custom API Key" → semua field bisa diisi sendiri.
   bool get _isCustom => _catalogId == kCustomCatalogId;
 
+  /// Entri katalog untuk provider yang sedang dipilih; null saat belum
+  /// dipilih atau saat memakai Custom (tidak punya situs bawaan).
+  ProviderCatalogEntry? get _catalogEntry {
+    final id = _catalogId;
+    if (id == null || id == kCustomCatalogId) return null;
+    return ProviderCatalog.byId(id);
+  }
+
   /// Base URL terkunci saat memakai template katalog.
   bool get _baseUrlLocked => _hasProvider && !_isCustom;
 
@@ -671,6 +679,12 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
               hint: l10n.providerDetailPickProviderLabel,
               onTap: _pickProvider,
             ),
+            // Pintasan ke situs provider: halaman API key bila ada, kalau
+            // tidak situs utamanya. Muncul begitu provider dipilih.
+            if (_catalogEntry case final entry?) ...[
+              const SizedBox(height: 8),
+              _buildProviderSiteLink(entry),
+            ],
             // Custom: pengguna mengetik nama providernya sendiri.
             if (_isCustom) ...[
               const SizedBox(height: 20),
@@ -794,6 +808,73 @@ class _ProviderDetailPageState extends ConsumerState<ProviderDetailPage> {
         _buildResolvedEndpointPreview(),
       ],
     );
+  }
+
+  /// Tautan ke situs provider supaya API key bisa dibuat tanpa mencari
+  /// halaman key sendiri. Halaman API key diutamakan; provider tanpa halaman
+  /// key (mis. Ollama, Cline) memakai situs utamanya.
+  Widget _buildProviderSiteLink(ProviderCatalogEntry entry) {
+    final raw = entry.apiKeyUrl ?? entry.website;
+    final uri = raw == null ? null : Uri.tryParse(raw);
+    if (uri == null || uri.host.isEmpty) return const SizedBox.shrink();
+
+    // Tanpa skema: domain + path sudah cukup jelas dan jauh lebih ringkas.
+    final label = uri.path.isEmpty || uri.path == '/'
+        ? uri.host
+        : '${uri.host}${uri.path}';
+    final palette = context.palette;
+
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: InkWell(
+        onTap: () => _openExternal(uri),
+        borderRadius: AppRadius.sm,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                entry.apiKeyUrl == null ? Icons.public : Icons.key_outlined,
+                size: 13,
+                color: palette.primary,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AppFonts.uiFamily,
+                    fontFamilyFallback: AppFonts.uiFallback,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: palette.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.open_in_new, size: 11, color: palette.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Buka tautan di browser luar. Gagal membuka dilaporkan sebagai toast
+  /// singkat, bukan dibiarkan diam.
+  Future<void> _openExternal(Uri uri) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && mounted) {
+      _showSnackBar(context.l10n.commonGenericError, isError: true);
+    }
   }
 
   Widget _lockBadge() {
