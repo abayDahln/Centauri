@@ -525,13 +525,22 @@ class _DesktopShellState extends ConsumerState<_DesktopShell> {
                                                                   child:
                                                                       _AiStatusPill(),
                                                                 ),
-                                                              const Positioned(
-                                                                left: 24,
-                                                                right: 24,
-                                                                bottom: 24,
-                                                                child:
-                                                                    PromptBar(),
-                                                              ),
+                                                              // Hanya satu
+                                                              // PromptBar yang
+                                                              // hidup: saat
+                                                              // kanvas
+                                                              // disembunyikan,
+                                                              // kolom pesan
+                                                              // memakai milik
+                                                              // panel chat.
+                                                              if (canvasVisible)
+                                                                const Positioned(
+                                                                  left: 24,
+                                                                  right: 24,
+                                                                  bottom: 24,
+                                                                  child:
+                                                                      PromptBar(),
+                                                                ),
                                                             ],
                                                           ),
                                                         ),

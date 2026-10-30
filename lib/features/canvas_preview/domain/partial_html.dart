@@ -130,14 +130,24 @@ String _closeStructure(String html) {
 /// kalimat sebelum/sesudah blok tetap tampil. Teks yang belum selesai
 /// ditulis tetap dikembalikan apa adanya agar terasa mengalir.
 String streamProse(String raw) {
+  // Blok kode dibuang, jadi kalimat sebelum dan sesudahnya dipisah satu baris
+  // kosong supaya tidak menempel menjadi satu paragraf.
+  final blocks = <String>[];
   final buffer = StringBuffer();
   var inFence = false;
   for (final line in raw.split('\n')) {
     if (line.trimLeft().startsWith('```')) {
+      if (!inFence) {
+        final text = buffer.toString().trim();
+        if (text.isNotEmpty) blocks.add(text);
+        buffer.clear();
+      }
       inFence = !inFence;
       continue;
     }
     if (!inFence) buffer.writeln(line);
   }
-  return buffer.toString().trim();
+  final tail = buffer.toString().trim();
+  if (tail.isNotEmpty) blocks.add(tail);
+  return blocks.join('\n\n');
 }

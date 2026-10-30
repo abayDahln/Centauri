@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:centauri/app/app.dart';
+import 'package:centauri/app/config/theme.dart';
 import 'package:centauri/app/l10n/app_language.dart';
 import 'package:centauri/core/storage/local_storage_service.dart';
 import 'package:centauri/features/canvas_preview/presentation/provider/layout_provider.dart';
@@ -72,15 +73,17 @@ void main() {
     expect(find.byTooltip('Tampilkan chat'), findsNothing);
 
     // Daftar pesan membentang dari tepi kanan sidebar sampai tepi kanan
-    // jendela (1440), jadi scrollbar-nya ada di pojok kanan.
+    // jendela (1440) di dalam padding tepi jendela, jadi scrollbar-nya ada di
+    // pojok kanan.
     final list = tester.getRect(
       find.descendant(
         of: find.byType(PromptChatPanel),
         matching: find.byType(ListView),
       ),
     );
-    expect(list.right, 1440);
-    expect(list.left, 280); // 20% dari 1440, dibatasi maksimum 280
+    expect(list.right, 1440 - AppMetrics.windowInset);
+    // 20% dari 1440, dibatasi maksimum 280, plus padding tepi jendela.
+    expect(list.left, 280 + AppMetrics.windowInset);
 
     // Isi percakapan tidak ikut membentang: kolomnya dipusatkan.
     final bubble = tester.getRect(

@@ -23,7 +23,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('menampilkan header section + 12 kartu', (tester) async {
+  testWidgets('menampilkan header section + 13 kartu', (tester) async {
     ProviderCatalogEntry? captured;
     await pumpPanel(tester, onSelected: (e) => captured = e);
 
@@ -31,7 +31,7 @@ void main() {
     expect(find.text('Free Tier'), findsOneWidget);
     expect(find.text('API Key'), findsOneWidget);
     expect(find.text('Kiro AI'), findsOneWidget);
-    expect(find.byType(ProviderCard), findsNWidgets(12));
+    expect(find.byType(ProviderCard), findsNWidgets(13));
     expect(captured, isNull);
   });
 

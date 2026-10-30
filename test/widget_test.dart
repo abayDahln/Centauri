@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:centauri/app/app.dart';
+import 'package:centauri/app/config/theme.dart';
 import 'package:centauri/app/l10n/app_language.dart';
 import 'package:centauri/app/widgets/animated_side_panel.dart';
 import 'package:centauri/core/storage/local_storage_service.dart';
@@ -126,9 +127,13 @@ void main() {
       find.descendant(of: _chatPanel(), matching: find.text('Tulis pesan…')),
       findsOneWidget,
     );
+    // Lebar jendela dikurangi padding tepi (kiri + kanan) dan sidebar riwayat.
     expect(
       _chatPanelWidth(tester),
-      closeTo(1440 - _historyPanelWidth(tester), 0.5),
+      closeTo(
+        1440 - 2 * AppMetrics.windowInset - _historyPanelWidth(tester),
+        0.5,
+      ),
     );
     // Sidebar riwayat tetap ada; tombol riwayat tetap di top bar walau kanvas
     // sedang disembunyikan.

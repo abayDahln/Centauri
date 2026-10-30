@@ -132,9 +132,12 @@ void main() {
       expect(canvasBridgeScript, contains("var mode = 'interact';"));
     });
 
-    test('offers inline actions for the selected element', () {
-      expect(canvasBridgeScript, contains("'editWithAi'"));
-      expect(canvasBridgeScript, contains("'deleteNode'"));
+    test('reports the selected element so the app can show its actions', () {
+      // Toolbar aksi (edit dengan AI, hapus) hidup di Flutter; bridge hanya
+      // mengirim id + label elemen yang diklik.
+      expect(canvasBridgeScript, contains("type: 'select'"));
+      expect(canvasBridgeScript, contains('pickedId'));
+      expect(canvasBridgeScript, contains('labelOf(pickedId)'));
     });
 
     test('redirects JS-driven navigation to the host', () {

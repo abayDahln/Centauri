@@ -237,7 +237,10 @@ void main() {
     /// Nama sengaja tidak diisi: connect tidak boleh meminta nama.
     Future<void> connect(WidgetTester tester) async {
       await tester.tap(find.byKey(const ValueKey('button-oauth-connect')));
-      await tester.pumpAndSettle();
+      // Tombol menampilkan spinner selama proses hubungkan, jadi jangan
+      // pumpAndSettle (animasinya tidak pernah berhenti).
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       await tester.enterText(
         find.byKey(const ValueKey('field-cline-link')),
@@ -309,10 +312,12 @@ void main() {
       await pickFromDialog(tester, 'Cline');
 
       await tester.tap(find.byKey(const ValueKey('button-oauth-connect')));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       // Tombol Hubungkan di dialog tidak menutup dialog saat field kosong.
       await tester.tap(find.byKey(const ValueKey('button-cline-submit')));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.byKey(const ValueKey('field-cline-link')), findsOneWidget);
       expect(repository.saved, isNull);
