@@ -6,7 +6,12 @@ import '../../../../app/l10n/l10n.dart';
 import '../../../prompt_editor/domain/attachment.dart';
 import 'attachment_preview_dialog.dart';
 
-/// Deretan chip lampiran dengan pratinjau gambar + tombol hapus.
+/// Deretan lampiran yang menunggu dikirim: thumbnail persegi 64x64 dengan
+/// tombol hapus kecil di sudut kanan atas.
+///
+/// Ukurannya tetap dan gambarnya mengisi penuh kartu supaya langsung terbaca,
+/// bukan kartu tinggi berisi thumbnail mungil. [Wrap] dipakai agar satu
+/// lampiran tidak menyisakan ruang kosong di sampingnya.
 class AttachmentStrip extends StatelessWidget {
   const AttachmentStrip({
     super.key,
@@ -21,17 +26,18 @@ class AttachmentStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     if (attachments.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 68,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: attachments.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, index) => _AttachmentChip(
-          attachment: attachments[index],
-          onRemove: () => onRemove(attachments[index].id),
-        ),
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final attachment in attachments)
+            _AttachmentChip(
+              attachment: attachment,
+              onRemove: () => onRemove(attachment.id),
+            ),
+        ],
       ),
     );
   }
@@ -40,69 +46,67 @@ class AttachmentStrip extends StatelessWidget {
 class _AttachmentChip extends StatelessWidget {
   const _AttachmentChip({required this.attachment, required this.onRemove});
 
+  static const double _size = 64;
+
   final Attachment attachment;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return SizedBox(
-      width: 64,
+      width: _size,
+      height: _size,
       child: Stack(
-        clipBehavior: Clip.none,
         children: [
-          // Kartu: tap untuk pratinjau.
           Positioned.fill(
-            child: GestureDetector(
-              onTap: () => showAttachmentPreview(context, attachment),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.palette.bgSunken,
-                  borderRadius: AppRadius.sm,
-                  border: Border.all(color: context.palette.borderSubtle),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _Thumb(attachment: attachment),
-                    const SizedBox(height: 2),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        attachment.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: AppFonts.uiFamily,
-                          fontFamilyFallback: AppFonts.uiFallback,
-                          fontSize: 9,
-                          color: context.palette.textSecondary,
+            child: Tooltip(
+              message: attachment.name,
+              child: GestureDetector(
+                onTap: () => showAttachmentPreview(context, attachment),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: palette.bgSunken,
+                    borderRadius: AppRadius.md,
+                  ),
+                  // Garis di foreground supaya tetap terlihat di atas gambar
+                  // yang mengisi penuh kartu.
+                  foregroundDecoration: BoxDecoration(
+                    borderRadius: AppRadius.md,
+                    border: Border.all(color: palette.borderSubtle),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: attachment.isText
+                      ? _TextTile(attachment: attachment)
+                      : Image.memory(
+                          attachment.bytes,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              const _TileIcon(Icons.broken_image_outlined),
                         ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ),
           ),
-          // Tombol hapus: di DALAM bounds agar mudah diklik.
-          Positioned(
-            top: 2,
-            right: 2,
+          // Tombol hapus: kecil, di dalam batas kartu agar tetap mudah diklik
+          // tanpa menutupi sebagian besar gambar.
+          PositionedDirectional(
+            top: 3,
+            end: 3,
             child: Tooltip(
               message: context.l10n.attachmentRemoveTooltip,
               child: GestureDetector(
                 onTap: onRemove,
                 behavior: HitTestBehavior.opaque,
                 child: Container(
-                  width: 20,
-                  height: 20,
+                  width: 18,
+                  height: 18,
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
+                    color: Colors.black.withValues(alpha: 0.55),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close, size: 13, color: Colors.white),
+                  child: const Icon(Icons.close, size: 11, color: Colors.white),
                 ),
               ),
             ),
@@ -113,46 +117,58 @@ class _AttachmentChip extends StatelessWidget {
   }
 }
 
-class _Thumb extends StatelessWidget {
-  const _Thumb({required this.attachment});
+/// Lampiran teks (SVG/HTML/CSS): ikon format + nama berkas.
+class _TextTile extends StatelessWidget {
+  const _TextTile({required this.attachment});
 
   final Attachment attachment;
 
   @override
   Widget build(BuildContext context) {
-    // Gambar raster: tampilkan sebagai thumbnail.
-    if (!attachment.isText) {
-      return Image.memory(
-        attachment.bytes,
-        width: 44,
-        height: 32,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const _FileIcon(Icons.broken_image_outlined),
-      );
-    }
-    // SVG/HTML/teks: tampilkan ikon format.
-    final icon = attachment.mimeType.contains('svg')
+    final mime = attachment.mimeType;
+    final icon = mime.contains('svg')
         ? Icons.image_outlined
-        : attachment.mimeType.contains('html')
+        : mime.contains('html')
         ? Icons.html
-        : attachment.mimeType.contains('css')
+        : mime.contains('css')
         ? Icons.css
         : Icons.description_outlined;
-    return _FileIcon(icon);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: context.palette.textSecondary),
+          const SizedBox(height: 3),
+          Text(
+            attachment.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: AppFonts.uiFamily,
+              fontFamilyFallback: AppFonts.uiFallback,
+              fontSize: 8.5,
+              height: 1.15,
+              color: context.palette.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _FileIcon extends StatelessWidget {
-  const _FileIcon(this.icon);
+class _TileIcon extends StatelessWidget {
+  const _TileIcon(this.icon);
 
   final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 44,
-      height: 32,
-      child: Icon(icon, size: 22, color: context.palette.textSecondary),
+    return Center(
+      child: Icon(icon, size: 20, color: context.palette.textSecondary),
     );
   }
 }

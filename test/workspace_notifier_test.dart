@@ -5,6 +5,7 @@ import 'package:centauri/features/canvas_preview/domain/dom_tree.dart';
 import 'package:centauri/features/canvas_preview/domain/page.dart';
 import 'package:centauri/features/canvas_preview/domain/prompt_mention.dart';
 import 'package:centauri/features/canvas_preview/presentation/provider/workspace_provider.dart';
+import 'package:centauri/features/prompt_editor/domain/ai_response.dart';
 import 'package:centauri/features/prompt_editor/domain/attachment.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -505,6 +506,109 @@ void main() {
       );
       expect(state().activePage!.html, isEmpty);
       expect(state().activePage!.domTree, isNull);
+    });
+  });
+
+  group('matchRevisionTarget', () {
+    UiScreen screen(String title, {String? slug}) =>
+        UiScreen(title: title, html: '<html></html>', slug: slug);
+
+    final existing = [
+      _page('page_0', 'Home'),
+      _page('page_1', 'History'),
+      _page('page_2', 'Profile'),
+    ];
+
+    test('maps a screen with the same filename to that page', () {
+      final target = matchRevisionTarget(
+        screen: screen('Home', slug: 'home.html'),
+        index: 0,
+        screenCount: 1,
+        existing: existing,
+      );
+      expect(target?.id, 'page_0');
+    });
+
+    test('absorbs a duplicated filename (home-2.html) into home.html', () {
+      final target = matchRevisionTarget(
+        screen: screen('Home', slug: 'home-2.html'),
+        index: 0,
+        screenCount: 1,
+        existing: existing,
+      );
+      expect(target?.id, 'page_0');
+    });
+
+    test('falls back to the page title', () {
+      final target = matchRevisionTarget(
+        screen: screen('History', slug: 'riwayat.html'),
+        index: 1,
+        screenCount: 1,
+        existing: existing,
+      );
+      expect(target?.id, 'page_1');
+    });
+
+    test('maps a full re-send positionally when every slug is new', () {
+      final targets = [
+        for (var i = 0; i < existing.length; i++)
+          matchRevisionTarget(
+            screen: screen('Screen $i', slug: 'screen-$i.html'),
+            index: i,
+            screenCount: existing.length,
+            existing: existing,
+          ),
+      ];
+      expect(targets.map((p) => p?.id), ['page_0', 'page_1', 'page_2']);
+    });
+
+    test('keeps a single genuinely new page as a new page', () {
+      final target = matchRevisionTarget(
+        screen: screen('Pricing', slug: 'pricing.html'),
+        index: 0,
+        screenCount: 1,
+        existing: existing,
+        activePageId: 'page_0',
+      );
+      expect(target, isNull);
+    });
+
+    test('never rewrites existing pages when the user asked for a new one', () {
+      final target = matchRevisionTarget(
+        screen: screen('Home', slug: 'home.html'),
+        index: 0,
+        screenCount: 1,
+        existing: existing,
+        createIntent: true,
+      );
+      expect(target, isNull);
+    });
+
+    test('treats one screen without a filename as the open page', () {
+      final target = matchRevisionTarget(
+        screen: screen(''),
+        index: 0,
+        screenCount: 1,
+        existing: existing,
+        activePageId: 'page_2',
+      );
+      expect(target?.id, 'page_2');
+    });
+  });
+
+  group('requestsNewPage', () {
+    test('detects explicit requests for an extra page', () {
+      expect(requestsNewPage('tambah halaman login'), isTrue);
+      expect(requestsNewPage('add a settings page'), isTrue);
+      expect(requestsNewPage('buat halaman baru'), isTrue);
+    });
+
+    test('does not treat a revision as a new page', () {
+      expect(
+        requestsNewPage('perbaiki tampilan home jadi hitam putih'),
+        isFalse,
+      );
+      expect(requestsNewPage('ganti warna tombol'), isFalse);
     });
   });
 

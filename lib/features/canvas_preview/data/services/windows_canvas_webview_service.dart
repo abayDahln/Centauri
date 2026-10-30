@@ -48,6 +48,12 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
   Directory? _tempDir;
   File? _documentFile;
 
+  /// True setelah mapping host virtual benar-benar terpasang di WebView ini.
+  /// Dispose hanya melepas mapping bila flag ini menyala; memanggil
+  /// `removeVirtualHostNameMapping` untuk host yang tidak terdaftar membuat
+  /// WebView2 membalas `invalidArguments` dan mengotori log debug.
+  bool _virtualHostMapped = false;
+
   /// Completer yang di-reset setiap renderHtml: menandai navigasi dokumen
   /// konten selesai (navigationCompleted top-level).
   Completer<void>? _navigationCompleter;
@@ -136,10 +142,12 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
         dir.path,
         WebviewHostResourceAccessKind.allow,
       );
+      _virtualHostMapped = true;
     } catch (e) {
       debugPrint('[canvas] gagal menyiapkan virtual host: $e');
       _tempDir = null;
       _documentFile = null;
+      _virtualHostMapped = false;
     }
   }
 
@@ -397,10 +405,20 @@ class WindowsCanvasWebviewService implements CanvasWebviewService {
     await _urlSubscription?.cancel();
     await _selectionEvents.close();
     // Lepas mapping host virtual + hapus folder temp (jangan bocorkan file).
-    try {
-      await _controller.removeVirtualHostNameMapping(_virtualHost);
-    } catch (e) {
-      debugPrint('[canvas] gagal menghapus virtual host: $e');
+    //
+    // `webview_windows` 0.4.0 SELALU membalas `invalidArguments` di sini: ia
+    // memperlakukan HRESULT `ClearVirtualHostNameToFolderMapping` (S_OK = 0)
+    // sebagai bool, jadi hasilnya terbaca "gagal" walau berhasil. Mapping-nya
+    // sendiri menempel pada instance WebView dan ikut hilang saat controller
+    // dibuang, jadi kegagalan ini tidak berakibat apa-apa — cukup diabaikan
+    // supaya tidak membanjiri log debug tiap frame halaman dilepas.
+    if (_virtualHostMapped) {
+      try {
+        await _controller.removeVirtualHostNameMapping(_virtualHost);
+      } catch (_) {
+        // Diabaikan: tidak ada yang perlu ditindaklanjuti.
+      }
+      _virtualHostMapped = false;
     }
     try {
       final dir = _tempDir;

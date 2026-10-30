@@ -739,7 +739,8 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
         );
 
     final userText = wantsUi
-        ? '$trimmed${_uiContext(trimmed)}${_selectedNodeContext()}${_mentionContext()}'
+        ? '$trimmed${_uiContext(trimmed)}${_workspaceContext()}'
+              '${_selectedNodeContext()}${_mentionContext()}'
         : trimmed;
 
     state = state.copyWith(
@@ -828,6 +829,7 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
         screens: screens,
         baseTitle: baseTitle,
         existing: state.pages,
+        createIntent: requestsNewPage(trimmed),
       );
       if (!state.isGenerating) return;
 
@@ -903,21 +905,47 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
   }
 
   /// Bangun [AppPage] dari daftar layar AI. Satu layar = satu halaman.
+  ///
+  /// Layar yang dikenali sebagai revisi halaman yang sudah ada memakai ulang
+  /// id, nama file, dan nama halamannya, sehingga link antar-halaman tetap
+  /// menunjuk halaman versi baru, bukan halaman lama yang tertinggal.
   Future<List<AppPage>> _buildPagesFromScreens({
     required List<UiScreen> screens,
     required String baseTitle,
     required List<AppPage> existing,
+    bool createIntent = false,
   }) async {
     final pages = <AppPage>[];
     final usedSlugs = existing.map((p) => p.slug).toList();
+    final activeId = state.activePageId;
     for (var i = 0; i < screens.length; i++) {
       final screen = screens[i];
       final tree = await buildDomTreeInIsolate(screen.html);
-      final pageId = 'page_${_pageCounter++}';
-      final fallbackTitle = screens.length > 1
-          ? '$baseTitle ${i + 1}'
-          : baseTitle;
+      final target = matchRevisionTarget(
+        screen: screen,
+        index: i,
+        screenCount: screens.length,
+        existing: existing,
+        activePageId: activeId,
+        createIntent: createIntent,
+      );
+      final fallbackTitle =
+          target?.name ??
+          (screens.length > 1 ? '$baseTitle ${i + 1}' : baseTitle);
       final name = _sanitizeScreenTitle(screen.title, fallbackTitle);
+      if (target != null) {
+        pages.add(
+          AppPage(
+            id: target.id,
+            name: name,
+            slug: target.slug,
+            html: _forcePageSlug(tree.stampedHtml, target.slug),
+            domTree: tree,
+          ),
+        );
+        continue;
+      }
+      final pageId = 'page_${_pageCounter++}';
       final declared = screen.slug?.trim();
       final baseSlug = (declared != null && declared.isNotEmpty)
           ? declared
@@ -935,6 +963,29 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
       );
     }
     return pages;
+  }
+
+  /// Paksa `<meta name="centauri-page">` memakai [slug], supaya nama file di
+  /// dalam HTML sama dengan halaman yang mewakilinya setelah revisi.
+  String _forcePageSlug(String html, String slug) {
+    final patterns = [
+      RegExp(
+        "(<meta\\s+[^>]*name=[\"']centauri-page[\"']\\s+[^>]*content=[\"'])"
+        "([^\"']*)([\"'])",
+        caseSensitive: false,
+      ),
+      RegExp(
+        "(<meta\\s+[^>]*content=[\"'])([^\"']*)"
+        "([\"']\\s+[^>]*name=[\"']centauri-page[\"'])",
+        caseSensitive: false,
+      ),
+    ];
+    for (final pattern in patterns) {
+      if (pattern.hasMatch(html)) {
+        return html.replaceFirstMapped(pattern, (m) => '${m[1]}$slug${m[3]}');
+      }
+    }
+    return html;
   }
 
   /// Gabungkan [incoming] ke [existing] dengan mencocokkan slug: halaman yang
@@ -1079,6 +1130,64 @@ class WorkspaceNotifier extends Notifier<WorkspaceState> {
     }
     return '\n\n[USER MENTIONS]\n${lines.join('\n')}';
   }
+
+  /// Konteks prototype yang sudah ada di kanvas: daftar nama file halaman
+  /// plus HTML halaman yang sedang dibuka.
+  ///
+  /// Tanpa ini AI memperlakukan prompt revisi sebagai proyek baru: ia
+  /// mengarang nama file lain (`home-2.html`) sehingga halaman lama tetap
+  /// ada, dan link di preview menuju halaman versi lama.
+  String _workspaceContext() {
+    final pages = state.pages;
+    if (pages.isEmpty) return '';
+    final activeId = state.activePageId;
+
+    final buffer = StringBuffer('\n\n[CURRENT WORKSPACE]')
+      ..write(
+        '\nThe canvas already contains this prototype. This request revises '
+        'it; it is not a new project.',
+      )
+      ..write('\nPages (filename → name):');
+    for (final page in pages) {
+      buffer.write(
+        '\n- ${page.slug} → ${page.name}'
+        '${page.id == activeId ? ' (open in the preview)' : ''}',
+      );
+    }
+    buffer
+      ..write(
+        '\n\nReturn each page you change as a complete document that keeps '
+        'its EXACT filename in <meta name="centauri-page"> and its <title>. '
+        'Never create a second file for a page listed above, never rename '
+        'one, and keep every <a href> pointing at a filename in this list.',
+      )
+      ..write(
+        '\nThe HTML below is the current content, for reference only — do '
+        'not repeat it back verbatim.',
+      );
+
+    // Halaman aktif lebih dulu; sisanya selama muat di anggaran karakter.
+    final ordered = <AppPage>[
+      if (state.activePage != null) state.activePage!,
+      ...pages.where((p) => p.id != activeId),
+    ];
+    var budget = _workspaceHtmlBudget;
+    for (final page in ordered) {
+      if (page.html.trim().isEmpty) continue;
+      final fits = page.id == activeId || page.html.length <= budget;
+      if (!fits) continue;
+      budget -= page.html.length;
+      buffer.write(
+        '\n\n--- ${page.slug} (current HTML) ---\n```html\n'
+        '${page.html}\n```',
+      );
+    }
+    return buffer.toString();
+  }
+
+  /// Batas karakter HTML yang dikirim sebagai konteks revisi. Cukup untuk
+  /// beberapa halaman utuh, tapi tidak sampai membanjiri jendela konteks.
+  static const int _workspaceHtmlBudget = 120000;
 
   /// Konteks format UI: fluid/responsive wajib + konvensi link antar-halaman.
   ///
@@ -1405,3 +1514,83 @@ bool isUiRequestPrompt(
   // 4. Default: pesan pendek tanpa sinyal UI -> chat.
   return false;
 }
+
+/// Apakah user meminta halaman BARU, bukan perubahan halaman yang ada.
+///
+/// Dipakai untuk mematikan pemetaan revisi: kalau user memang minta halaman
+/// tambahan, layar baru harus jadi halaman baru, bukan menimpa halaman aktif.
+bool requestsNewPage(String prompt) {
+  final lower = prompt.toLowerCase();
+  return RegExp(
+    r'\b(halaman|page|pages|screen|layar|tab)\s+(baru|new)\b'
+    r'|\b(new|another|extra|additional)\s+(page|pages|screen|halaman|layar)\b'
+    r'|\b(tambah|tambahkan|tambahlah|add)\b[^.]{0,30}?'
+    r'\b(page|pages|screen|halaman|layar)\b',
+  ).hasMatch(lower);
+}
+
+/// Halaman yang sudah ada yang menjadi sasaran revisi [screen], atau null
+/// bila layar ini memang halaman baru.
+///
+/// AI kadang mengirim nama file baru untuk halaman yang sudah ada
+/// (`home-2.html` padahal `home.html` sudah ada) walau user hanya minta
+/// perubahan. Tanpa pemetaan ini hasilnya halaman duplikat, dan link di
+/// preview kembali ke versi lama.
+///
+/// Urutan pencocokan: nama file persis, varian nama file, judul halaman,
+/// posisi (hanya bila AI mengirim ulang seluruh prototype), lalu halaman
+/// yang sedang dibuka (hanya bila AI tidak menyebut nama file).
+///
+/// Top-level agar bisa diuji langsung tanpa ProviderContainer.
+AppPage? matchRevisionTarget({
+  required UiScreen screen,
+  required int index,
+  required int screenCount,
+  required List<AppPage> existing,
+  String? activePageId,
+  bool createIntent = false,
+}) {
+  if (existing.isEmpty || createIntent) return null;
+
+  final declared = screen.slug?.trim().toLowerCase() ?? '';
+  if (declared.isNotEmpty) {
+    for (final page in existing) {
+      if (page.slug.toLowerCase() == declared) return page;
+    }
+    // `home-2.html` / `home-3.html` untuk halaman `home.html`.
+    final declaredStem = slugStem(declared);
+    for (final page in existing) {
+      final stem = slugStem(page.slug);
+      if (declaredStem == stem ||
+          RegExp('^${RegExp.escape(stem)}-[0-9]+\$').hasMatch(declaredStem)) {
+        return page;
+      }
+    }
+  }
+
+  final titleKey = _pageNameKey(screen.title);
+  if (titleKey.isNotEmpty) {
+    for (final page in existing) {
+      if (_pageNameKey(page.name) == titleKey) return page;
+    }
+  }
+
+  // AI mengirim ulang seluruh prototype: petakan per urutan supaya nama file
+  // dan id halaman tetap. Hanya untuk >1 layar — satu layar hampir selalu
+  // halaman baru, bukan pengganti halaman pertama.
+  if (screenCount > 1 && screenCount == existing.length) {
+    return index < existing.length ? existing[index] : null;
+  }
+
+  // Satu layar tanpa nama file = revisi halaman yang sedang dibuka.
+  if (screenCount == 1 && declared.isEmpty) {
+    for (final page in existing) {
+      if (page.id == activePageId) return page;
+    }
+  }
+  return null;
+}
+
+/// Kunci pembanding judul halaman: lowercase, hanya huruf/angka.
+String _pageNameKey(String value) =>
+    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();

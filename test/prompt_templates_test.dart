@@ -44,6 +44,23 @@ void main() {
       expect(lower, contains('light and dark'));
     });
 
+    test('does not greet or introduce itself on every reply', () {
+      final lower = uiSystemPrompt.toLowerCase();
+      expect(lower, contains('never greet twice'));
+      expect(lower, contains('never open a reply with'));
+      expect(lower, isNot(contains('always introduce and identify yourself')));
+    });
+
+    test(
+      'tells the model to edit existing pages instead of duplicating them',
+      () {
+        final lower = uiSystemPrompt.toLowerCase();
+        expect(lower, contains('edit, never duplicate'));
+        expect(lower, contains('home-2.html'));
+        expect(lower, contains('new page only when asked'));
+      },
+    );
+
     test('does not instruct Tailwind CDN usage', () {
       expect(
         uiSystemPrompt.contains('cdn.tailwindcss.com'),

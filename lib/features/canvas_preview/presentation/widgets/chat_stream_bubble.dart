@@ -37,9 +37,10 @@ class ChatStreamBubble extends ConsumerWidget {
               style: context.text.label.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
-            if (text.isEmpty)
-              const ChatTypingBubble()
-            else ...[
+            // Permintaan UI punya baris progres sendiri; titik tunggu hanya
+            // untuk percakapan biasa supaya tidak tampil dua indikator.
+            if (text.isEmpty && status == null) const ChatTypingBubble(),
+            if (text.isNotEmpty) ...[
               MarkdownMessage(
                 text: text,
                 baseColor: context.palette.textPrimary,
@@ -47,8 +48,8 @@ class ChatStreamBubble extends ConsumerWidget {
               const _StreamCursor(),
             ],
             if (status != null) ...[
-              const SizedBox(height: 8),
-              Text(status, style: context.text.caption),
+              const SizedBox(height: 10),
+              _StreamProgress(label: status),
             ],
           ],
         ),
@@ -68,6 +69,99 @@ class ChatStreamBubble extends ConsumerWidget {
     return total == null
         ? l10n.chatStreamPage(page)
         : l10n.chatStreamPageOf(page, total);
+  }
+}
+
+/// Progres saat AI menulis satu halaman.
+///
+/// Sebelumnya tahap ini hanya teks status diam di bawah kursor yang berkedip,
+/// jadi terlihat seperti macet. Sekarang ada spinner kecil plus garis yang
+/// menyapu — pola yang sama dengan pill progres di kanvas.
+class _StreamProgress extends StatefulWidget {
+  const _StreamProgress({required this.label});
+
+  final String label;
+
+  @override
+  State<_StreamProgress> createState() => _StreamProgressState();
+}
+
+class _StreamProgressState extends State<_StreamProgress>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.6,
+                color: palette.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.caption,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: SizedBox(
+            height: 3,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final track = constraints.maxWidth;
+                final bar = track * 0.3;
+                return Stack(
+                  children: [
+                    Positioned.fill(child: ColoredBox(color: palette.bgSunken)),
+                    AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, _) {
+                        final t = reduceMotion ? 0.5 : _controller.value;
+                        return PositionedDirectional(
+                          start: (track + bar) * t - bar,
+                          top: 0,
+                          width: bar,
+                          height: 3,
+                          child: ColoredBox(color: palette.primary),
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

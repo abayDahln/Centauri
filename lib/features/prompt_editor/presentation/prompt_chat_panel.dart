@@ -10,6 +10,7 @@ import '../../canvas_preview/presentation/widgets/attachment_preview_dialog.dart
 import '../../canvas_preview/presentation/widgets/chat_error_card.dart';
 import '../../canvas_preview/presentation/widgets/chat_stream_bubble.dart';
 import '../../canvas_preview/presentation/widgets/markdown_message.dart';
+import '../domain/attachment.dart';
 
 /// Panel riwayat percakapan (read-only). Hanya menampilkan pesan user dan AI.
 /// Input prompt ada di PromptBar (bawah tengah board).
@@ -215,55 +216,17 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                   ),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (message.attachments.isNotEmpty) ...[
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
                         children: message.attachments
-                            .map(
-                              (a) => GestureDetector(
-                                onTap: () => showAttachmentPreview(context, a),
-                                child: ClipRRect(
-                                  borderRadius: AppRadius.sm,
-                                  child: a.isText
-                                      ? Container(
-                                          width: 72,
-                                          height: 52,
-                                          color: context.palette.onPrimary
-                                              .withValues(alpha: 0.18),
-                                          alignment: Alignment.center,
-                                          child: Icon(
-                                            Icons.description_outlined,
-                                            size: 20,
-                                            color: context.palette.onPrimary,
-                                          ),
-                                        )
-                                      : Image.memory(
-                                          a.bytes,
-                                          width: 72,
-                                          height: 52,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, _, _) => Container(
-                                            width: 72,
-                                            height: 52,
-                                            color: context.palette.onPrimary
-                                                .withValues(alpha: 0.18),
-                                            alignment: Alignment.center,
-                                            child: Icon(
-                                              Icons.broken_image_outlined,
-                                              size: 20,
-                                              color: context.palette.onPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            )
+                            .map((a) => _UserAttachmentThumb(attachment: a))
                             .toList(),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                     ],
                     Text(
                       message.shownText,
@@ -399,6 +362,85 @@ class _PromptChatPanelState extends ConsumerState<PromptChatPanel> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Thumbnail lampiran di dalam bubble pesan user.
+///
+/// Sejajar kiri dengan teks pesan — dulu menempel di sudut kanan bubble,
+/// sehingga gambar dan teks tidak punya garis awal yang sama. Diberi garis
+/// tipis warna teks di atas aksen supaya bentuknya tetap terbaca.
+class _UserAttachmentThumb extends StatelessWidget {
+  const _UserAttachmentThumb({required this.attachment});
+
+  static const double _width = 84;
+  static const double _height = 60;
+
+  final Attachment attachment;
+
+  @override
+  Widget build(BuildContext context) {
+    final onPrimary = context.palette.onPrimary;
+
+    return Tooltip(
+      message: attachment.name,
+      child: GestureDetector(
+        onTap: () => showAttachmentPreview(context, attachment),
+        child: Container(
+          width: _width,
+          height: _height,
+          decoration: BoxDecoration(
+            color: onPrimary.withValues(alpha: 0.18),
+            borderRadius: AppRadius.md,
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: AppRadius.md,
+            border: Border.all(color: onPrimary.withValues(alpha: 0.24)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: attachment.isText
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.description_outlined,
+                      size: 18,
+                      color: onPrimary,
+                    ),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        attachment.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: AppFonts.uiFamily,
+                          fontFamilyFallback: AppFonts.uiFallback,
+                          fontSize: 8.5,
+                          color: onPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Image.memory(
+                  attachment.bytes,
+                  width: _width,
+                  height: _height,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Center(
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      size: 18,
+                      color: onPrimary,
+                    ),
+                  ),
+                ),
         ),
       ),
     );
